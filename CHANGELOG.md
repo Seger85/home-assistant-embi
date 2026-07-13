@@ -4,11 +4,31 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 ## [Unreleased]
 
-### Geplant
+### Added
 
-- vollständige Laufzeitprüfung von 0.3.0 auf einer separaten Testinstanz
-- visuelle Prüfung aller Config-/Options-Flows auf iPhone, iPad und Desktop
-- HACS- und Hassfest-Validierung über GitHub Actions
+- automatisierter Release-Workflow mit Tag-/Manifest-Abgleich
+- automatische Unterscheidung von Prerelease und stabilem Release
+- Release-Archiv `embi.zip` und SHA-256-Prüfsumme
+- dokumentierte Repository-, Branch- und Release-Governance
+- eindeutige CI-Checknamen für spätere GitHub-Rulesets
+
+### Changed
+
+- Dependabot-PRs zielen künftig auf `develop`
+- Projektstatus und Roadmap dokumentieren den erfolgreichen 0.3.0-rc1-Livetest
+- Release-Veröffentlichung wird erst nach Quality, HACS und Hassfest ausgeführt
+
+### Fixed
+
+- nicht destruktive Synchronisierung von `main` zurück nach `develop` nach dem vorzeitigen Merge von PR #1
+- dokumentierte Abgrenzung zwischen einer veröffentlichten EMBi-Version und einem neueren Repository-Commit in HACS
+
+### Remaining
+
+- vollständige Options-Flow- und Screenshot-QA
+- kontrollierter Server-Cleanup-Sicherheitstest
+- GitHub-Rulesets für `main` und `develop`
+- stabile Releaseentscheidung für 0.3.0
 
 ## [0.3.0-rc1] - Release Candidate
 
@@ -43,6 +63,15 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 - Gerätefilter nutzten in 0.2 fälschlich die serverseitige `/Devices`-Historien-ID statt `ReportedDeviceId`; dadurch konnten Auswahl- und Ignorierregeln die tatsächlichen pyemby-Unique-IDs verfehlen
 - erfolgreich gelöschte Geräte werden anhand ihrer stabilen Client-ID ignoriert, nicht anhand der nur für den Löschendpunkt gültigen Historien-ID
+
+### Live verification
+
+- HACS-Installation von `v0.3.0-rc1` erfolgreich
+- bestehender Config Entry erhalten
+- 28 Media-Player sowie Entity-IDs, Unique IDs und individuelle Namen erhalten
+- Live-Wiedergabestatus und Push-Updates erfolgreich
+- keine EMBi-Laufzeitfehler oder Duplicate-Unique-ID-Meldungen
+- Diagnostics redigieren Zugangsdaten und Geräteidentitäten
 
 ## [0.2.0] - Produktive Baseline
 
