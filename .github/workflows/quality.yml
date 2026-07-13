@@ -41,6 +41,19 @@ jobs:
           python -m json.tool custom_components/emby/translations/en.json >/dev/null
           python -m json.tool hacs.json >/dev/null
 
+      - name: Validate YAML
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = [Path(".github/dependabot.yml")]
+          paths.extend(sorted(Path(".github/workflows").glob("*.yml")))
+          for path in paths:
+              yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+              print(f"Validated {path}")
+          PY
+
       - name: Compile Python
         run: python -m compileall -q custom_components/emby
 
