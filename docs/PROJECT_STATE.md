@@ -18,10 +18,19 @@
 - Live-test status: not installed in production yet
 - Merge status: blocked until Home Assistant live tests and explicit approval by Gerry
 
+## CI status
+
+- Quality workflow: passed on Python 3.13 and 3.14
+- Ruff lint and format checks: passed
+- Unit tests: passed
+- Hassfest: passed
+- HACS repository contract: passed against the checked-out private repository
+- Official HACS action: reserved for a public repository state because its file validation cannot retrieve private repository content through the raw-content endpoint
+
 ## Known remaining work
 
+- Decide on a controlled installation method for the private release candidate; the official HACS flow requires repository content to be publicly retrievable
 - UI and theme quality assurance
-- Installation through the private HACS repository
 - Live migration test from EMBi 0.2.0 to 0.3.0-rc1
 - Server-cleanup safety test
 - Final changelog review and release decision
