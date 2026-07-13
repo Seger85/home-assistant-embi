@@ -11,7 +11,7 @@ Status: abgeschlossen und versioniert.
 
 ## 0.3.0-rc1 – Identität, Sicherheit und Repository
 
-Status: Code und Dokumentation vorbereitet; vor Produktivfreigabe fehlen GitHub-CI und Laufzeittest.
+Status: Code, Dokumentation und GitHub-CI einschließlich offizieller HACS- und Hassfest-Validierung sind vorbereitet und erfolgreich; vor Produktivfreigabe fehlen die HACS-Installation und die Home-Assistant-Laufzeittests.
 
 - korrekte Trennung von Emby-`Id` und `ReportedDeviceId`
 - automatische Optionsmigration
@@ -29,13 +29,14 @@ Status: Code und Dokumentation vorbereitet; vor Produktivfreigabe fehlen GitHub-
 Freigabekriterien:
 
 - GitHub Actions vollständig erfolgreich
-- Installation über privates HACS-Repository erfolgreich
+- Installation über das öffentliche HACS-Custom-Repository erfolgreich
 - Upgrade 0.2.0 → 0.3.0 auf Testinstanz erfolgreich
 - bestehende Entity-IDs unverändert
 - Optionsmigration geprüft
 - alle Optionsmenüs funktional geprüft
 - Screenshot-QA auf iPhone, iPad und Desktop
 - keine neuen EMBi-Warnungen oder Fehler
+- temporäre HACS-Metadatenausnahmen geprüft und soweit möglich entfernt
 
 ## 0.4.0 – vertiefte Testabdeckung
 
