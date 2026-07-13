@@ -8,6 +8,7 @@ on:
   pull_request:
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -20,3 +21,39 @@ jobs:
           category: integration
           comment: false
           ignore: brands description topics
+
+  diagnose:
+    if: ${{ always() && needs.validate.result == 'failure' }}
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture HACS validation error
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          curl --fail-with-body -sS \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${api}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
+            > /tmp/jobs.json
+          job_id="$(jq -r '.jobs[] | select(.name == "validate") | .id' /tmp/jobs.json | head -n 1)"
+          test -n "${job_id}"
+          curl --fail-with-body -sS -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${api}/actions/jobs/${job_id}/logs" \
+            > /tmp/hacs-validation.log
+          tail -n 80 /tmp/hacs-validation.log | tee hacs-validation-error.txt
+
+      - name: Upload HACS validation error
+        uses: actions/upload-artifact@v4
+        with:
+          name: hacs-validation-error
+          path: hacs-validation-error.txt
+          if-no-files-found: error
+          retention-days: 1
