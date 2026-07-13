@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   tests:
+    name: Quality (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
