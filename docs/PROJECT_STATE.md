@@ -13,6 +13,7 @@
 
 ## Development
 
+- Repository visibility: public
 - Development branch: `develop`
 - Development version: `0.3.0-rc1`
 - Live-test status: not installed in production yet
@@ -24,15 +25,19 @@
 - Ruff lint and format checks: passed
 - Unit tests: passed
 - Hassfest: passed
-- HACS repository contract: passed against the checked-out private repository
-- Official HACS action: reserved for a public repository state because its file validation cannot retrieve private repository content through the raw-content endpoint
+- Official HACS action: passed against the public repository
+- HACS metadata checks temporarily ignored: `brands`, `description`, `license`, and `topics`
+- The metadata exceptions do not skip repository structure, `hacs.json`, integration manifest, or downloadable-content validation
 
 ## Known remaining work
 
-- Decide on a controlled installation method for the private release candidate; the official HACS flow requires repository content to be publicly retrievable
-- UI and theme quality assurance
+- Install the release candidate through the public HACS custom repository
 - Live migration test from EMBi 0.2.0 to 0.3.0-rc1
+- Confirm that all 28 existing media-player entity IDs remain unchanged
+- Test the options migration and all options menus
 - Server-cleanup safety test
+- UI and theme quality assurance on iPhone, iPad, and desktop
+- Finalize repository description/topics and remove temporary HACS metadata exceptions when applicable
 - Final changelog review and release decision
 
 ## Release safety gate
