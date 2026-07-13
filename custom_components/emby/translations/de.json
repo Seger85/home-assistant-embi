@@ -1,0 +1,108 @@
+{
+  "title": "Emby Integration - EMBi",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Emby-Server verbinden",
+        "description": "Verbinde Home Assistant mit deinem lokalen Emby-Server. Der API-Schlüssel bleibt in Home Assistant gespeichert und wird nicht in Diagnosen ausgegeben.",
+        "data": {
+          "name": "Name",
+          "host": "Host/IP-Adresse",
+          "port": "Port",
+          "ssl": "HTTPS verwenden",
+          "api_key": "API-Schlüssel"
+        },
+        "data_description": {
+          "name": "Anzeigename der Integration, empfohlen: EMBi",
+          "host": "Lokale IP-Adresse oder Hostname ohne http:// bzw. https://",
+          "port": "Standard: 8096 (HTTP) oder 8920 (HTTPS)",
+          "ssl": "Nur aktivieren, wenn der lokale Emby-Endpunkt HTTPS verwendet",
+          "api_key": "Eigener Emby-API-Schlüssel für EMBi"
+        }
+      },
+      "reconfigure": {
+        "title": "Verbindung bearbeiten",
+        "description": "Ändere Serveradresse, Port, HTTPS oder API-Schlüssel. Nach dem Speichern wird EMBi neu geladen.",
+        "data": {
+          "name": "Name",
+          "host": "Host/IP-Adresse",
+          "port": "Port",
+          "ssl": "HTTPS verwenden",
+          "api_key": "API-Schlüssel"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Emby-Server fehlgeschlagen.",
+      "invalid_auth": "Der API-Schlüssel wurde abgelehnt."
+    },
+    "abort": {
+      "already_configured": "Dieser Emby-Server ist bereits eingerichtet.",
+      "reconfigure_successful": "Die Verbindung wurde aktualisiert.",
+      "unique_id_mismatch": "Die neue Verbindung gehört zu einem anderen Emby-Server."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EMBi verwalten",
+        "description": "Geräte filtern, Home-Assistant-Altlasten bereinigen oder historische Geräte direkt vom lokalen Emby-Server entfernen.",
+        "menu_options": {
+          "clients": "Geräteanzeige verwalten",
+          "ha_cleanup": "Home-Assistant-Einträge bereinigen",
+          "server_cleanup": "Geräte auf dem Emby-Server löschen",
+          "about": "Über EMBi"
+        }
+      },
+      "clients": {
+        "title": "Emby-Geräte verwalten",
+        "description": "Lege fest, welche Clients als Media-Player angelegt werden. Ignorieren hat immer Vorrang. Die Auswahl verwendet die stabile Kombination aus Emby-Geräte-ID und App.",
+        "data": {
+          "client_mode": "Gerätemodus",
+          "allowed_device_ids": "Freigegebene Geräte",
+          "ignored_device_ids": "Ignorierte Geräte"
+        },
+        "data_description": {
+          "allowed_device_ids": "Wird nur im Modus „Nur ausgewählte Geräte“ ausgewertet.",
+          "ignored_device_ids": "Diese Geräte werden unabhängig vom Modus nicht angelegt."
+        }
+      },
+      "ha_cleanup": {
+        "title": "Home-Assistant-Einträge bereinigen",
+        "description": "Entfernt ausdrücklich ausgewählte Emby-Entitäten aus der Entity Registry. Stelle vorher sicher, dass sie ignoriert werden oder nicht mehr vom alten YAML-Block erzeugt werden, sonst erscheinen sie erneut.",
+        "data": {
+          "cleanup_entity_ids": "Zu entfernende Entitäten",
+          "confirm_cleanup": "Ich bestätige die Entfernung aus Home Assistant"
+        }
+      },
+      "server_cleanup": {
+        "title": "Geräte auf dem Emby-Server löschen",
+        "description": "Entfernt ausgewählte historische Geräte direkt aus der Geräteübersicht des lokalen Emby-Servers. Ein erneut verwendeter Client kann sich später wieder registrieren.",
+        "data": {
+          "delete_device_ids": "Zu löschende Geräte",
+          "add_deleted_to_ignored": "Gelöschte Geräte zusätzlich in Home Assistant ignorieren",
+          "confirm_delete": "Ich bestätige die dauerhafte Löschung auf dem Emby-Server"
+        }
+      },
+      "about": {
+        "title": "Über Emby Integration - EMBi",
+        "description": "EMBi erweitert die offizielle Home-Assistant-Emby-Integration um eine UI-Konfiguration, Gerätefilter, kontrollierte Registry-Bereinigung und eine ausdrücklich bestätigte Bereinigung des lokalen Emby-Servers.\n\nVersion 0.2.0 · Projekt/Idee: Gerry (Seger) · Basis: Home Assistant Emby und pyemby."
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Emby-Server fehlgeschlagen.",
+      "confirmation_required": "Bitte bestätige die ausgewählte Bereinigung.",
+      "delete_failed": "Mindestens ein Gerät konnte nicht vom Emby-Server gelöscht werden."
+    }
+  },
+  "selector": {
+    "client_mode": {
+      "options": {
+        "all": "Alle Geräte",
+        "active_only": "Nur aktive Wiedergaben",
+        "allowlist": "Nur ausgewählte Geräte"
+      }
+    }
+  }
+}

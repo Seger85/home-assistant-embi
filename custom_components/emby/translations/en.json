@@ -1,0 +1,108 @@
+{
+  "title": "Emby Integration - EMBi",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Connect Emby server",
+        "description": "Connect Home Assistant to your local Emby server. The API key is stored in Home Assistant and is redacted from diagnostics.",
+        "data": {
+          "name": "Name",
+          "host": "Host/IP address",
+          "port": "Port",
+          "ssl": "Use HTTPS",
+          "api_key": "API key"
+        },
+        "data_description": {
+          "name": "Integration display name, recommended: EMBi",
+          "host": "Local IP address or hostname without http:// or https://",
+          "port": "Default: 8096 (HTTP) or 8920 (HTTPS)",
+          "ssl": "Enable only when the local Emby endpoint uses HTTPS",
+          "api_key": "Dedicated Emby API key for EMBi"
+        }
+      },
+      "reconfigure": {
+        "title": "Edit connection",
+        "description": "Change server address, port, HTTPS or API key. EMBi reloads after saving.",
+        "data": {
+          "name": "Name",
+          "host": "Host/IP address",
+          "port": "Port",
+          "ssl": "Use HTTPS",
+          "api_key": "API key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the Emby server.",
+      "invalid_auth": "The API key was rejected."
+    },
+    "abort": {
+      "already_configured": "This Emby server is already configured.",
+      "reconfigure_successful": "The connection was updated.",
+      "unique_id_mismatch": "The new connection belongs to another Emby server."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage EMBi",
+        "description": "Filter devices, clean up Home Assistant registry entries, or remove historical devices directly from the local Emby server.",
+        "menu_options": {
+          "clients": "Manage device visibility",
+          "ha_cleanup": "Clean up Home Assistant entries",
+          "server_cleanup": "Delete devices from Emby server",
+          "about": "About EMBi"
+        }
+      },
+      "clients": {
+        "title": "Manage Emby devices",
+        "description": "Choose which clients are created as media players. Ignore rules always take precedence. Selection uses the stable combination of Emby device ID and app.",
+        "data": {
+          "client_mode": "Device mode",
+          "allowed_device_ids": "Allowed devices",
+          "ignored_device_ids": "Ignored devices"
+        },
+        "data_description": {
+          "allowed_device_ids": "Used only in Selected devices mode.",
+          "ignored_device_ids": "These devices are never created, regardless of mode."
+        }
+      },
+      "ha_cleanup": {
+        "title": "Clean up Home Assistant entries",
+        "description": "Removes explicitly selected Emby entities from the entity registry. Ensure they are ignored or no longer created by legacy YAML first, otherwise they will return.",
+        "data": {
+          "cleanup_entity_ids": "Entities to remove",
+          "confirm_cleanup": "I confirm removal from Home Assistant"
+        }
+      },
+      "server_cleanup": {
+        "title": "Delete devices from the Emby server",
+        "description": "Removes selected historical devices directly from the local Emby server device list. A client can register again when used later.",
+        "data": {
+          "delete_device_ids": "Devices to delete",
+          "add_deleted_to_ignored": "Also ignore deleted devices in Home Assistant",
+          "confirm_delete": "I confirm permanent deletion from the Emby server"
+        }
+      },
+      "about": {
+        "title": "About Emby Integration - EMBi",
+        "description": "EMBi extends the official Home Assistant Emby integration with UI configuration, device filters, controlled registry cleanup, and explicitly confirmed cleanup of the local Emby server.\n\nVersion 0.2.0 · Project/idea: Gerry (Seger) · Based on Home Assistant Emby and pyemby."
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the Emby server.",
+      "confirmation_required": "Please confirm the selected cleanup.",
+      "delete_failed": "At least one device could not be deleted from the Emby server."
+    }
+  },
+  "selector": {
+    "client_mode": {
+      "options": {
+        "all": "All devices",
+        "active_only": "Active playback only",
+        "allowlist": "Selected devices only"
+      }
+    }
+  }
+}
