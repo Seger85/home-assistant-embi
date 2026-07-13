@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from aiohttp import ClientError, ClientResponseError, ClientSession, ClientTimeout
+from aiohttp import ClientError, ClientSession, ClientTimeout
 
 
 class EmbyApiError(Exception):
@@ -14,11 +14,12 @@ class EmbyAuthError(EmbyApiError):
     """Authentication failed."""
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class EmbyDeviceRecord:
-    """A device record returned by the local Emby server."""
+    """A device-history record returned by the local Emby server."""
 
-    id: str
+    record_id: str
+    reported_device_id: str
     name: str
     app_name: str | None = None
     app_version: str | None = None
@@ -26,9 +27,18 @@ class EmbyDeviceRecord:
     last_activity_date: str | None = None
 
     @classmethod
-    def from_api(cls, data: dict[str, Any]) -> "EmbyDeviceRecord":
+    def from_api(cls, data: dict[str, Any]) -> EmbyDeviceRecord:
+        """Create a normalized record from Emby's /Devices response.
+
+        Emby exposes two different identifiers:
+        - Id: the server-side device-history record used by DELETE /Devices
+        - ReportedDeviceId: the client identity used by pyemby and HA unique IDs
+        """
+        record_id = str(data.get("Id") or "")
+        reported_device_id = str(data.get("ReportedDeviceId") or record_id)
         return cls(
-            id=str(data.get("Id", "")),
+            record_id=record_id,
+            reported_device_id=reported_device_id,
             name=str(data.get("Name") or data.get("ReportedDeviceName") or "Unknown"),
             app_name=data.get("AppName"),
             app_version=data.get("AppVersion"),
@@ -38,11 +48,14 @@ class EmbyDeviceRecord:
 
     @property
     def player_key(self) -> str:
-        """Return the exact key used by pyemby / Home Assistant unique_id."""
-        return f"{self.id}.{self.app_name}" if self.app_name else self.id
+        """Return the key used by pyemby and existing HA entity unique IDs."""
+        if self.app_name:
+            return f"{self.reported_device_id}.{self.app_name}"
+        return self.reported_device_id
 
     @property
     def label(self) -> str:
+        """Return a user-facing selector label."""
         details = [self.name]
         if self.app_name:
             details.append(self.app_name)
@@ -51,8 +64,10 @@ class EmbyDeviceRecord:
         return " · ".join(details)
 
     def as_diagnostics(self) -> dict[str, Any]:
+        """Return a diagnostics-ready representation."""
         return {
-            "id": self.id,
+            "record_id": self.record_id,
+            "reported_device_id": self.reported_device_id,
             "player_key": self.player_key,
             "name": self.name,
             "app_name": self.app_name,
@@ -99,16 +114,18 @@ class EmbyApiClient:
                 return text or None
         except EmbyAuthError:
             raise
-        except (ClientResponseError, ClientError, TimeoutError) as err:
+        except (ClientError, TimeoutError) as err:
             raise EmbyApiError(str(err)) from err
 
     async def async_validate(self) -> dict[str, Any]:
+        """Validate connectivity and credentials."""
         data = await self._request("GET", "/System/Info")
         if not isinstance(data, dict):
             raise EmbyApiError("Unexpected response from the Emby server")
         return data
 
     async def async_get_devices(self) -> list[EmbyDeviceRecord]:
+        """Return normalized device-history records."""
         data = await self._request("GET", "/Devices")
         if isinstance(data, dict):
             raw_items = data.get("Items", [])
@@ -117,9 +134,14 @@ class EmbyApiClient:
             items = data
         else:
             items = []
-        records = [EmbyDeviceRecord.from_api(item) for item in items if item.get("Id")]
+
+        records = [
+            EmbyDeviceRecord.from_api(item)
+            for item in items
+            if isinstance(item, dict) and item.get("Id")
+        ]
         return sorted(records, key=lambda item: item.label.casefold())
 
-    async def async_delete_device(self, device_id: str) -> None:
-        """Delete one explicitly selected device from the Emby server history."""
-        await self._request("DELETE", "/Devices", params={"Id": device_id})
+    async def async_delete_device(self, record_id: str) -> None:
+        """Delete one explicitly selected device-history record."""
+        await self._request("DELETE", "/Devices", params={"Id": record_id})

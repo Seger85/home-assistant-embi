@@ -1,0 +1,66 @@
+name: Fehlerbericht
+about: Einen reproduzierbaren Fehler in EMBi melden
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Vielen Dank. Bitte keine API-Schlüssel, Tokens oder unredigierten privaten Diagnosedaten einfügen.
+  - type: input
+    id: embi_version
+    attributes:
+      label: EMBi-Version
+      placeholder: 0.3.0
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home-Assistant-Version
+      placeholder: 2026.7.2
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation
+      options:
+        - HACS
+        - Manuell
+        - Entwicklungsstand
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Fehlerbild
+      description: Was ist passiert und was wurde erwartet?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduktionsschritte
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redigierte Logs/Diagnostics
+      description: Geheimnisse, interne Namen und IDs vor dem Einfügen prüfen.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vorprüfung
+      options:
+        - label: Ich habe nach bestehenden Issues gesucht.
+          required: true
+        - label: Ich habe keine Zugangsdaten eingefügt.
+          required: true

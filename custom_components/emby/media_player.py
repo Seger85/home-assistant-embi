@@ -1,46 +1,29 @@
 from __future__ import annotations
 
-import logging
-
-from pyemby import EmbyServer
-import voluptuous as vol
+from typing import Any
 
 from homeassistant.components.media_player import (
-    PLATFORM_SCHEMA as MEDIA_PLAYER_PLATFORM_SCHEMA,
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
     MediaType,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONF_API_KEY,
-    CONF_HOST,
-    CONF_PORT,
-    CONF_SSL,
-    DEVICE_DEFAULT_NAME,
-    EVENT_HOMEASSISTANT_STOP,
-)
+from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT, CONF_SSL, DEVICE_DEFAULT_NAME
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt as dt_util
+from pyemby import EmbyServer
 
 from .const import (
     CLIENT_MODE_ALL,
     CONF_ALLOWED_DEVICE_IDS,
     CONF_CLIENT_MODE,
     CONF_IGNORED_DEVICE_IDS,
-    DATA_PYEMBY,
-    DEFAULT_PORT,
-    DEFAULT_SSL,
-    DEFAULT_SSL_PORT,
-    DOMAIN,
 )
 from .helpers import should_expose_device
+from .models import EmbiRuntimeData
 
-_LOGGER = logging.getLogger(__name__)
 MEDIA_TYPE_TRAILER = "trailer"
 SUPPORT_EMBY = (
     MediaPlayerEntityFeature.PAUSE
@@ -51,74 +34,13 @@ SUPPORT_EMBY = (
     | MediaPlayerEntityFeature.PLAY
 )
 
-PLATFORM_SCHEMA = MEDIA_PLAYER_PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_API_KEY): cv.string,
-        vol.Optional(CONF_HOST, default="localhost"): cv.string,
-        vol.Optional(CONF_PORT): cv.port,
-        vol.Optional(CONF_SSL, default=DEFAULT_SSL): cv.boolean,
-    }
-)
-
-
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
-) -> None:
-    """Temporarily support legacy YAML for a controlled UI migration."""
-    _LOGGER.warning(
-        "EMBi is still running from legacy media_player YAML. Remove the Emby YAML "
-        "platform after the UI config entry has been verified"
-    )
-    host = config[CONF_HOST]
-    api_key = config[CONF_API_KEY]
-    use_ssl = config[CONF_SSL]
-    port = config.get(CONF_PORT)
-    if port is None:
-        port = DEFAULT_SSL_PORT if use_ssl else DEFAULT_PORT
-
-    emby = EmbyServer(host, api_key, port, use_ssl, hass.loop)
-    active_entities: dict[str, EmbyDevice] = {}
-    inactive_entities: dict[str, EmbyDevice] = {}
-
-    @callback
-    def device_update_callback(data):
-        new_entities: list[EmbyDevice] = []
-        for dev_id, dev in emby.devices.items():
-            if dev_id not in active_entities and dev_id not in inactive_entities:
-                entity = EmbyDevice(emby, dev_id)
-                active_entities[dev_id] = entity
-                new_entities.append(entity)
-            elif dev_id in inactive_entities and dev.state != "Off":
-                entity = inactive_entities.pop(dev_id)
-                active_entities[dev_id] = entity
-                entity.set_available(True)
-        if new_entities:
-            async_add_entities(new_entities)
-
-    @callback
-    def device_removal_callback(data):
-        if data in active_entities:
-            entity = active_entities.pop(data)
-            inactive_entities[data] = entity
-            entity.set_available(False)
-
-    async def stop_emby(event):
-        await emby.stop()
-
-    emby.add_new_devices_callback(device_update_callback)
-    emby.add_stale_devices_callback(device_removal_callback)
-    emby.start()
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_emby)
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    """Set up EMBi media-player entities from a config entry."""
     emby = EmbyServer(
         entry.data[CONF_HOST],
         entry.data[CONF_API_KEY],
@@ -126,46 +48,50 @@ async def async_setup_entry(
         entry.data[CONF_SSL],
         hass.loop,
     )
-    hass.data[DOMAIN][entry.entry_id][DATA_PYEMBY] = emby
+    runtime: EmbiRuntimeData = entry.runtime_data
+    runtime.pyemby = emby
+
     active_entities: dict[str, EmbyDevice] = {}
     inactive_entities: dict[str, EmbyDevice] = {}
 
-    def allowed(dev_id: str) -> bool:
-        dev = emby.devices[dev_id]
+    def allowed(device_id: str) -> bool:
+        device = emby.devices[device_id]
         return should_expose_device(
-            device_id=dev_id,
-            state=getattr(dev, "state", None),
+            device_id=device_id,
+            state=getattr(device, "state", None),
             mode=entry.options.get(CONF_CLIENT_MODE, CLIENT_MODE_ALL),
             allowed_ids=entry.options.get(CONF_ALLOWED_DEVICE_IDS, []),
             ignored_ids=entry.options.get(CONF_IGNORED_DEVICE_IDS, []),
         )
 
     @callback
-    def device_update_callback(data):
+    def device_update_callback(data: Any) -> None:
         new_entities: list[EmbyDevice] = []
-        for dev_id in emby.devices:
-            if not allowed(dev_id):
-                if dev_id in active_entities:
-                    entity = active_entities.pop(dev_id)
-                    inactive_entities[dev_id] = entity
+        for device_id in list(emby.devices):
+            if not allowed(device_id):
+                if device_id in active_entities:
+                    entity = active_entities.pop(device_id)
+                    inactive_entities[device_id] = entity
                     entity.set_available(False)
                 continue
-            if dev_id not in active_entities and dev_id not in inactive_entities:
-                entity = EmbyDevice(emby, dev_id)
-                active_entities[dev_id] = entity
+
+            if device_id not in active_entities and device_id not in inactive_entities:
+                entity = EmbyDevice(emby, device_id)
+                active_entities[device_id] = entity
                 new_entities.append(entity)
-            elif dev_id in inactive_entities:
-                entity = inactive_entities.pop(dev_id)
-                active_entities[dev_id] = entity
+            elif device_id in inactive_entities:
+                entity = inactive_entities.pop(device_id)
+                active_entities[device_id] = entity
                 entity.set_available(True)
+
         if new_entities:
             async_add_entities(new_entities)
 
     @callback
-    def device_removal_callback(data):
-        if data in active_entities:
-            entity = active_entities.pop(data)
-            inactive_entities[data] = entity
+    def device_removal_callback(device_id: str) -> None:
+        if device_id in active_entities:
+            entity = active_entities.pop(device_id)
+            inactive_entities[device_id] = entity
             entity.set_available(False)
 
     emby.add_new_devices_callback(device_update_callback)
@@ -174,21 +100,26 @@ async def async_setup_entry(
 
 
 class EmbyDevice(MediaPlayerEntity):
+    """Representation of one Emby client."""
+
     _attr_should_poll = False
 
-    def __init__(self, emby, device_id: str) -> None:
+    def __init__(self, emby: Any, device_id: str) -> None:
         self.emby = emby
         self.device_id = device_id
         self.device = self.emby.devices[self.device_id]
-        self.media_status_last_position = None
+        self.media_status_last_position: float | None = None
         self.media_status_received = None
         self._attr_unique_id = device_id
 
     async def async_added_to_hass(self) -> None:
+        """Register the pyemby update callback."""
+        await super().async_added_to_hass()
         self.emby.add_update_callback(self.async_update_callback, self.device_id)
 
     @callback
-    def async_update_callback(self, msg):
+    def async_update_callback(self, msg: Any) -> None:
+        """Write the latest pyemby state to Home Assistant."""
         if self.device.media_position:
             if self.device.media_position != self.media_status_last_position:
                 self.media_status_last_position = self.device.media_position
@@ -199,16 +130,17 @@ class EmbyDevice(MediaPlayerEntity):
         self.async_write_ha_state()
 
     def set_available(self, value: bool) -> None:
+        """Set entity availability and publish the state."""
         self._attr_available = value
         if self.hass is not None:
             self.async_write_ha_state()
 
     @property
-    def supports_remote_control(self):
-        return self.device.supports_remote_control
+    def supports_remote_control(self) -> bool:
+        return bool(self.device.supports_remote_control)
 
     @property
-    def name(self):
+    def name(self) -> str:
         device_name = getattr(self.device, "name", None)
         return f"Emby {device_name}" if device_name else DEVICE_DEFAULT_NAME
 
@@ -223,11 +155,11 @@ class EmbyDevice(MediaPlayerEntity):
         return mapping.get(self.device.state)
 
     @property
-    def app_name(self):
+    def app_name(self) -> str | None:
         return self.device.username
 
     @property
-    def media_content_id(self):
+    def media_content_id(self) -> str | None:
         return self.device.media_id
 
     @property
@@ -244,11 +176,11 @@ class EmbyDevice(MediaPlayerEntity):
         return mapping.get(self.device.media_type)
 
     @property
-    def media_duration(self):
+    def media_duration(self) -> float | None:
         return self.device.media_runtime
 
     @property
-    def media_position(self):
+    def media_position(self) -> float | None:
         return self.media_status_last_position
 
     @property
@@ -256,40 +188,42 @@ class EmbyDevice(MediaPlayerEntity):
         return self.media_status_received
 
     @property
-    def media_image_url(self):
+    def media_image_url(self) -> str | None:
         return self.device.media_image_url
 
     @property
-    def media_title(self):
+    def media_title(self) -> str | None:
         return self.device.media_title
 
     @property
-    def media_season(self):
+    def media_season(self) -> str | None:
         return self.device.media_season
 
     @property
-    def media_series_title(self):
+    def media_series_title(self) -> str | None:
         return self.device.media_series_title
 
     @property
-    def media_episode(self):
+    def media_episode(self) -> str | None:
         return self.device.media_episode
 
     @property
-    def media_album_name(self):
+    def media_album_name(self) -> str | None:
         return self.device.media_album_name
 
     @property
-    def media_artist(self):
+    def media_artist(self) -> str | None:
         return self.device.media_artist
 
     @property
-    def media_album_artist(self):
+    def media_album_artist(self) -> str | None:
         return self.device.media_album_artist
 
     @property
     def supported_features(self) -> MediaPlayerEntityFeature:
-        return SUPPORT_EMBY if self.supports_remote_control else MediaPlayerEntityFeature(0)
+        if self.supports_remote_control:
+            return SUPPORT_EMBY
+        return MediaPlayerEntityFeature(0)
 
     async def async_media_play(self) -> None:
         await self.device.media_play()
