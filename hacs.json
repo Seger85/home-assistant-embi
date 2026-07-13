@@ -1,0 +1,6 @@
+{
+  "name": "Emby Integration - EMBi",
+  "render_readme": true,
+  "homeassistant": "2026.7.2",
+  "hide_default_branch": true
+}

@@ -5,7 +5,7 @@
     "step": {
       "user": {
         "title": "Emby-Server verbinden",
-        "description": "Verbinde Home Assistant mit deinem lokalen Emby-Server. Der API-Schlüssel bleibt in Home Assistant gespeichert und wird nicht in Diagnosen ausgegeben.",
+        "description": "Verbinde Home Assistant mit deinem lokalen Emby-Server. Der API-Schlüssel wird in Home Assistant gespeichert und in Diagnosen unkenntlich gemacht.",
         "data": {
           "name": "Name",
           "host": "Host/IP-Adresse",
@@ -14,22 +14,29 @@
           "api_key": "API-Schlüssel"
         },
         "data_description": {
-          "name": "Anzeigename der Integration, empfohlen: EMBi",
+          "name": "Anzeigename der Integration; empfohlen: EMBi",
           "host": "Lokale IP-Adresse oder Hostname ohne http:// bzw. https://",
-          "port": "Standard: 8096 (HTTP) oder 8920 (HTTPS)",
+          "port": "Standard: 8096 für HTTP oder 8920 für HTTPS",
           "ssl": "Nur aktivieren, wenn der lokale Emby-Endpunkt HTTPS verwendet",
-          "api_key": "Eigener Emby-API-Schlüssel für EMBi"
+          "api_key": "Eigener Emby-API-Schlüssel für Wiedergabe und Geräteerkennung"
         }
       },
       "reconfigure": {
         "title": "Verbindung bearbeiten",
-        "description": "Ändere Serveradresse, Port, HTTPS oder API-Schlüssel. Nach dem Speichern wird EMBi neu geladen.",
+        "description": "Ändere Serveradresse, Port, HTTPS-Einstellung oder API-Schlüssel. Nach dem Speichern wird EMBi neu geladen.",
         "data": {
           "name": "Name",
           "host": "Host/IP-Adresse",
           "port": "Port",
           "ssl": "HTTPS verwenden",
           "api_key": "API-Schlüssel"
+        },
+        "data_description": {
+          "name": "Anzeigename der Integration",
+          "host": "Lokale IP-Adresse oder Hostname ohne Protokollpräfix",
+          "port": "Port des lokalen Emby-Endpunkts",
+          "ssl": "Nur aktivieren, wenn der Endpunkt HTTPS verwendet",
+          "api_key": "API-Schlüssel für Wiedergabe und Geräteerkennung"
         }
       }
     },
@@ -47,59 +54,133 @@
     "step": {
       "init": {
         "title": "EMBi verwalten",
-        "description": "Geräte filtern, Home-Assistant-Altlasten bereinigen oder historische Geräte direkt vom lokalen Emby-Server entfernen.",
+        "description": "Lege fest, welche Emby-Clients in Home Assistant erscheinen, und nutze die optionalen, ausdrücklich bestätigten Wartungsfunktionen.",
         "menu_options": {
-          "clients": "Geräteanzeige verwalten",
+          "clients": "Angezeigte Geräte verwalten",
+          "clients_bulk": "Geräteauswahl gesammelt bearbeiten",
           "ha_cleanup": "Home-Assistant-Einträge bereinigen",
+          "server_cleanup_settings": "Optionale Serverbereinigung einrichten",
           "server_cleanup": "Geräte auf dem Emby-Server löschen",
           "about": "Über EMBi"
         }
       },
       "clients": {
         "title": "Emby-Geräte verwalten",
-        "description": "Lege fest, welche Clients als Media-Player angelegt werden. Ignorieren hat immer Vorrang. Die Auswahl verwendet die stabile Kombination aus Emby-Geräte-ID und App.",
+        "description": "Lege fest, welche Clients als Media-Player angelegt werden. Ignorieren hat immer Vorrang. Beispiel: Im Modus „Nur ausgewählte Geräte“ werden bei Auswahl von Wohnzimmer und Schlafzimmer ausschließlich diese beiden Player angelegt.",
         "data": {
           "client_mode": "Gerätemodus",
-          "allowed_device_ids": "Freigegebene Geräte",
+          "allowed_device_ids": "Anzuzeigende Geräte",
           "ignored_device_ids": "Ignorierte Geräte"
         },
         "data_description": {
-          "allowed_device_ids": "Wird nur im Modus „Nur ausgewählte Geräte“ ausgewertet.",
-          "ignored_device_ids": "Diese Geräte werden unabhängig vom Modus nicht angelegt."
+          "client_mode": "„Nur aktive Wiedergaben“ zeigt Clients ausschließlich an, während sie wiedergeben oder pausiert sind.",
+          "allowed_device_ids": "Nur im Modus „Nur ausgewählte Geräte“ relevant. Nicht ausgewählte Geräte werden dann nicht als Media-Player angelegt.",
+          "ignored_device_ids": "Diese Geräte werden unabhängig vom Modus nicht angelegt. Ist ein Gerät zugleich ausgewählt und ignoriert, hat Ignorieren Vorrang."
+        }
+      },
+      "clients_bulk": {
+        "title": "Geräteauswahl gesammelt bearbeiten",
+        "description": "Wende eine kontrollierte Sammelaktion auf die aktuell vom Emby-Server gemeldeten Geräte an.",
+        "menu_options": {
+          "clients_allow_all": "Alle aktuellen Geräte auswählen",
+          "clients_allow_none": "Auswahl anzuzeigender Geräte leeren",
+          "clients_ignore_all": "Alle aktuellen Geräte ignorieren",
+          "clients_ignore_none": "Ignorierliste leeren"
+        }
+      },
+      "clients_allow_all": {
+        "title": "Alle aktuellen Geräte auswählen",
+        "description": "Fügt alle {count} aktuell von Emby gemeldeten Geräte zu „Anzuzeigende Geräte“ hinzu und wechselt in den Modus „Nur ausgewählte Geräte“.",
+        "data": {
+          "confirm_bulk": "Ich bestätige diese Sammeländerung"
+        }
+      },
+      "clients_allow_none": {
+        "title": "Auswahl anzuzeigender Geräte leeren",
+        "description": "Leert die aktuelle Auswahl anzuzeigender Geräte. Der eingestellte Gerätemodus wird nicht verändert.",
+        "data": {
+          "confirm_bulk": "Ich bestätige diese Sammeländerung"
+        }
+      },
+      "clients_ignore_all": {
+        "title": "Alle aktuellen Geräte ignorieren",
+        "description": "Fügt alle {count} aktuell von Emby gemeldeten Geräte zur Ignorierliste hinzu. Nach dem Neuladen werden dadurch alle aktuellen EMBi-Player nicht verfügbar.",
+        "data": {
+          "confirm_bulk": "Ich verstehe und bestätige diese Sammeländerung"
+        }
+      },
+      "clients_ignore_none": {
+        "title": "Ignorierliste leeren",
+        "description": "Entfernt alle Geräte aus der EMBi-Ignorierliste. Gerätemodus und Auswahl anzuzeigender Geräte bleiben unverändert.",
+        "data": {
+          "confirm_bulk": "Ich bestätige diese Sammeländerung"
         }
       },
       "ha_cleanup": {
         "title": "Home-Assistant-Einträge bereinigen",
-        "description": "Entfernt ausdrücklich ausgewählte Emby-Entitäten aus der Entity Registry. Stelle vorher sicher, dass sie ignoriert werden oder nicht mehr vom alten YAML-Block erzeugt werden, sonst erscheinen sie erneut.",
+        "description": "Es werden nur {count} sichere Kandidaten angeboten: alte YAML-Einträge, reine Registry-Einträge oder bereits von EMBi ignorierte Entitäten. Normale aktive Player sind bewusst geschützt.",
         "data": {
-          "cleanup_entity_ids": "Zu entfernende Entitäten",
-          "confirm_cleanup": "Ich bestätige die Entfernung aus Home Assistant"
+          "cleanup_entity_ids": "Zu entfernende Einträge",
+          "confirm_cleanup": "Ich bestätige die Entfernung aus der Home-Assistant-Entity-Registry"
+        },
+        "data_description": {
+          "cleanup_entity_ids": "Das Entfernen eines Registry-Eintrags löscht kein Gerät aus Emby. Ein Client kann zurückkehren, wenn EMBi ihn weiterhin zulässt."
+        }
+      },
+      "server_cleanup_settings": {
+        "title": "Optionale Serverbereinigung einrichten",
+        "description": "Die Serverbereinigung ist standardmäßig ausgeschaltet. Aktiviere sie nur, wenn historische Geräte direkt vom lokalen Emby-Server gelöscht werden sollen. Ohne separaten Schlüssel verwendet EMBi den normalen Verbindungsschlüssel.",
+        "data": {
+          "server_cleanup_enabled": "Serverbereinigung aktivieren",
+          "server_cleanup_api_key": "Optionaler separater API-Schlüssel für die Bereinigung"
+        },
+        "data_description": {
+          "server_cleanup_enabled": "Bei ausgeschalteter Funktion wird das destruktive Bereinigungsmenü ausgeblendet.",
+          "server_cleanup_api_key": "Optional. Nutze einen eigenen Schlüssel, sofern dein Emby-System getrennte Zugangsdaten unterstützt; ansonsten leer lassen."
         }
       },
       "server_cleanup": {
         "title": "Geräte auf dem Emby-Server löschen",
-        "description": "Entfernt ausgewählte historische Geräte direkt aus der Geräteübersicht des lokalen Emby-Servers. Ein erneut verwendeter Client kann sich später wieder registrieren.",
+        "description": "Wähle aus {count} historischen Geräte-Einträgen. Gelöscht werden Einträge aus der Emby-Geräteübersicht, keine Mediendateien. Ein später erneut genutzter Client kann sich wieder registrieren.",
         "data": {
-          "delete_device_ids": "Zu löschende Geräte",
-          "add_deleted_to_ignored": "Gelöschte Geräte zusätzlich in Home Assistant ignorieren",
-          "confirm_delete": "Ich bestätige die dauerhafte Löschung auf dem Emby-Server"
+          "delete_device_record_ids": "Zu löschende Geräte-Einträge",
+          "add_deleted_to_ignored": "Erfolgreich gelöschte Clients zusätzlich in Home Assistant ignorieren"
+        },
+        "data_description": {
+          "delete_device_record_ids": "Jeder Eintrag ist ein serverseitiger Historieneintrag. Vor dem gesonderten Bestätigungsschritt wird nichts gelöscht.",
+          "add_deleted_to_ignored": "Verwendet die stabile gemeldete Client-ID, damit der gelöschte Client nicht unmittelbar wieder als EMBi-Player angelegt wird."
+        }
+      },
+      "server_cleanup_confirm": {
+        "title": "Dauerhafte Serverbereinigung bestätigen",
+        "description": "Du bist dabei, {count} Geräte-Einträge dauerhaft vom lokalen Emby-Server zu löschen. Gib exakt „{phrase}“ ein und aktiviere zusätzlich den Bestätigungsschalter.",
+        "data": {
+          "confirm_delete": "Ich bestätige die dauerhafte Löschung auf dem Emby-Server",
+          "confirmation_text": "Bestätigungstext"
         }
       },
       "about": {
         "title": "Über Emby Integration - EMBi",
-        "description": "EMBi erweitert die offizielle Home-Assistant-Emby-Integration um eine UI-Konfiguration, Gerätefilter, kontrollierte Registry-Bereinigung und eine ausdrücklich bestätigte Bereinigung des lokalen Emby-Servers.\n\nVersion 0.2.0 · Projekt/Idee: Gerry (Seger) · Basis: Home Assistant Emby und pyemby."
+        "description": "EMBi erweitert die Emby-Integration von Home Assistant um eine UI-Konfiguration, eine kontrollierte Auswahl der angelegten Media-Player, Werkzeuge zur Bereinigung der Home-Assistant-Registry und optional eine ausdrücklich bestätigte Bereinigung historischer Geräte auf dem lokalen Emby-Server.\n\nVersion {version} · Projekt: Seger · Basis: Home Assistant Emby und pyemby."
       }
     },
     "error": {
       "cannot_connect": "Verbindung zum Emby-Server fehlgeschlagen.",
-      "confirmation_required": "Bitte bestätige die ausgewählte Bereinigung.",
-      "delete_failed": "Mindestens ein Gerät konnte nicht vom Emby-Server gelöscht werden."
+      "invalid_cleanup_auth": "Der API-Schlüssel für die Bereinigung wurde abgelehnt.",
+      "confirmation_required": "Bitte aktiviere den Bestätigungsschalter.",
+      "confirmation_text_mismatch": "Der Bestätigungstext stimmt nicht überein.",
+      "selection_required": "Wähle mindestens einen Geräte-Eintrag aus.",
+      "invalid_selection": "Die übermittelte Auswahl ist nicht mehr gültig. Öffne den Dialog erneut und versuche es noch einmal."
+    },
+    "abort": {
+      "server_cleanup_disabled": "Die Serverbereinigung ist ausgeschaltet. Aktiviere sie zuerst in den Bereinigungseinstellungen.",
+      "server_cleanup_complete": "Serverbereinigung abgeschlossen: {success_count} erfolgreich, {failed_count} fehlgeschlagen. Fehlgeschlagene Einträge: {failed_devices}"
     }
   },
   "selector": {
     "client_mode": {
       "options": {
-        "all": "Alle Geräte",
+        "all": "Alle Geräte anzeigen",
         "active_only": "Nur aktive Wiedergaben",
         "allowlist": "Nur ausgewählte Geräte"
       }

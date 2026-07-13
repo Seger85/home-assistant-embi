@@ -1,0 +1,31 @@
+name: Funktionswunsch
+about: Eine wartbare Erweiterung für EMBi vorschlagen
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Ausgangsproblem
+      description: Welches konkrete Problem soll gelöst werden?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Gewünschtes Verhalten
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativen und Seiteneffekte
+      description: Auswirkungen auf Entity-IDs, Sicherheit, UI, Emby und bestehende Optionen.
+  - type: checkboxes
+    id: destructive
+    attributes:
+      label: Sicherheitsbezug
+      options:
+        - label: Die Funktion verändert oder löscht Daten auf dem Emby-Server.
+        - label: Die Funktion verändert die Home-Assistant-Entity-Registry.
