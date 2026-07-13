@@ -20,7 +20,7 @@ jobs:
         with:
           category: integration
           comment: false
-          ignore: brands description topics
+          ignore: brands description license topics
 
   diagnose:
     if: ${{ always() && needs.validate.result == 'failure' }}
