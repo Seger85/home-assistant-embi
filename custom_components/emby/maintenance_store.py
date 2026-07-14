@@ -18,24 +18,38 @@ class StoreBackend(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class StoreLoadResult:
-    """Resolved store state plus whether first-use initialization is required."""
+class StoreLoadDecision:
+    """Fail-safe interpretation of a Store load result."""
 
     state: MaintenanceState
-    needs_initial_save: bool
+    storage_available: bool
+    initialize_store: bool
 
 
 def resolve_store_load(
-    data: dict[str, Any] | None,
+    loaded: MaintenanceState | None,
     *,
-    initialized_marker: bool,
-) -> StoreLoadResult:
-    """Distinguish a new store from an unexpectedly missing or corrupt store."""
-    if data is None:
-        if initialized_marker:
-            raise ValueError("maintenance_store_missing_after_initialization")
-        return StoreLoadResult(MaintenanceState(), True)
-    return StoreLoadResult(MaintenanceState.from_dict(data), False)
+    store_expected: bool,
+    legacy_initial_run_completed: bool,
+) -> StoreLoadDecision:
+    """Distinguish first initialization from an unexpectedly missing Store.
+
+    Home Assistant returns ``None`` for both a new Store and a Store it had to
+    quarantine after corruption. A hidden config-entry marker records whether
+    EMBi has successfully initialized the Store before. If that marker exists,
+    a missing load result is treated as unsafe and automatic cleanup stays off.
+    """
+    if loaded is None and store_expected:
+        return StoreLoadDecision(MaintenanceState(), False, False)
+
+    state = loaded or MaintenanceState()
+    if legacy_initial_run_completed:
+        state.initial_run_completed = True
+    return StoreLoadDecision(
+        state=state,
+        storage_available=True,
+        initialize_store=loaded is None,
+    )
 
 
 class EmbiMaintenanceStore:
@@ -58,13 +72,10 @@ class EmbiMaintenanceStore:
         )
         return cls(backend)
 
-    async def async_load_data(self) -> dict[str, Any] | None:
-        """Load the unwrapped Store payload for fail-safe classification."""
-        return await self._backend.async_load()
-
-    async def async_load(self) -> MaintenanceState:
-        """Load an existing state; missing data resolves to an empty state."""
-        return MaintenanceState.from_dict(await self.async_load_data())
+    async def async_load(self) -> MaintenanceState | None:
+        """Load the stored state without hiding a missing/corrupt result."""
+        data = await self._backend.async_load()
+        return MaintenanceState.from_dict(data) if data is not None else None
 
     async def async_save(self, state: MaintenanceState) -> None:
         """Persist the complete state immediately."""
