@@ -227,7 +227,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          release_json="$(gh release view "${RELEASE_TAG}" --json tagName,isPrerelease,isLatest,assets)"
+          release_json="$(gh release view "${RELEASE_TAG}" --json tagName,isPrerelease,assets)"
 
           jq -e --arg tag "${RELEASE_TAG}" '.tagName == $tag' <<<"${release_json}" >/dev/null
           jq -e '.assets | any(.name == "embi.zip")' <<<"${release_json}" >/dev/null
@@ -239,12 +239,16 @@ jobs:
             exit 1
           fi
 
-          actual_latest="$(jq -r '.isLatest' <<<"${release_json}")"
-          if [[ "${EXPECTED_PRERELEASE}" == "true" && "${actual_latest}" != "false" ]]; then
+          latest_tag=""
+          if latest_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" 2>/dev/null)"; then
+            latest_tag="$(jq -r '.tag_name' <<<"${latest_json}")"
+          fi
+
+          if [[ "${EXPECTED_PRERELEASE}" == "true" && "${latest_tag}" == "${RELEASE_TAG}" ]]; then
             echo "::error::Prerelease ${RELEASE_TAG} must not be latest."
             exit 1
           fi
-          if [[ "${EXPECTED_PRERELEASE}" == "false" && "${actual_latest}" != "true" ]]; then
+          if [[ "${EXPECTED_PRERELEASE}" == "false" && "${latest_tag}" != "${RELEASE_TAG}" ]]; then
             echo "::error::Stable release ${RELEASE_TAG} must be latest."
             exit 1
           fi
