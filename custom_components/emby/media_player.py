@@ -64,9 +64,7 @@ async def async_setup_entry(
             mode=entry.options.get(CONF_CLIENT_MODE, CLIENT_MODE_ALL),
             allowed_ids=entry.options.get(CONF_ALLOWED_DEVICE_IDS, []),
             ignored_player_keys=entry.options.get(CONF_IGNORED_PLAYER_KEYS, []),
-            ignored_reported_device_ids=entry.options.get(
-                CONF_IGNORED_REPORTED_DEVICE_IDS, []
-            ),
+            ignored_reported_device_ids=entry.options.get(CONF_IGNORED_REPORTED_DEVICE_IDS, []),
         )
 
     @callback

@@ -76,8 +76,7 @@ class ClientOptionsMixin:
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"value": key, "label": label}
-                            for key, label in player_options.items()
+                            {"value": key, "label": label} for key, label in player_options.items()
                         ],
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -89,8 +88,7 @@ class ClientOptionsMixin:
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
-                            {"value": key, "label": label}
-                            for key, label in player_options.items()
+                            {"value": key, "label": label} for key, label in player_options.items()
                         ],
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -193,9 +191,7 @@ class ClientOptionsMixin:
             "clients_allow_none", apply, user_input, lambda devices: 0
         )
 
-    async def async_step_clients_ignore_apps_all(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_clients_ignore_apps_all(self, user_input: dict[str, Any] | None = None):
         def apply(devices: list[EmbyDeviceRecord]) -> None:
             self._draft_options[CONF_IGNORED_PLAYER_KEYS] = unique_player_keys(devices)
 
@@ -206,9 +202,7 @@ class ClientOptionsMixin:
             lambda devices: len(unique_player_keys(devices)),
         )
 
-    async def async_step_clients_ignore_apps_none(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_clients_ignore_apps_none(self, user_input: dict[str, Any] | None = None):
         def apply(devices: list[EmbyDeviceRecord]) -> None:
             self._draft_options[CONF_IGNORED_PLAYER_KEYS] = []
 
@@ -216,9 +210,7 @@ class ClientOptionsMixin:
             "clients_ignore_apps_none", apply, user_input, lambda devices: 0
         )
 
-    async def async_step_clients_ignore_devices_all(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_clients_ignore_devices_all(self, user_input: dict[str, Any] | None = None):
         def apply(devices: list[EmbyDeviceRecord]) -> None:
             self._draft_options[CONF_IGNORED_REPORTED_DEVICE_IDS] = unique_reported_device_ids(
                 devices

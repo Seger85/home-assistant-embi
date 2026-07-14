@@ -78,7 +78,9 @@ async def _async_execute_cleanup(
                 report.next_run_at = _next_regular_run()
             await _async_save_state(hass, entry)
             _LOGGER.error("EMBi cleanup failed because authentication was rejected")
-            _notify_failure(hass, entry, "Die EMBi-Bereinigung konnte nicht authentifiziert werden.")
+            _notify_failure(
+                hass, entry, "Die EMBi-Bereinigung konnte nicht authentifiziert werden."
+            )
             return report, False
         except EmbyApiError:
             report.status = RUN_STATUS_FAILED

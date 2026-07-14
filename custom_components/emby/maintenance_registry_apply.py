@@ -62,7 +62,10 @@ async def async_apply_pending_registry_cleanup(
         return RegistryCleanupResult(queued=len(targets))
 
     if not targets:
-        if report.status == RUN_STATUS_REGISTRY_PENDING or report.follow_up_status == FOLLOW_UP_PENDING:
+        if (
+            report.status == RUN_STATUS_REGISTRY_PENDING
+            or report.follow_up_status == FOLLOW_UP_PENDING
+        ):
             report.status = RUN_STATUS_INTERRUPTED
             report.follow_up_status = FOLLOW_UP_INTERRUPTED
             report.last_error = "registry_followup_interrupted"

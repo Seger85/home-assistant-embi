@@ -235,7 +235,9 @@ class ServerMaintenanceOptionsMixin:
                     selector.SelectSelectorConfig(
                         options=[
                             {"value": key, "label": label}
-                            for key, label in server_device_selector_options(plan.candidates).items()
+                            for key, label in server_device_selector_options(
+                                plan.candidates
+                            ).items()
                         ],
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -277,9 +279,7 @@ class ServerMaintenanceOptionsMixin:
             },
         )
 
-    async def async_step_server_cleanup_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_server_cleanup_confirm(self, user_input: dict[str, Any] | None = None):
         if not self._pending_cleanup_records:
             return await self.async_step_server_cleanup()
         count = len(self._pending_cleanup_records)
