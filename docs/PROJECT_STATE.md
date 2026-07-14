@@ -62,7 +62,8 @@ Not executed:
 - Current hardening version: `0.3.0-rc2`
 - Runtime hardening branch: `fix/rc2-runtime-safety`
 - Draft PR: #12
-- PR #12 remains Draft and must later use Squash and merge
+- PR #12 is synchronized with current `develop`, conflict-free, and remains Draft
+- PR #12 must later use Squash and merge
 - `main` must not be reset or rewritten
 
 ### 0.3.0-rc2 scope
@@ -79,18 +80,19 @@ Not executed:
 
 ## Validation status
 
-Completed before synchronizing PR #12 with the governance commit:
+Completed on the synchronized PR #12 head with the stable ruleset check names:
 
+- `Quality (Python 3.13)`: passed
+- `Quality (Python 3.14)`: passed
+- JSON parsing: passed
+- YAML parsing: passed
 - Python compilation: passed
-- Unit tests: 24 passed
+- Unit tests: passed; 24 tests in the rc2 test suite
 - Ruff lint: passed
 - Ruff formatting: passed
-- JSON parsing: passed
 - official HACS validation: passed
 - Hassfest: passed
 - synthetic test identities only
-
-The synchronized PR #12 head is conflict-free and ready for the required full GitHub CI rerun with the stable ruleset check names.
 
 ## HACS release status
 
