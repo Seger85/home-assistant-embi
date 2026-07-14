@@ -50,23 +50,27 @@ Not executed:
 - Integration branch: `develop`
 - Public history was intentionally not rewritten
 - `develop` was synchronized with `main` through PR #9
-- release and repository governance was merged to `develop` through PR #10
+- release and repository governance was merged through PR #10
+- EMBi 0.3.0-rc2 runtime and safety hardening was merged through PR #12
+- automated release-request branches were added through PR #13
+- release `latest` verification was corrected through PR #14
 - future Dependabot PRs target `develop`
 - Ruleset `Protect main and develop` is active
 - required checks use stable names
-- automated tag-driven release generation is present on `develop`
-- no rc2 tag or release exists
+- automated tag- and release-generation is present on `develop`
 
-## Development
+## 0.3.0-rc2 release status
 
-- Current hardening version: `0.3.0-rc2`
-- Runtime hardening branch: `fix/rc2-runtime-safety`
-- Draft PR: #12
-- PR #12 is synchronized with current `develop`, conflict-free, and remains Draft
-- PR #12 must later use Squash and merge
-- `main` must not be reset or rewritten
+- Release tag: `v0.3.0-rc2`
+- Tag target: `f69224ff6dc6609f2923e391dda428dd0b91bf69`
+- GitHub release: published as a prerelease
+- Latest stable release: none; rc2 is not marked as `latest`
+- Release assets: `embi.zip` and `embi.zip.sha256`
+- Temporary release-request branch: removed automatically after verification
+- Runtime code in the tag: version `0.3.0-rc2`
+- HACS live upgrade from rc1 to rc2: not yet executed
 
-### 0.3.0-rc2 scope
+## 0.3.0-rc2 scope
 
 - deduplicate allow-all values from repeated historical device records
 - count unique client identities in bulk-action UI text
@@ -80,7 +84,7 @@ Not executed:
 
 ## Validation status
 
-Completed on the synchronized PR #12 head with the stable ruleset check names:
+Completed on PR #12 and the final rc2 release verification:
 
 - `Quality (Python 3.13)`: passed
 - `Quality (Python 3.14)`: passed
@@ -93,19 +97,23 @@ Completed on the synchronized PR #12 head with the stable ruleset check names:
 - official HACS validation: passed
 - Hassfest: passed
 - synthetic test identities only
+- release tag target: verified
+- prerelease status: verified
+- not-`latest` status: verified
+- `embi.zip`: verified
+- `embi.zip.sha256`: verified
 
 ## HACS release status
 
-The installed release remains `v0.3.0-rc1`. A newer repository commit is not an application release. While only a prerelease exists, HACS beta/prerelease display must remain enabled so the published release line remains selected.
+The published release line now includes `v0.3.0-rc2`. The Home Assistant installation remains on `v0.3.0-rc1` until the controlled HACS upgrade and restart are performed. HACS beta/prerelease display must remain enabled.
 
 ## Release safety gate
 
-0.3.0-rc2 is recommended instead of a stable 0.3.0 because the fixes affect runtime filtering, destructive-action candidate selection, secret handling, and maintenance UI labels.
+0.3.0-rc2 must be live-tested before any stable 0.3.0 decision because the changes affect runtime filtering, destructive-action candidate selection, secret handling, and maintenance UI labels.
 
 Without a new explicit approval from Gerry:
 
-- do not merge PR #12
-- do not create or move a tag
-- do not publish a release
+- do not move or replace the `v0.3.0-rc2` tag
+- do not publish stable 0.3.0
 - do not remove entity-registry entries
 - do not delete Emby server records
