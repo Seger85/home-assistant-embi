@@ -60,8 +60,23 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
-      - name: Ruff format
-        run: ruff format --check .
+      - name: Capture Ruff format report
+        shell: bash
+        run: |
+          set +e
+          ruff --version > "ruff-format-report-${{ matrix.python-version }}.txt"
+          ruff format --check --diff . >> "ruff-format-report-${{ matrix.python-version }}.txt" 2>&1
+          status=$?
+          cat "ruff-format-report-${{ matrix.python-version }}.txt"
+          exit "${status}"
+
+      - name: Upload temporary Ruff format report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-format-report-${{ matrix.python-version }}
+          path: ruff-format-report-${{ matrix.python-version }}.txt
+          retention-days: 1
 
       - name: Unit tests
         run: pytest -q
