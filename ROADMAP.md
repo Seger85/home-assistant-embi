@@ -36,14 +36,26 @@ Status: auf `develop` umgesetzt; öffentliche Historie wurde nicht zurückgesetz
 - Force-Push und Löschung sind für `main` und `develop` blockiert
 - Pull Requests und definierte Statuschecks sind verpflichtend
 - CI-Checks besitzen stabile Namen
-- RC-Tags erzeugen nach erfolgreicher CI automatisch Prereleases
-- stabile Tags erzeugen nach erfolgreicher CI normale Releases
+- ausdrücklich freigegebene `release/v...`-Branches erzeugen nach erfolgreicher CI automatisch den versionsgleichen Tag und GitHub-Release
+- RC-Versionen werden als Prerelease und nicht als `latest` veröffentlicht
+- stabile Versionen werden als normale Releases und `latest` veröffentlicht
 - `embi.zip` und `embi.zip.sha256` werden automatisch erzeugt
-- ohne Versions-Tag wird kein Release veröffentlicht
+- Tagziel, Assets, Prerelease- und Latest-Status werden nach der Veröffentlichung geprüft
+- temporäre Release-Anforderungsbranches werden automatisch entfernt
 
 ## 0.3.0-rc2 – Runtime-, Safety- und UI-Härtung
 
-Status: Umsetzung in Draft-PR #12; mit dem aktuellen `develop`-Stand synchronisiert, noch nicht installiert, getaggt oder veröffentlicht.
+Status: als GitHub-Prerelease `v0.3.0-rc2` veröffentlicht; Tag und Release-Automation vollständig geprüft. HACS-Liveupgrade und UI-/Safety-Verifikation stehen noch aus.
+
+Veröffentlicht:
+
+- Tag `v0.3.0-rc2` auf Commit `f69224ff6dc6609f2923e391dda428dd0b91bf69`
+- Prerelease-Status bestätigt
+- nicht als `latest` markiert
+- `embi.zip` und `embi.zip.sha256` vorhanden
+- temporärer Release-Anforderungsbranch entfernt
+
+Enthalten:
 
 - deduplizierte Allowlist- und Ignore-Sammelaktionen
 - korrekte Anzahl eindeutiger Client-Identitäten in Sammeldialogen
@@ -76,7 +88,7 @@ Freigabekriterien:
 - Screenshot-QA auf iPhone, iPad und Desktop abgeschlossen
 - keine neuen EMBi-Warnungen oder Fehler
 - GitHub-Rulesets aktiv
-- automatisierter Release-Workflow geprüft
+- automatisierter Release-Workflow einschließlich Release-Branch-Auslöser geprüft
 - temporäre HACS-Metadatenausnahmen geprüft und soweit möglich entfernt
 - ausdrückliche Freigabe durch Gerry
 
