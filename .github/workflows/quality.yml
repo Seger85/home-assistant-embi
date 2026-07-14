@@ -22,6 +22,8 @@ jobs:
           - "3.14"
     steps:
       - uses: actions/checkout@v7
+        with:
+          show-progress: false
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -45,8 +47,26 @@ jobs:
           PY
       - name: Compile Python
         run: python -m compileall -q custom_components/emby scripts tests
-      - name: Ruff lint
-        run: ruff check . --output-format concise
+      - name: Capture Ruff lint result
+        id: ruff
+        shell: bash
+        run: |
+          set +e
+          ruff check . --output-format concise > ruff-report.txt 2>&1
+          status=$?
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          cat ruff-report.txt
+          exit 0
+      - name: Upload Ruff report
+        if: ${{ steps.ruff.outputs.status != '0' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-report-${{ matrix.python-version }}-${{ github.sha }}
+          path: ruff-report.txt
+          retention-days: 1
+      - name: Enforce Ruff lint
+        if: ${{ steps.ruff.outputs.status != '0' }}
+        run: exit 1
       - name: Ruff format
         run: ruff format --check .
       - name: Unit tests
