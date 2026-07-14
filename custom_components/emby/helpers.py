@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from .api import EmbyDeviceRecord
@@ -21,6 +21,11 @@ _LEGACY_CLEANUP_API_KEY = "server_cleanup_api_key"
 _LEGACY_AUTO_CONFIRMATION_TEXT = "auto_cleanup_confirmation_text"
 _LEGACY_ADD_DELETED_TO_IGNORED = "add_deleted_to_ignored"
 _LEGACY_INITIAL_RUN_COMPLETED = "server_auto_cleanup_initial_run_completed"
+
+
+def legacy_initial_run_completed(options: Mapping[str, Any]) -> bool:
+    """Return the rc3 scheduler migration marker before options are normalized."""
+    return bool(options.get(_LEGACY_INITIAL_RUN_COMPLETED, False))
 
 
 def age_preset_for_days(age_days: int) -> str:

@@ -14,9 +14,9 @@ from homeassistant.util import dt as dt_util
 from .api import EmbyApiClient, EmbyApiError, EmbyAuthError
 from .const import (
     AUTO_CLEANUP_INTERVAL_HOURS,
-    CONF_SERVER_AUTO_CLEANUP_INITIAL_RUN_COMPLETED,
     FOLLOW_UP_INTERRUPTED,
     MAINTENANCE_NOTIFICATION_ID_PREFIX,
+    MAINTENANCE_STORE_INITIALIZED,
     PLATFORMS,
     RUN_MODE_AUTOMATIC,
     RUN_STATUS_INTERRUPTED,
@@ -24,13 +24,13 @@ from .const import (
     RUN_STATUS_SERVER_COMPLETED,
 )
 from .entry_lifecycle import async_update_listener
-from .helpers import migrate_stable_options
+from .helpers import legacy_initial_run_completed, migrate_stable_options
 from .maintenance import (
     async_apply_pending_registry_cleanup,
     async_setup_automatic_cleanup,
     cleanup_lock,
 )
-from .maintenance_store import EmbiMaintenanceStore
+from .maintenance_store import EmbiMaintenanceStore, resolve_store_load
 from .models import EmbiRuntimeData, MaintenanceState
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,6 +38,35 @@ _LOGGER = logging.getLogger(__name__)
 
 def _notification_id(entry: ConfigEntry) -> str:
     return f"{MAINTENANCE_NOTIFICATION_ID_PREFIX}_{entry.entry_id}"
+
+
+async def _async_initialize_store(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    store: EmbiMaintenanceStore,
+) -> tuple[MaintenanceState, bool]:
+    """Load or initialize the Store and fail closed on unexpected missing data."""
+    try:
+        loaded = resolve_store_load(
+            await store.async_load_data(),
+            initialized_marker=bool(entry.options.get(MAINTENANCE_STORE_INITIALIZED, False)),
+        )
+        if loaded.needs_initial_save:
+            await store.async_save(loaded.state)
+            options = dict(entry.options)
+            options[MAINTENANCE_STORE_INITIALIZED] = True
+            hass.config_entries.async_update_entry(entry, options=options)
+        return loaded.state, True
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception("EMBi failed to load or initialize persistent maintenance state")
+        persistent_notification.async_create(
+            hass,
+            "EMBi konnte den persistenten Lauf- und Schedulerstatus nicht sicher laden. "
+            "Automatische Läufe bleiben aus Sicherheitsgründen angehalten.",
+            title="EMBi-Wartung angehalten",
+            notification_id=_notification_id(entry),
+        )
+        return MaintenanceState(), False
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -57,30 +86,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except EmbyApiError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
-    legacy_initial_run_completed = bool(
-        entry.options.get(CONF_SERVER_AUTO_CLEANUP_INITIAL_RUN_COMPLETED, False)
-    )
+    rc3_initial_run_completed = legacy_initial_run_completed(entry.options)
     migrated_options, changed = migrate_stable_options(dict(entry.options), devices)
     if changed:
         hass.config_entries.async_update_entry(entry, options=migrated_options)
 
     store = EmbiMaintenanceStore.create(hass, entry.entry_id)
-    storage_available = True
-    try:
-        maintenance_state = await store.async_load()
-    except Exception:  # noqa: BLE001
-        storage_available = False
-        maintenance_state = MaintenanceState()
-        _LOGGER.exception("EMBi failed to load persistent maintenance state")
-        persistent_notification.async_create(
-            hass,
-            "EMBi konnte den persistenten Lauf- und Schedulerstatus nicht laden. "
-            "Automatische Läufe bleiben aus Sicherheitsgründen angehalten.",
-            title="EMBi-Wartung angehalten",
-            notification_id=_notification_id(entry),
-        )
-
-    if legacy_initial_run_completed:
+    maintenance_state, storage_available = await _async_initialize_store(hass, entry, store)
+    if rc3_initial_run_completed:
         maintenance_state.initial_run_completed = True
 
     runtime = EmbiRuntimeData(
@@ -101,6 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         report.status = RUN_STATUS_INTERRUPTED
         report.follow_up_status = FOLLOW_UP_INTERRUPTED
         report.last_error = "cleanup_interrupted_before_completion"
+        report.result_counts_complete = False
         report.completed_at = dt_util.utcnow().isoformat()
         if report.mode == RUN_MODE_AUTOMATIC:
             report.next_run_at = (

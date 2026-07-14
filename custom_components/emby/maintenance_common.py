@@ -17,12 +17,11 @@ from .const import (
     FOLLOW_UP_SKIPPED,
     MAINTENANCE_NOTIFICATION_ID_PREFIX,
     RUN_STATUS_COMPLETED,
-    RUN_STATUS_FAILED,
     RUN_STATUS_INTERRUPTED,
-    RUN_STATUS_PARTIAL_FAILURE,
 )
 from .helpers import ACTIVE_STATES
 from .models import CleanupRunReport, EmbiRuntimeData
+from .reporting import log_level_for_report, notification_required
 
 _LOGGER = logging.getLogger(__name__)
 _CLEANUP_LOCKS = f"{DOMAIN}_cleanup_locks"
@@ -125,6 +124,8 @@ def _next_regular_run(completed_at: datetime | None = None) -> str:
 
 def _set_terminal_status(report: CleanupRunReport) -> None:
     if report.last_error or report.server_failed:
+        from .const import RUN_STATUS_PARTIAL_FAILURE
+
         report.status = RUN_STATUS_PARTIAL_FAILURE
     else:
         report.status = RUN_STATUS_COMPLETED
@@ -145,12 +146,8 @@ def _log_report(report: CleanupRunReport) -> None:
         report.registry_entities_missing,
         report.registry_entities_protected,
     )
-    if report.status == RUN_STATUS_FAILED:
-        _LOGGER.error(message, *args)
-    elif report.status in {RUN_STATUS_PARTIAL_FAILURE, RUN_STATUS_INTERRUPTED}:
-        _LOGGER.warning(message, *args)
-    else:
-        _LOGGER.info(message, *args)
+    level = log_level_for_report(report)
+    getattr(_LOGGER, level)(message, *args)
 
 
 async def _async_finish_without_registry(
@@ -171,15 +168,16 @@ async def _async_finish_without_registry(
     if not await _async_save_state(hass, entry):
         report.status = RUN_STATUS_INTERRUPTED
         report.last_error = "storage_failed_after_cleanup"
+        report.result_counts_complete = False
         return False
     _log_report(report)
-    if report.status == RUN_STATUS_COMPLETED:
-        _dismiss_failure(hass, entry)
-    else:
+    if notification_required(report):
         _notify_failure(
             hass,
             entry,
             "Die EMBi-Bereinigung wurde nur teilweise abgeschlossen. "
             "Details stehen unter ‚Letzter Bereinigungslauf‘ und in den Diagnosedaten.",
         )
+    else:
+        _dismiss_failure(hass, entry)
     return True

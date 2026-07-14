@@ -34,6 +34,7 @@ class CleanupRunReport:
     registry_entities_wrong_unique_id: int = 0
     registry_entities_state_still_present: int = 0
     registry_entities_revalidation_ambiguous: int = 0
+    result_counts_complete: bool = True
     last_error: str | None = None
     follow_up_status: str = FOLLOW_UP_IDLE
     next_run_at: str | None = None

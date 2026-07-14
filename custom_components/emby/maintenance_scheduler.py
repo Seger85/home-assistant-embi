@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -15,6 +15,7 @@ from .const import (
 from .maintenance_common import _async_save_state, _parse_utc, _utc_iso
 from .maintenance_cycle import async_run_automatic_cleanup
 from .models import EmbiRuntimeData
+from .scheduling import resolve_scheduled_run
 
 
 async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -33,9 +34,13 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
         return
 
     now = dt_util.utcnow()
-    next_run = _parse_utc(runtime.maintenance_state.report.next_run_at)
-    if next_run is None or next_run <= now:
-        next_run = now + timedelta(seconds=AUTO_CLEANUP_INITIAL_DELAY_SECONDS)
+    decision = resolve_scheduled_run(
+        now=now,
+        persisted_next_run=_parse_utc(runtime.maintenance_state.report.next_run_at),
+        grace_seconds=AUTO_CLEANUP_INITIAL_DELAY_SECONDS,
+    )
+    next_run = decision.run_at
+    if decision.catch_up:
         runtime.maintenance_state.report.next_run_at = _utc_iso(next_run)
         if not await _async_save_state(hass, entry):
             return
@@ -47,6 +52,7 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
             entry.state is ConfigEntryState.LOADED
             and entry.options.get(CONF_SERVER_CLEANUP_ENABLED, False)
             and entry.options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
+            and runtime.maintenance_storage_available
         ):
             return
         reload_needed = await async_run_automatic_cleanup(hass, entry)

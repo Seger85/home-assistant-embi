@@ -115,6 +115,12 @@ async def _async_execute_cleanup(
             candidates = tuple(by_id[value] for value in sorted(selected_record_ids))
 
         report.server_candidates = len(candidates)
+        if not await _async_save_state(hass, entry):
+            report.status = RUN_STATUS_FAILED
+            report.last_error = "storage_unavailable_before_delete"
+            report.completed_at = _utc_iso()
+            return report, False
+
         if not candidates:
             await _async_finish_without_registry(hass, entry, automatic=automatic)
             return report, False
@@ -130,6 +136,7 @@ async def _async_execute_cleanup(
             report.status = RUN_STATUS_INTERRUPTED
             report.last_error = "storage_failed_after_server_delete"
             report.follow_up_status = FOLLOW_UP_INTERRUPTED
+            report.result_counts_complete = False
             report.completed_at = _utc_iso()
             _LOGGER.error(
                 "EMBi server cleanup completed but the persistent report could not be saved; registry follow-up was skipped"
@@ -137,7 +144,9 @@ async def _async_execute_cleanup(
             _notify_failure(
                 hass,
                 entry,
-                "Emby-Datensätze wurden verarbeitet, aber EMBi konnte den Laufbericht nicht sicher speichern. "
+                "EMBi hat die Serverbereinigung verarbeitet "
+                f"({report.server_deleted} gelöscht, {report.server_failed} fehlgeschlagen), "
+                "konnte den persistenten Laufbericht danach aber nicht sicher speichern. "
                 "Die Registry-Nachbereitung wurde ausgelassen.",
             )
             return report, False
@@ -177,6 +186,7 @@ async def _async_execute_cleanup(
                     report.status = RUN_STATUS_INTERRUPTED
                     report.follow_up_status = FOLLOW_UP_INTERRUPTED
                     report.last_error = "storage_failed_before_registry_followup"
+                    report.result_counts_complete = False
                     hass.data.get(_PENDING_REGISTRY_CLEANUP, {}).pop(entry.entry_id, None)
                     return report, False
                 return report, True
