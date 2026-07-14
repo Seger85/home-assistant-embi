@@ -11,8 +11,11 @@ from custom_components.emby.const import (
 from custom_components.emby.helpers import (
     identifier_matches,
     migrate_legacy_device_options,
+    registry_cleanup_reason,
     server_device_selector_options,
     should_expose_device,
+    unique_player_keys,
+    unique_reported_device_ids,
 )
 
 
@@ -112,5 +115,116 @@ def test_already_stable_options_are_unchanged() -> None:
     assert migrated == options
 
 
-def test_server_cleanup_selector_uses_record_id() -> None:
-    assert server_device_selector_options([_device()]) == {"341": "Living room · Emby Windows"}
+def test_unique_player_keys_deduplicate_historical_records() -> None:
+    first = _device()
+    second = EmbyDeviceRecord.from_api(
+        {
+            "Id": "342",
+            "ReportedDeviceId": "client-1",
+            "Name": "Living room duplicate",
+            "AppName": "Emby Windows",
+        }
+    )
+
+    assert unique_player_keys([first, second]) == ["client-1.Emby Windows"]
+
+
+def test_unique_reported_device_ids_deduplicate_app_variants() -> None:
+    first = _device()
+    second = EmbyDeviceRecord.from_api(
+        {
+            "Id": "342",
+            "ReportedDeviceId": "client-1",
+            "Name": "Living room web",
+            "AppName": "Emby Web",
+        }
+    )
+
+    assert unique_reported_device_ids([first, second]) == ["client-1"]
+
+
+def test_active_registry_entries_are_never_cleanup_candidates() -> None:
+    assert (
+        registry_cleanup_reason(
+            has_state=True,
+            config_entry_id=None,
+            target_entry_id="entry-1",
+            unique_id="client-1.Emby Windows",
+            ignored_ids=[],
+        )
+        is None
+    )
+    assert (
+        registry_cleanup_reason(
+            has_state=True,
+            config_entry_id="entry-1",
+            target_entry_id="entry-1",
+            unique_id="client-1.Emby Windows",
+            ignored_ids=["client-1"],
+        )
+        is None
+    )
+
+
+def test_inactive_registry_cleanup_reasons_are_explicit() -> None:
+    assert (
+        registry_cleanup_reason(
+            has_state=False,
+            config_entry_id=None,
+            target_entry_id="entry-1",
+            unique_id="client-1.Emby Windows",
+            ignored_ids=[],
+        )
+        == "legacy_yaml"
+    )
+    assert (
+        registry_cleanup_reason(
+            has_state=False,
+            config_entry_id="entry-1",
+            target_entry_id="entry-1",
+            unique_id="client-1.Emby Windows",
+            ignored_ids=["client-1"],
+        )
+        == "ignored"
+    )
+    assert (
+        registry_cleanup_reason(
+            has_state=False,
+            config_entry_id="entry-1",
+            target_entry_id="entry-1",
+            unique_id="client-2.Emby Windows",
+            ignored_ids=[],
+        )
+        == "registry_only"
+    )
+
+
+def test_server_cleanup_selector_uses_unique_context_and_record_id() -> None:
+    first = EmbyDeviceRecord.from_api(
+        {
+            "Id": "history-record-0001",
+            "ReportedDeviceId": "client-1",
+            "Name": "Living room",
+            "AppName": "Emby Windows",
+            "AppVersion": "2.315.2.0",
+            "DateLastActivity": "2026-07-13T18:35:44.0000000Z",
+        }
+    )
+    second = EmbyDeviceRecord.from_api(
+        {
+            "Id": "history-record-0002",
+            "ReportedDeviceId": "client-1",
+            "Name": "Living room",
+            "AppName": "Emby Windows",
+            "AppVersion": "2.315.2.0",
+            "DateLastActivity": "2026-07-13T18:35:44.0000000Z",
+        }
+    )
+
+    options = server_device_selector_options([first, second])
+
+    assert set(options) == {"history-record-0001", "history-record-0002"}
+    assert options["history-record-0001"] != options["history-record-0002"]
+    assert "Emby Windows 2.315.2.0" in options["history-record-0001"]
+    assert "2026-07-13 18:35 UTC" in options["history-record-0001"]
+    assert "ID hist…0001" in options["history-record-0001"]

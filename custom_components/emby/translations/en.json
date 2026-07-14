@@ -23,7 +23,7 @@
       },
       "reconfigure": {
         "title": "Edit connection",
-        "description": "Change the server address, port, HTTPS setting, or API key. EMBi reloads after saving.",
+        "description": "Change the server address, port, HTTPS setting, or API key. For security, the stored API key is never displayed. Leave the field empty to keep it. EMBi reloads after saving.",
         "data": {
           "name": "Name",
           "host": "Host/IP address",
@@ -36,7 +36,7 @@
           "host": "Local IP address or hostname without protocol prefix",
           "port": "Port of the local Emby endpoint",
           "ssl": "Enable only when the endpoint uses HTTPS",
-          "api_key": "API key used for playback and device discovery"
+          "api_key": "Enter a replacement key only when it should change. Leave empty to keep the stored key."
         }
       }
     },
@@ -90,7 +90,7 @@
       },
       "clients_allow_all": {
         "title": "Select all current devices",
-        "description": "Adds all {count} devices currently reported by Emby to ‘Devices to display’ and switches to ‘Selected devices only’ mode.",
+        "description": "Adds all {count} unique client/app identities currently reported by Emby to ‘Devices to display’ and switches to ‘Selected devices only’ mode.",
         "data": {
           "confirm_bulk": "I confirm this bulk change"
         }
@@ -104,7 +104,7 @@
       },
       "clients_ignore_all": {
         "title": "Ignore all current devices",
-        "description": "Adds all {count} devices currently reported by Emby to the ignore list. This makes every current EMBi media player unavailable after reload.",
+        "description": "Adds all {count} unique clients currently reported by Emby to the ignore list. This makes every current EMBi media player unavailable after reload.",
         "data": {
           "confirm_bulk": "I understand and confirm this bulk change"
         }
@@ -118,25 +118,25 @@
       },
       "ha_cleanup": {
         "title": "Clean up Home Assistant entries",
-        "description": "Only {count} safe candidates are offered: legacy YAML entries, registry-only entries, or entities already ignored by EMBi. Active normal players are deliberately protected.",
+        "description": "Only {count} inactive, revalidated candidates are offered: legacy YAML entries, registry-only entries, or inactive entities already ignored by EMBi. Active legacy, ignored, and normal players are deliberately protected.",
         "data": {
           "cleanup_entity_ids": "Entries to remove",
           "confirm_cleanup": "I confirm removal from the Home Assistant entity registry"
         },
         "data_description": {
-          "cleanup_entity_ids": "Removing a registry entry does not delete the device from Emby. A client can return if it is still allowed by EMBi."
+          "cleanup_entity_ids": "Candidates are checked again immediately before removal. Removing a registry entry does not delete the device from Emby. A client can return if EMBi still allows it."
         }
       },
       "server_cleanup_settings": {
         "title": "Configure optional server cleanup",
-        "description": "Server cleanup is disabled by default. Enable it only when historical device records should be deletable from the local Emby server. If no separate key is entered, EMBi uses the normal connection key.",
+        "description": "Server cleanup is disabled by default. Enable it only when historical device records should be deletable from the local Emby server. Stored API keys are never displayed. If no separate key is stored, EMBi uses the normal connection key.",
         "data": {
           "server_cleanup_enabled": "Enable server cleanup",
           "server_cleanup_api_key": "Optional separate cleanup API key"
         },
         "data_description": {
           "server_cleanup_enabled": "When disabled, the destructive cleanup menu is hidden.",
-          "server_cleanup_api_key": "Optional. Use a dedicated key when your Emby setup supports separate credentials; otherwise leave empty."
+          "server_cleanup_api_key": "Optional. Enter a replacement key only when it should change. Leave empty to keep an existing separate key; disable server cleanup once to remove it."
         }
       },
       "server_cleanup": {
@@ -147,7 +147,7 @@
           "add_deleted_to_ignored": "Also ignore successfully deleted clients in Home Assistant"
         },
         "data_description": {
-          "delete_device_record_ids": "Each item is a server-side history record. No deletion occurs until the separate confirmation step.",
+          "delete_device_record_ids": "Each item is one server-side history record and includes app, version, last activity, and a short record ID for unambiguous selection. No deletion occurs before the separate confirmation step.",
           "add_deleted_to_ignored": "Uses the stable reported client ID, so the removed client is not immediately recreated as an EMBi player."
         }
       },

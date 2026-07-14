@@ -15,12 +15,12 @@ EMBi kann verwenden:
 - den normalen Verbindungsschlüssel oder
 - einen optional hinterlegten separaten Bereinigungsschlüssel
 
-Der separate Schlüssel wird beim Speichern gegen `/System/Info` validiert. Ob der Schlüssel auch löschen darf, lässt sich ohne destruktiven Test nicht zuverlässig vorab beweisen; ein fehlendes Recht wird deshalb als Fehler des jeweiligen Eintrags behandelt.
+Der separate Schlüssel wird beim Speichern gegen `/System/Info` validiert. Ein gespeicherter Schlüssel wird aus Sicherheitsgründen nie in das Passwortfeld zurückgegeben. Ein leeres Feld behält den vorhandenen separaten Schlüssel bei; einmaliges Deaktivieren entfernt ihn. Ob der Schlüssel auch löschen darf, lässt sich ohne destruktiven Test nicht zuverlässig vorab beweisen; ein fehlendes Recht wird deshalb als Fehler des jeweiligen Eintrags behandelt.
 
 ## Ablauf
 
 1. Funktion ausdrücklich aktivieren.
-2. Historieneinträge auswählen.
+2. Eindeutig beschriftete Historieneinträge auswählen. Die Anzeige enthält Gerätename, App, App-Version, letzte Aktivität und eine kurze Datensatz-ID.
 3. Entscheiden, ob erfolgreich gelöschte Clients zusätzlich ignoriert werden.
 4. zweiten Bestätigungsdialog öffnen.
 5. Schalter aktivieren.

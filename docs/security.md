@@ -10,6 +10,8 @@
 - zweistufige Bestätigung
 - Teilerfolge transparent melden
 - sensible Werte in Diagnostics redigieren
+- gespeicherte API-Schlüssel nie als Passwortfeld-Standardwert zurückgeben
+- Registry-Kandidaten unmittelbar vor dem Entfernen erneut prüfen
 
 ## Redigierte Felder
 

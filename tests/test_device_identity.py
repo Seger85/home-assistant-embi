@@ -42,3 +42,20 @@ def test_label_contains_human_context_but_not_internal_record_id() -> None:
 
     assert record.label == "Living room · AndroidTv · Alex"
     assert "99" not in record.label
+
+
+def test_server_cleanup_label_contains_no_reported_client_id() -> None:
+    record = EmbyDeviceRecord.from_api(
+        {
+            "Id": "history-record-0001",
+            "ReportedDeviceId": "private-client-identity",
+            "Name": "Living room",
+            "AppName": "AndroidTv",
+            "AppVersion": "3.4.5",
+            "DateLastActivity": "2026-07-13T18:35:44Z",
+        }
+    )
+
+    assert "private-client-identity" not in record.server_cleanup_label
+    assert "AndroidTv 3.4.5" in record.server_cleanup_label
+    assert "ID hist…0001" in record.server_cleanup_label

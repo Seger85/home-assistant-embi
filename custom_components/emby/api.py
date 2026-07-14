@@ -63,6 +63,40 @@ class EmbyDeviceRecord:
             details.append(self.last_user_name)
         return " · ".join(details)
 
+    @property
+    def short_record_id(self) -> str:
+        """Return a compact server-record identifier for destructive-action labels."""
+        if len(self.record_id) <= 8:
+            return self.record_id
+        return f"{self.record_id[:4]}…{self.record_id[-4:]}"
+
+    @property
+    def activity_label(self) -> str | None:
+        """Return a compact, stable display value for the last activity timestamp."""
+        if not self.last_activity_date:
+            return None
+        value = str(self.last_activity_date).strip()
+        if "T" not in value:
+            return value
+        date, time = value.split("T", 1)
+        suffix = " UTC" if time.endswith("Z") else ""
+        return f"{date} {time[:5]}{suffix}"
+
+    @property
+    def server_cleanup_label(self) -> str:
+        """Return an unambiguous label for one server-side history record."""
+        details = [self.name]
+        app = self.app_name or "Unknown app"
+        if self.app_version:
+            app = f"{app} {self.app_version}"
+        details.append(app)
+        if self.last_user_name:
+            details.append(self.last_user_name)
+        if self.activity_label:
+            details.append(self.activity_label)
+        details.append(f"ID {self.short_record_id}")
+        return " · ".join(details)
+
     def as_diagnostics(self) -> dict[str, Any]:
         """Return a diagnostics-ready representation."""
         return {

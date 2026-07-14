@@ -2,18 +2,21 @@
 
 ## Production
 
-- Production version: EMBi 0.3.0-rc1
-- Installation source: public HACS custom repository release `v0.3.0-rc1`
-- Production Home Assistant: Core 2026.7.2
-- Config entry: `01KXDH0G0CK724G1STHY69B22A`
-- Production state: loaded
+- Installed version: `v0.3.0-rc1` via the public HACS custom repository
+- Home Assistant: Core 2026.7.2
+- Existing config entry: retained and loaded
 - Media-player entities: 28
-- Existing entity IDs: preserved
-- Existing unique IDs: preserved
-- Individual entity names: preserved
+- Base `ReportedDeviceId` values behind the players: 25
+- Historical `/Devices` records observed during the live analysis: 74
+- Existing entity IDs, unique IDs, and individual names: retained
+- Push updates and active-playback detection: working
 - Legacy YAML: none
-- Active EMBi repairs: none
-- Stale, restored or orphaned EMBi entities: none
+- Active repairs: none
+- Stale, restored, or orphaned EMBi entities: none
+- Server cleanup: disabled
+- Registry or server deletions during verification: none
+
+No raw private device identifiers, credentials, diagnostics, or internal config-entry identifiers are stored in this document.
 
 ## Live verification
 
@@ -34,10 +37,10 @@ Confirmed:
 - server deletion menu hidden while cleanup is disabled
 - diagnostics redact credentials and device identities
 
-Not yet approved or executed:
+Not executed:
 
-- destructive server-cleanup test
-- final visual and options-flow QA on iPhone, iPad and desktop
+- registry deletion
+- Emby server-history deletion
 - stable 0.3.0 release
 
 ## Repository state
@@ -45,44 +48,64 @@ Not yet approved or executed:
 - Repository visibility: public
 - Default branch: `main`
 - Integration branch: `develop`
-- Development version: `0.3.0-rc1`
-- PR #1 was merged on 14 July 2026 despite its documented Draft release gate
-- five Dependabot PRs were subsequently merged into `main`
-- public history was intentionally not rewritten because no secret or unsafe runtime change was published
-- `develop` was synchronized back with `main` through PR #9
+- Public history was intentionally not rewritten
+- `develop` was synchronized with `main` through PR #9
+- release and repository governance was merged to `develop` through PR #10
 - future Dependabot PRs target `develop`
-- release and branch governance remediation is being prepared separately
+- Ruleset `Protect main and develop` is active
+- required checks use stable names
+- automated tag-driven release generation is present on `develop`
+- no rc2 tag or release exists
 
-## CI status
+## Development
 
-- Quality workflow: passed on Python 3.13 and 3.14
-- Ruff lint and format checks: passed
-- Unit tests: passed
+- Current hardening version: `0.3.0-rc2`
+- Runtime hardening branch: `fix/rc2-runtime-safety`
+- Draft PR: #12
+- PR #12 is synchronized with current `develop`, conflict-free, and remains Draft
+- PR #12 must later use Squash and merge
+- `main` must not be reset or rewritten
+
+### 0.3.0-rc2 scope
+
+- deduplicate allow-all values from repeated historical device records
+- count unique client identities in bulk-action UI text
+- exclude every active state from Home Assistant registry cleanup, including legacy and ignored entries
+- revalidate cleanup candidates immediately before registry removal
+- make destructive server-record labels unambiguous with app, version, activity, and a short record ID
+- never return stored connection or cleanup API keys as password-field defaults
+- preserve existing keys when the user leaves the replacement field empty
+- preserve the `ReportedDeviceId.AppName` entity/unique-ID contract
+- keep diagnostics redaction intact
+
+## Validation status
+
+Completed on the synchronized PR #12 head with the stable ruleset check names:
+
+- `Quality (Python 3.13)`: passed
+- `Quality (Python 3.14)`: passed
+- JSON parsing: passed
+- YAML parsing: passed
+- Python compilation: passed
+- Unit tests: passed; 24 tests in the rc2 test suite
+- Ruff lint: passed
+- Ruff formatting: passed
+- official HACS validation: passed
 - Hassfest: passed
-- Official HACS action: passed against the public repository
-- HACS metadata checks temporarily ignored: `brands`, `description`, `license`, and `topics`
-- The metadata exceptions do not skip repository structure, `hacs.json`, integration manifest, or downloadable-content validation
+- synthetic test identities only
 
 ## HACS release status
 
-Home Assistant currently reports:
-
-```text
-installed_version: v0.3.0-rc1
-latest_version: b9f6285
-```
-
-`b9f6285` is a repository commit containing CI/test dependency maintenance, not a new EMBi version. Do not install it as an application update. While only a prerelease exists, HACS beta/prerelease display must remain enabled so `v0.3.0-rc1` remains the selected release line.
-
-## Known remaining work
-
-- complete options-flow and responsive UI QA
-- perform a controlled server-cleanup safety test only after a separate explicit approval
-- finalize repository description/topics and remove temporary HACS metadata exceptions where possible
-- apply GitHub rulesets for `main` and `develop`
-- validate the hardened automated release workflow without publishing a stable release
-- final changelog review and stable-release decision
+The installed release remains `v0.3.0-rc1`. A newer repository commit is not an application release. While only a prerelease exists, HACS beta/prerelease display must remain enabled so the published release line remains selected.
 
 ## Release safety gate
 
-Do not publish stable version 0.3.0, create a stable release tag, or perform server-side cleanup without a new explicit approval from Gerry after the remaining documented tests.
+0.3.0-rc2 is recommended instead of a stable 0.3.0 because the fixes affect runtime filtering, destructive-action candidate selection, secret handling, and maintenance UI labels.
+
+Without a new explicit approval from Gerry:
+
+- do not merge PR #12
+- do not create or move a tag
+- do not publish a release
+- do not remove entity-registry entries
+- do not delete Emby server records
