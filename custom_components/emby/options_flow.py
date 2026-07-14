@@ -1,316 +1,191 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT, CONF_SSL
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
 
-from .api import EmbyApiClient, EmbyApiError, EmbyDeviceRecord
+from .api import EmbyApiError, EmbyDeviceRecord
 from .const import (
-    CLIENT_MODE_ALL,
-    CLIENT_MODE_ALLOWLIST,
-    CLIENT_MODES,
     CONF_ALLOWED_DEVICE_IDS,
-    CONF_CLEANUP_ENTITY_IDS,
-    CONF_CLIENT_MODE,
-    CONF_CONFIRM_BULK,
-    CONF_CONFIRM_CLEANUP,
-    CONF_IGNORED_DEVICE_IDS,
-    CONF_SERVER_CLEANUP_API_KEY,
+    CONF_CONFIRM_APPLY,
+    CONF_CONFIRM_DISCARD,
+    CONF_IGNORED_PLAYER_KEYS,
+    CONF_IGNORED_REPORTED_DEVICE_IDS,
+    CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_SERVER_CLEANUP_ENABLED,
-    DEFAULT_SERVER_CLEANUP_AGE_DAYS,
-    DOMAIN,
     VERSION,
 )
-from .helpers import (
-    device_selector_options,
-    merge_missing_options,
-    registry_cleanup_reason,
-    unique_player_keys,
-    unique_reported_device_ids,
-)
+from .helpers import migrate_stable_options
 from .maintenance_flow import ServerMaintenanceOptionsMixin
+from .models import EmbiRuntimeData
+from .options_clients import ClientOptionsMixin
+from .options_registry import RegistryOptionsMixin
 
 
-def _api_client(hass, data: dict[str, Any], api_key: str | None = None) -> EmbyApiClient:
-    return EmbyApiClient(
-        session=async_get_clientsession(hass),
-        host=data[CONF_HOST],
-        port=int(data[CONF_PORT]),
-        api_key=api_key or data[CONF_API_KEY],
-        use_ssl=data[CONF_SSL],
-    )
-
-
-class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow):
-    """Handle EMBi options and maintenance actions."""
-
+class EmbyOptionsFlow(
+    ClientOptionsMixin,
+    RegistryOptionsMixin,
+    ServerMaintenanceOptionsMixin,
+    config_entries.OptionsFlow,
+):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
+        self._original_options = dict(config_entry.options)
+        self._draft_options = dict(config_entry.options)
         self._pending_cleanup_records: dict[str, EmbyDeviceRecord] = {}
-        self._pending_add_to_ignored = True
-        self._pending_remove_ha_entities = True
-        self._pending_cleanup_age_days = DEFAULT_SERVER_CLEANUP_AGE_DAYS
+        self._pending_remove_ha_entities = False
+        self._pending_auto_settings: dict[str, Any] | None = None
 
-    def _client(self) -> EmbyApiClient:
-        return _api_client(self.hass, dict(self._entry.data))
+    @property
+    def _dirty(self) -> bool:
+        return self._draft_options != self._original_options
 
-    def _cleanup_client(self) -> EmbyApiClient:
-        cleanup_key = str(self._entry.options.get(CONF_SERVER_CLEANUP_API_KEY, "")).strip()
-        return _api_client(
-            self.hass,
-            dict(self._entry.data),
-            cleanup_key or self._entry.data[CONF_API_KEY],
-        )
+    @property
+    def _runtime(self) -> EmbiRuntimeData:
+        return self._entry.runtime_data
 
     def _is_de(self) -> bool:
         return str(self.hass.config.language).lower().startswith("de")
 
-    async def _devices(self, *, cleanup: bool = False) -> list[EmbyDeviceRecord]:
-        client = self._cleanup_client() if cleanup else self._client()
-        return await client.async_get_devices()
+    async def _devices(self) -> list[EmbyDeviceRecord]:
+        return await self._runtime.api_client.async_get_devices()
+
+    def _draft_summary(self) -> str:
+        if not self._dirty:
+            return "Keine ungespeicherten Änderungen" if self._is_de() else "No unsaved changes"
+        auto = bool(self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
+        allowed = len(self._draft_options.get(CONF_ALLOWED_DEVICE_IDS, []))
+        ignored_apps = len(self._draft_options.get(CONF_IGNORED_PLAYER_KEYS, []))
+        ignored_devices = len(self._draft_options.get(CONF_IGNORED_REPORTED_DEVICE_IDS, []))
+        if self._is_de():
+            return (
+                f"Ungespeicherte Änderungen · Automatik: {'ein' if auto else 'aus'} · "
+                f"Auswahl: {allowed} · App-Regeln: {ignored_apps} · Geräte-Regeln: {ignored_devices}"
+            )
+        return (
+            f"Unsaved changes · Automation: {'on' if auto else 'off'} · Selected: {allowed} · "
+            f"App rules: {ignored_apps} · Device rules: {ignored_devices}"
+        )
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         menu_options = [
             "clients",
             "clients_bulk",
-            "ha_cleanup",
             "server_cleanup_settings",
+            "server_auto_cleanup_settings",
         ]
-        if self._entry.options.get(CONF_SERVER_CLEANUP_ENABLED, False):
-            menu_options.extend(["server_cleanup", "server_auto_cleanup_settings"])
-        menu_options.append("about")
-        return self.async_show_menu(step_id="init", menu_options=menu_options)
-
-    async def async_step_clients(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
-        current = dict(self._entry.options)
-        try:
-            devices = await self._devices()
-        except EmbyApiError:
-            errors["base"] = "cannot_connect"
-            devices = []
-
-        configured = [
-            *current.get(CONF_ALLOWED_DEVICE_IDS, []),
-            *current.get(CONF_IGNORED_DEVICE_IDS, []),
-        ]
-        missing_label = (
-            "nicht aktuell vom Server gemeldet"
-            if self._is_de()
-            else "not currently reported by the server"
-        )
-        options = merge_missing_options(device_selector_options(devices), configured, missing_label)
-        selector_options = [{"value": key, "label": value} for key, value in options.items()]
-        schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_CLIENT_MODE,
-                    default=current.get(CONF_CLIENT_MODE, CLIENT_MODE_ALL),
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=CLIENT_MODES,
-                        translation_key="client_mode",
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(
-                    CONF_ALLOWED_DEVICE_IDS,
-                    default=current.get(CONF_ALLOWED_DEVICE_IDS, []),
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=selector_options,
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(
-                    CONF_IGNORED_DEVICE_IDS,
-                    default=current.get(CONF_IGNORED_DEVICE_IDS, []),
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=selector_options,
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }
-        )
-        if user_input is not None and not errors:
-            updated = {**current, **user_input}
-            updated[CONF_ALLOWED_DEVICE_IDS] = sorted(set(updated.get(CONF_ALLOWED_DEVICE_IDS, [])))
-            updated[CONF_IGNORED_DEVICE_IDS] = sorted(set(updated.get(CONF_IGNORED_DEVICE_IDS, [])))
-            return self.async_create_entry(title="", data=updated)
-
-        return self.async_show_form(step_id="clients", data_schema=schema, errors=errors)
-
-    async def async_step_clients_bulk(self, user_input: dict[str, Any] | None = None):
+        if not self._dirty:
+            menu_options.append("ha_cleanup")
+            if self._entry.options.get(CONF_SERVER_CLEANUP_ENABLED, False):
+                menu_options.append("server_cleanup")
+        menu_options.extend(["cleanup_report", "about", "apply", "discard"])
         return self.async_show_menu(
-            step_id="clients_bulk",
-            menu_options=[
-                "clients_allow_all",
-                "clients_allow_none",
-                "clients_ignore_all",
-                "clients_ignore_none",
-            ],
+            step_id="init",
+            menu_options=menu_options,
+            description_placeholders={"draft_summary": self._draft_summary()},
         )
 
-    async def _async_bulk_step(
-        self,
-        step_id: str,
-        apply_action: Callable[[dict[str, Any], list[EmbyDeviceRecord]], None],
-        user_input: dict[str, Any] | None,
-        item_count: Callable[[list[EmbyDeviceRecord]], int] | None = None,
-    ):
-        errors: dict[str, str] = {}
-        try:
-            devices = await self._devices()
-        except EmbyApiError:
-            devices = []
-            errors["base"] = "cannot_connect"
+    async def async_step_cleanup_report(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            return await self.async_step_init()
+        report = self._runtime.maintenance_state.report
 
-        if user_input is not None and not errors:
-            if not user_input.get(CONF_CONFIRM_BULK):
-                errors["base"] = "confirmation_required"
-            else:
-                updated = dict(self._entry.options)
-                apply_action(updated, devices)
-                return self.async_create_entry(title="", data=updated)
+        def local_time(value: str | None) -> str:
+            if not value:
+                return "-"
+            try:
+                parsed = datetime.fromisoformat(value)
+            except ValueError:
+                return "-"
+            return dt_util.as_local(parsed).strftime("%Y-%m-%d %H:%M:%S %Z")
 
-        schema = vol.Schema(
-            {vol.Required(CONF_CONFIRM_BULK, default=False): selector.BooleanSelector()}
-        )
         return self.async_show_form(
-            step_id=step_id,
-            data_schema=schema,
-            errors=errors,
+            step_id="cleanup_report",
+            data_schema=vol.Schema({}),
             description_placeholders={
-                "count": str(item_count(devices) if item_count else len(devices))
+                "status": report.status,
+                "mode": report.mode or "-",
+                "started_at": local_time(report.started_at),
+                "completed_at": local_time(report.completed_at),
+                "age_days": str(report.age_threshold_days or "-"),
+                "server_candidates": str(report.server_candidates),
+                "server_deleted": str(report.server_deleted),
+                "server_failed": str(report.server_failed),
+                "skipped_active": str(report.skipped_active),
+                "skipped_without_activity": str(report.skipped_without_activity),
+                "registry_queued": str(report.registry_keys_queued),
+                "registry_matched": str(report.registry_entities_matched),
+                "registry_removed": str(report.registry_entities_removed),
+                "registry_missing": str(report.registry_entities_missing),
+                "registry_protected": str(report.registry_entities_protected),
+                "last_error": report.last_error or "-",
+                "next_run_at": local_time(report.next_run_at),
             },
         )
 
-    async def async_step_clients_allow_all(self, user_input: dict[str, Any] | None = None):
-        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
-            options[CONF_ALLOWED_DEVICE_IDS] = unique_player_keys(devices)
-            options[CONF_CLIENT_MODE] = CLIENT_MODE_ALLOWLIST
-
-        return await self._async_bulk_step(
-            "clients_allow_all",
-            apply_action,
-            user_input,
-            item_count=lambda devices: len(unique_player_keys(devices)),
-        )
-
-    async def async_step_clients_allow_none(self, user_input: dict[str, Any] | None = None):
-        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
-            options[CONF_ALLOWED_DEVICE_IDS] = []
-
-        return await self._async_bulk_step("clients_allow_none", apply_action, user_input)
-
-    async def async_step_clients_ignore_all(self, user_input: dict[str, Any] | None = None):
-        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
-            options[CONF_IGNORED_DEVICE_IDS] = unique_reported_device_ids(devices)
-
-        return await self._async_bulk_step(
-            "clients_ignore_all",
-            apply_action,
-            user_input,
-            item_count=lambda devices: len(unique_reported_device_ids(devices)),
-        )
-
-    async def async_step_clients_ignore_none(self, user_input: dict[str, Any] | None = None):
-        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
-            options[CONF_IGNORED_DEVICE_IDS] = []
-
-        return await self._async_bulk_step("clients_ignore_none", apply_action, user_input)
-
-    def _registry_cleanup_choices(self) -> list[dict[str, str]]:
-        registry = er.async_get(self.hass)
-        ignored_ids = self._entry.options.get(CONF_IGNORED_DEVICE_IDS, [])
-        choices: list[dict[str, str]] = []
-
-        reason_labels = {
-            "legacy_yaml": "Altes YAML" if self._is_de() else "Legacy YAML",
-            "registry_only": "Nur Registry" if self._is_de() else "Registry only",
-            "ignored": "Ignoriert" if self._is_de() else "Ignored",
-        }
-
-        for entry in sorted(registry.entities.values(), key=lambda item: item.entity_id):
-            if entry.domain != "media_player" or entry.platform != DOMAIN:
-                continue
-
-            reason = registry_cleanup_reason(
-                has_state=self.hass.states.get(entry.entity_id) is not None,
-                config_entry_id=entry.config_entry_id,
-                target_entry_id=self._entry.entry_id,
-                unique_id=str(entry.unique_id),
-                ignored_ids=ignored_ids,
-            )
-            if reason is None:
-                continue
-
-            status = reason_labels[reason]
-            label = entry.name or entry.original_name or entry.entity_id
-            choices.append(
-                {
-                    "value": entry.entity_id,
-                    "label": f"{label} · {status} · {entry.unique_id}",
-                }
-            )
-        return choices
-
-    async def async_step_ha_cleanup(self, user_input: dict[str, Any] | None = None):
-        registry = er.async_get(self.hass)
-        choices = self._registry_cleanup_choices()
-        allowed_values = {choice["value"] for choice in choices}
+    async def async_step_apply(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
-
-        schema = vol.Schema(
-            {
-                vol.Optional(CONF_CLEANUP_ENTITY_IDS, default=[]): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=choices,
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Required(CONF_CONFIRM_CLEANUP, default=False): selector.BooleanSelector(),
-            }
-        )
-
         if user_input is not None:
-            selected = list(user_input.get(CONF_CLEANUP_ENTITY_IDS, []))
-            if any(entity_id not in allowed_values for entity_id in selected):
-                errors["base"] = "invalid_selection"
-            elif selected and not user_input.get(CONF_CONFIRM_CLEANUP):
+            if not user_input.get(CONF_CONFIRM_APPLY):
                 errors["base"] = "confirmation_required"
             else:
-                revalidated_values = {
-                    choice["value"] for choice in self._registry_cleanup_choices()
-                }
-                if any(entity_id not in revalidated_values for entity_id in selected):
-                    errors["base"] = "invalid_selection"
+                try:
+                    devices = await self._devices()
+                except EmbyApiError:
+                    errors["base"] = "cannot_connect"
                 else:
-                    for entity_id in selected:
-                        if registry.async_get(entity_id) is not None:
-                            registry.async_remove(entity_id)
-                    return self.async_create_entry(title="", data=dict(self._entry.options))
-
+                    updated, _ = migrate_stable_options(dict(self._draft_options), devices)
+                    if updated == self._original_options:
+                        return self.async_abort(reason="no_changes")
+                    original_auto = bool(
+                        self._original_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
+                    )
+                    updated_auto = bool(updated.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
+                    if updated_auto and not updated.get(CONF_SERVER_CLEANUP_ENABLED, False):
+                        errors["base"] = "auto_requires_cleanup"
+                    if not errors and original_auto != updated_auto:
+                        state = self._runtime.maintenance_state
+                        if updated_auto:
+                            state.initial_run_completed = False
+                        state.report.next_run_at = None
+                        try:
+                            await self._runtime.maintenance_store.async_save(state)
+                        except Exception:  # noqa: BLE001
+                            errors["base"] = "storage_failed"
+                    if not errors:
+                        return self.async_create_entry(title="", data=updated)
         return self.async_show_form(
-            step_id="ha_cleanup",
-            data_schema=schema,
+            step_id="apply",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_CONFIRM_APPLY, default=False): selector.BooleanSelector()}
+            ),
             errors=errors,
-            description_placeholders={"count": str(len(choices))},
+            description_placeholders={"draft_summary": self._draft_summary()},
+        )
+
+    async def async_step_discard(self, user_input: dict[str, Any] | None = None):
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get(CONF_CONFIRM_DISCARD):
+                errors["base"] = "confirmation_required"
+            else:
+                self._draft_options = dict(self._original_options)
+                return await self.async_step_init()
+        return self.async_show_form(
+            step_id="discard",
+            data_schema=vol.Schema(
+                {vol.Required(CONF_CONFIRM_DISCARD, default=False): selector.BooleanSelector()}
+            ),
+            errors=errors,
         )
 
     async def async_step_about(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
-            return self.async_create_entry(title="", data=dict(self._entry.options))
+            return await self.async_step_init()
         return self.async_show_form(
             step_id="about",
             data_schema=vol.Schema({}),
