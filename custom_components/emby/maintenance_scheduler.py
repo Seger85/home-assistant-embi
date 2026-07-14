@@ -13,7 +13,7 @@ from .const import (
     CONF_SERVER_CLEANUP_ENABLED,
 )
 from .maintenance_common import _async_save_state, _parse_utc, _utc_iso
-from .maintenance_runner import async_run_automatic_cleanup
+from .maintenance_cycle import async_run_automatic_cleanup
 from .models import EmbiRuntimeData
 
 
