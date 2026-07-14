@@ -71,7 +71,7 @@ async def _validate(hass: HomeAssistant, user_input: dict[str, Any]) -> dict[str
 class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the EMBi config flow."""
 
-    VERSION = 2
+    VERSION = 3
     MINOR_VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
