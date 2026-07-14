@@ -58,7 +58,22 @@ jobs:
         run: python -m compileall -q custom_components/emby
 
       - name: Ruff lint
-        run: ruff check .
+        shell: bash
+        run: |
+          set +e
+          ruff --version > "ruff-report-${{ matrix.python-version }}.txt"
+          ruff check . --output-format=concise >> "ruff-report-${{ matrix.python-version }}.txt" 2>&1
+          status=$?
+          cat "ruff-report-${{ matrix.python-version }}.txt"
+          exit "${status}"
+
+      - name: Upload temporary Ruff report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-report-${{ matrix.python-version }}
+          path: ruff-report-${{ matrix.python-version }}.txt
+          retention-days: 1
 
       - name: Ruff format
         run: ruff format --check .
