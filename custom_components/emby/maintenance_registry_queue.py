@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
-from .models import PendingRegistryTarget, RegistryCleanupResult
+from .models import PendingRegistryTarget
 
 _PENDING_REGISTRY_CLEANUP = f"{DOMAIN}_pending_registry_cleanup"
 
