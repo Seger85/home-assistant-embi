@@ -72,9 +72,7 @@ def active_player_keys(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
     return active
 
 
-def queue_registry_cleanup(
-    hass: HomeAssistant, entry_id: str, player_keys: Iterable[str]
-) -> int:
+def queue_registry_cleanup(hass: HomeAssistant, entry_id: str, player_keys: Iterable[str]) -> int:
     """Queue exact player identities for safe removal during the next entry setup."""
     keys = {str(value) for value in player_keys if value}
     if not keys:
@@ -141,9 +139,7 @@ async def async_run_automatic_cleanup(hass: HomeAssistant, entry: ConfigEntry) -
 
     runtime: EmbiRuntimeData = entry.runtime_data
     if runtime.cleanup_lock.locked():
-        _LOGGER.warning(
-            "EMBi automatic cleanup skipped because another cleanup is running"
-        )
+        _LOGGER.warning("EMBi automatic cleanup skipped because another cleanup is running")
         return False
 
     async with runtime.cleanup_lock:
@@ -154,9 +150,7 @@ async def async_run_automatic_cleanup(hass: HomeAssistant, entry: ConfigEntry) -
             devices = await client.async_get_devices()
         except EmbyAuthError:
             runtime.last_auto_cleanup_error = "authentication_failed"
-            _LOGGER.error(
-                "EMBi automatic cleanup failed: cleanup authentication rejected"
-            )
+            _LOGGER.error("EMBi automatic cleanup failed: cleanup authentication rejected")
             return False
         except EmbyApiError:
             runtime.last_auto_cleanup_error = "device_query_failed"

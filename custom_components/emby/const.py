@@ -25,9 +25,7 @@ CONF_CONFIRMATION_TEXT = "confirmation_text"
 CONF_SERVER_AUTO_CLEANUP_ENABLED = "server_auto_cleanup_enabled"
 CONF_SERVER_AUTO_CLEANUP_AGE_DAYS = "server_auto_cleanup_age_days"
 CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES = "server_auto_cleanup_remove_ha_entities"
-CONF_SERVER_AUTO_CLEANUP_INITIAL_RUN_COMPLETED = (
-    "server_auto_cleanup_initial_run_completed"
-)
+CONF_SERVER_AUTO_CLEANUP_INITIAL_RUN_COMPLETED = "server_auto_cleanup_initial_run_completed"
 CONF_CONFIRM_AUTO_CLEANUP = "confirm_auto_cleanup"
 CONF_AUTO_CLEANUP_CONFIRMATION_TEXT = "auto_cleanup_confirmation_text"
 

@@ -71,9 +71,7 @@ async def async_get_config_entry_diagnostics(
                 entry.options.get(CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES, True)
             ),
             "initial_run_completed": bool(
-                entry.options.get(
-                    CONF_SERVER_AUTO_CLEANUP_INITIAL_RUN_COMPLETED, False
-                )
+                entry.options.get(CONF_SERVER_AUTO_CLEANUP_INITIAL_RUN_COMPLETED, False)
             ),
             "initial_delay_seconds": AUTO_CLEANUP_INITIAL_DELAY_SECONDS,
             "interval_hours": AUTO_CLEANUP_INTERVAL_HOURS,
