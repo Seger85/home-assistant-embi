@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from typing import Any
 
 from .api import EmbyDeviceRecord
@@ -23,8 +23,8 @@ _LEGACY_ADD_DELETED_TO_IGNORED = "add_deleted_to_ignored"
 _LEGACY_INITIAL_RUN_COMPLETED = "server_auto_cleanup_initial_run_completed"
 
 
-def legacy_initial_run_completed(options: Mapping[str, Any]) -> bool:
-    """Return the rc3 scheduler migration marker before options are normalized."""
+def legacy_initial_run_completed(options: dict[str, Any]) -> bool:
+    """Return the rc3 completion marker before stable migration removes it."""
     return bool(options.get(_LEGACY_INITIAL_RUN_COMPLETED, False))
 
 
@@ -189,17 +189,11 @@ def migrate_stable_options(
     if CONF_ALLOWED_DEVICE_IDS in options:
         migrated[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
 
-    ignored_players = {
-        str(value) for value in options.get(CONF_IGNORED_PLAYER_KEYS, []) if value
-    }
+    ignored_players = {str(value) for value in options.get(CONF_IGNORED_PLAYER_KEYS, []) if value}
     ignored_devices = {
-        str(value)
-        for value in options.get(CONF_IGNORED_REPORTED_DEVICE_IDS, [])
-        if value
+        str(value) for value in options.get(CONF_IGNORED_REPORTED_DEVICE_IDS, []) if value
     }
-    unresolved = {
-        str(value) for value in options.get(CONF_UNRESOLVED_IGNORED_IDS, []) if value
-    }
+    unresolved = {str(value) for value in options.get(CONF_UNRESOLVED_IGNORED_IDS, []) if value}
 
     for configured_id in options.get(_LEGACY_IGNORED_DEVICE_IDS, []):
         value = str(configured_id)
