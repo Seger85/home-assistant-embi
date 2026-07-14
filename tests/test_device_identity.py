@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from custom_components.emby.api import EmbyDeviceRecord
 
 
@@ -7,8 +9,8 @@ def test_devices_response_separates_record_and_client_identity() -> None:
     record = EmbyDeviceRecord.from_api(
         {
             "Id": "341",
-            "ReportedDeviceId": "faa1a5cf-4fc8-43b0-d9ee-d5e2bb1c8432",
-            "Name": "MINISFORUM-750L",
+            "ReportedDeviceId": "synthetic-client-1",
+            "Name": "Synthetic device",
             "AppName": "Emby Windows",
             "AppVersion": "2.315.2.0",
             "LastUserName": "Example User",
@@ -17,8 +19,8 @@ def test_devices_response_separates_record_and_client_identity() -> None:
     )
 
     assert record.record_id == "341"
-    assert record.reported_device_id == "faa1a5cf-4fc8-43b0-d9ee-d5e2bb1c8432"
-    assert record.player_key == ("faa1a5cf-4fc8-43b0-d9ee-d5e2bb1c8432.Emby Windows")
+    assert record.reported_device_id == "synthetic-client-1"
+    assert record.player_key == "synthetic-client-1.Emby Windows"
     assert record.record_id not in record.player_key
 
 
@@ -59,3 +61,41 @@ def test_server_cleanup_label_contains_no_reported_client_id() -> None:
     assert "private-client-identity" not in record.server_cleanup_label
     assert "AndroidTv 3.4.5" in record.server_cleanup_label
     assert "ID hist…0001" in record.server_cleanup_label
+
+
+def test_seven_digit_emby_timestamp_is_parsed_as_utc() -> None:
+    record = EmbyDeviceRecord.from_api(
+        {
+            "Id": "history-record-0001",
+            "ReportedDeviceId": "synthetic-client",
+            "Name": "Synthetic device",
+            "AppName": "Emby App",
+            "DateLastActivity": "2026-07-13T18:35:44.1234567Z",
+        }
+    )
+
+    assert record.last_activity_datetime == datetime(
+        2026,
+        7,
+        13,
+        18,
+        35,
+        44,
+        123456,
+        tzinfo=UTC,
+    )
+    assert record.activity_label == "2026-07-13 18:35 UTC"
+
+
+def test_invalid_activity_timestamp_is_not_cleanup_eligible() -> None:
+    record = EmbyDeviceRecord.from_api(
+        {
+            "Id": "history-record-0001",
+            "ReportedDeviceId": "synthetic-client",
+            "Name": "Synthetic device",
+            "AppName": "Emby App",
+            "DateLastActivity": "not-a-date",
+        }
+    )
+
+    assert record.last_activity_datetime is None

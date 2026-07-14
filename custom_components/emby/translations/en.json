@@ -3,187 +3,31 @@
   "config": {
     "flow_title": "{name}",
     "step": {
-      "user": {
-        "title": "Connect Emby server",
-        "description": "Connect Home Assistant to your local Emby server. The API key is stored in Home Assistant and redacted from diagnostics.",
-        "data": {
-          "name": "Name",
-          "host": "Host/IP address",
-          "port": "Port",
-          "ssl": "Use HTTPS",
-          "api_key": "API key"
-        },
-        "data_description": {
-          "name": "Display name of the integration; recommended: EMBi",
-          "host": "Local IP address or hostname without http:// or https://",
-          "port": "Default: 8096 for HTTP or 8920 for HTTPS",
-          "ssl": "Enable only when the local Emby endpoint uses HTTPS",
-          "api_key": "Dedicated Emby API key used for playback and device discovery"
-        }
-      },
-      "reconfigure": {
-        "title": "Edit connection",
-        "description": "Change the server address, port, HTTPS setting, or API key. For security, the stored API key is never displayed. Leave the field empty to keep it. EMBi reloads after saving.",
-        "data": {
-          "name": "Name",
-          "host": "Host/IP address",
-          "port": "Port",
-          "ssl": "Use HTTPS",
-          "api_key": "API key"
-        },
-        "data_description": {
-          "name": "Display name of the integration",
-          "host": "Local IP address or hostname without protocol prefix",
-          "port": "Port of the local Emby endpoint",
-          "ssl": "Enable only when the endpoint uses HTTPS",
-          "api_key": "Enter a replacement key only when it should change. Leave empty to keep the stored key."
-        }
-      }
+      "user": {"title": "Connect Emby server", "description": "Connect Home Assistant to your local Emby server. The API key is stored in Home Assistant and redacted from diagnostics.", "data": {"name": "Name", "host": "Host/IP address", "port": "Port", "ssl": "Use HTTPS", "api_key": "API key"}, "data_description": {"name": "Display name of the integration; recommended: EMBi", "host": "Local IP address or hostname without http:// or https://", "port": "Default: 8096 for HTTP or 8920 for HTTPS", "ssl": "Enable only when the local Emby endpoint uses HTTPS", "api_key": "Dedicated Emby API key used for playback and device discovery"}},
+      "reconfigure": {"title": "Edit connection", "description": "Change the server address, port, HTTPS setting, or API key. For security, the stored API key is never displayed. Leave the field empty to keep it. EMBi reloads after saving.", "data": {"name": "Name", "host": "Host/IP address", "port": "Port", "ssl": "Use HTTPS", "api_key": "API key"}, "data_description": {"name": "Display name of the integration", "host": "Local IP address or hostname without protocol prefix", "port": "Port of the local Emby endpoint", "ssl": "Enable only when the endpoint uses HTTPS", "api_key": "Enter a replacement key only when it should change. Leave empty to keep the stored key."}}
     },
-    "error": {
-      "cannot_connect": "Could not connect to the Emby server.",
-      "invalid_auth": "The API key was rejected."
-    },
-    "abort": {
-      "already_configured": "This Emby server is already configured.",
-      "reconfigure_successful": "The connection was updated.",
-      "unique_id_mismatch": "The new connection belongs to another Emby server."
-    }
+    "error": {"cannot_connect": "Could not connect to the Emby server.", "invalid_auth": "The API key was rejected."},
+    "abort": {"already_configured": "This Emby server is already configured.", "reconfigure_successful": "The connection was updated.", "unique_id_mismatch": "The new connection belongs to another Emby server."}
   },
   "options": {
     "step": {
-      "init": {
-        "title": "Manage EMBi",
-        "description": "Configure which Emby clients appear in Home Assistant and use the optional, explicitly confirmed maintenance tools.",
-        "menu_options": {
-          "clients": "Manage displayed devices",
-          "clients_bulk": "Bulk device selection",
-          "ha_cleanup": "Clean up Home Assistant entries",
-          "server_cleanup_settings": "Configure optional server cleanup",
-          "server_cleanup": "Delete devices from Emby server",
-          "about": "About EMBi"
-        }
-      },
-      "clients": {
-        "title": "Manage Emby devices",
-        "description": "Choose which clients are created as media players. Ignore rules always take precedence. Example: in ‘Selected devices only’ mode, selecting Living room and Bedroom creates only those two players.",
-        "data": {
-          "client_mode": "Device mode",
-          "allowed_device_ids": "Devices to display",
-          "ignored_device_ids": "Ignored devices"
-        },
-        "data_description": {
-          "client_mode": "‘Active playback only’ exposes clients only while they are playing or paused.",
-          "allowed_device_ids": "Used only in ‘Selected devices only’ mode. Devices not selected here are then not created as media players.",
-          "ignored_device_ids": "These devices are never created, regardless of mode. If a device is both selected and ignored, ignore wins."
-        }
-      },
-      "clients_bulk": {
-        "title": "Bulk device selection",
-        "description": "Apply a controlled bulk action to the devices currently reported by the Emby server.",
-        "menu_options": {
-          "clients_allow_all": "Display all current devices as selected devices",
-          "clients_allow_none": "Clear displayed-device selection",
-          "clients_ignore_all": "Ignore all current devices",
-          "clients_ignore_none": "Clear ignore list"
-        }
-      },
-      "clients_allow_all": {
-        "title": "Select all current devices",
-        "description": "Adds all {count} unique client/app identities currently reported by Emby to ‘Devices to display’ and switches to ‘Selected devices only’ mode.",
-        "data": {
-          "confirm_bulk": "I confirm this bulk change"
-        }
-      },
-      "clients_allow_none": {
-        "title": "Clear displayed-device selection",
-        "description": "Clears the current displayed-device selection. The selected mode itself is not changed.",
-        "data": {
-          "confirm_bulk": "I confirm this bulk change"
-        }
-      },
-      "clients_ignore_all": {
-        "title": "Ignore all current devices",
-        "description": "Adds all {count} unique clients currently reported by Emby to the ignore list. This makes every current EMBi media player unavailable after reload.",
-        "data": {
-          "confirm_bulk": "I understand and confirm this bulk change"
-        }
-      },
-      "clients_ignore_none": {
-        "title": "Clear ignore list",
-        "description": "Removes all devices from the EMBi ignore list. Device mode and displayed-device selection remain unchanged.",
-        "data": {
-          "confirm_bulk": "I confirm this bulk change"
-        }
-      },
-      "ha_cleanup": {
-        "title": "Clean up Home Assistant entries",
-        "description": "Only {count} inactive, revalidated candidates are offered: legacy YAML entries, registry-only entries, or inactive entities already ignored by EMBi. Active legacy, ignored, and normal players are deliberately protected.",
-        "data": {
-          "cleanup_entity_ids": "Entries to remove",
-          "confirm_cleanup": "I confirm removal from the Home Assistant entity registry"
-        },
-        "data_description": {
-          "cleanup_entity_ids": "Candidates are checked again immediately before removal. Removing a registry entry does not delete the device from Emby. A client can return if EMBi still allows it."
-        }
-      },
-      "server_cleanup_settings": {
-        "title": "Configure optional server cleanup",
-        "description": "Server cleanup is disabled by default. Enable it only when historical device records should be deletable from the local Emby server. Stored API keys are never displayed. If no separate key is stored, EMBi uses the normal connection key.",
-        "data": {
-          "server_cleanup_enabled": "Enable server cleanup",
-          "server_cleanup_api_key": "Optional separate cleanup API key"
-        },
-        "data_description": {
-          "server_cleanup_enabled": "When disabled, the destructive cleanup menu is hidden.",
-          "server_cleanup_api_key": "Optional. Enter a replacement key only when it should change. Leave empty to keep an existing separate key; disable server cleanup once to remove it."
-        }
-      },
-      "server_cleanup": {
-        "title": "Delete devices from the Emby server",
-        "description": "Select from {count} historical device records. This removes records from Emby’s device overview, not media files. A client can register again when used later.",
-        "data": {
-          "delete_device_record_ids": "Device records to delete",
-          "add_deleted_to_ignored": "Also ignore successfully deleted clients in Home Assistant"
-        },
-        "data_description": {
-          "delete_device_record_ids": "Each item is one server-side history record and includes app, version, last activity, and a short record ID for unambiguous selection. No deletion occurs before the separate confirmation step.",
-          "add_deleted_to_ignored": "Uses the stable reported client ID, so the removed client is not immediately recreated as an EMBi player."
-        }
-      },
-      "server_cleanup_confirm": {
-        "title": "Confirm permanent server cleanup",
-        "description": "You are about to delete {count} device records from the local Emby server. Enter exactly ‘{phrase}’ and enable the confirmation switch.",
-        "data": {
-          "confirm_delete": "I confirm permanent deletion from the Emby server",
-          "confirmation_text": "Confirmation text"
-        }
-      },
-      "about": {
-        "title": "About Emby Integration - EMBi",
-        "description": "EMBi extends Home Assistant’s Emby integration with UI configuration, controlled media-player selection, tools for cleaning up the Home Assistant registry, and optional explicitly confirmed cleanup of historical devices on the local Emby server.\n\nVersion {version} · Project: Seger · Based on Home Assistant Emby and pyemby."
-      }
+      "init": {"title": "Manage EMBi", "description": "Configure which Emby clients appear in Home Assistant and use the optional, explicitly confirmed maintenance tools.", "menu_options": {"clients": "Manage displayed devices", "clients_bulk": "Bulk device selection", "ha_cleanup": "Clean up Home Assistant entries", "server_cleanup_settings": "Configure optional server cleanup", "server_cleanup": "Manual age-based server cleanup", "server_auto_cleanup_settings": "Configure automatic server cleanup", "about": "About EMBi"}},
+      "clients": {"title": "Manage Emby devices", "description": "Choose which clients are created as media players. Ignore rules always take precedence. Example: in ‘Selected devices only’ mode, selecting Living room and Bedroom creates only those two players.", "data": {"client_mode": "Device mode", "allowed_device_ids": "Devices to display", "ignored_device_ids": "Ignored devices"}, "data_description": {"client_mode": "‘Active playback only’ exposes clients only while they are playing or paused.", "allowed_device_ids": "Used only in ‘Selected devices only’ mode. Devices not selected here are then not created as media players.", "ignored_device_ids": "These devices are never created, regardless of mode. If a device is both selected and ignored, ignore wins."}},
+      "clients_bulk": {"title": "Bulk device selection", "description": "Apply a controlled bulk action to the devices currently reported by the Emby server.", "menu_options": {"clients_allow_all": "Display all current devices as selected devices", "clients_allow_none": "Clear displayed-device selection", "clients_ignore_all": "Ignore all current devices", "clients_ignore_none": "Clear ignore list"}},
+      "clients_allow_all": {"title": "Select all current devices", "description": "Adds all {count} unique client/app identities currently reported by Emby to ‘Devices to display’ and switches to ‘Selected devices only’ mode.", "data": {"confirm_bulk": "I confirm this bulk change"}},
+      "clients_allow_none": {"title": "Clear displayed-device selection", "description": "Clears the current displayed-device selection. The selected mode itself is not changed.", "data": {"confirm_bulk": "I confirm this bulk change"}},
+      "clients_ignore_all": {"title": "Ignore all current devices", "description": "Adds all {count} unique clients currently reported by Emby to the ignore list. This makes every current EMBi media player unavailable after reload.", "data": {"confirm_bulk": "I understand and confirm this bulk change"}},
+      "clients_ignore_none": {"title": "Clear ignore list", "description": "Removes all devices from the EMBi ignore list. Device mode and displayed-device selection remain unchanged.", "data": {"confirm_bulk": "I confirm this bulk change"}},
+      "ha_cleanup": {"title": "Clean up Home Assistant entries", "description": "Only {count} inactive, revalidated candidates are offered: legacy YAML entries, registry-only entries, or inactive entities already ignored by EMBi. Active legacy, ignored, and normal players are deliberately protected.", "data": {"cleanup_entity_ids": "Entries to remove", "confirm_cleanup": "I confirm removal from the Home Assistant entity registry"}, "data_description": {"cleanup_entity_ids": "Candidates are checked again immediately before removal. Removing a registry entry does not delete the device from Emby. A client can return if EMBi still allows it."}},
+      "server_cleanup_settings": {"title": "Configure optional server cleanup", "description": "Server cleanup is disabled by default. Enable it only when historical device records should be deletable from the local Emby server. Stored API keys are never displayed. If no separate key is stored, EMBi uses the normal connection key.", "data": {"server_cleanup_enabled": "Enable server cleanup", "server_cleanup_api_key": "Optional separate cleanup API key"}, "data_description": {"server_cleanup_enabled": "When disabled, both manual and automatic destructive cleanup menus are hidden and automatic cleanup is switched off.", "server_cleanup_api_key": "Optional. Enter a replacement key only when it should change. Leave empty to keep an existing separate key; disable server cleanup once to remove it."}},
+      "server_cleanup": {"title": "Choose manual cleanup age filter", "description": "Set the minimum inactivity age. The default is {default_age_days} days. The next step shows only records older than this threshold. Records without a valid activity timestamp and currently active players are excluded.", "data": {"server_cleanup_age_days": "Older than (days)"}, "data_description": {"server_cleanup_age_days": "Only device-history records with a valid last-activity timestamp older than this value can be selected."}},
+      "server_cleanup_select": {"title": "Select old Emby device records", "description": "{count} records are older than {age_days} days and eligible. {active_count} active players and {unknown_count} records without a valid activity timestamp are protected. Select exact history records; no deletion occurs before the separate confirmation step.", "data": {"delete_device_record_ids": "Device records to delete", "add_deleted_to_ignored": "Also ignore successfully deleted clients in Home Assistant", "remove_deleted_ha_entities": "Also remove the matching Home Assistant media player"}, "data_description": {"delete_device_record_ids": "Each item is one server-side history record and includes app, version, last activity, and a short record ID for unambiguous selection.", "add_deleted_to_ignored": "Uses the stable raw reported client ID and therefore covers all app variants of that client.", "remove_deleted_ha_entities": "Removal is queued only after a successful Emby deletion, only when no surviving server record uses the same ReportedDeviceId.AppName identity, and only while the entity has no state during the controlled reload."}},
+      "server_cleanup_confirm": {"title": "Confirm permanent server cleanup", "description": "You are about to delete {count} device records from the local Emby server. Enter exactly ‘{phrase}’ and enable the confirmation switch.", "data": {"confirm_delete": "I confirm permanent deletion from the Emby server", "confirmation_text": "Confirmation text"}},
+      "server_auto_cleanup_settings": {"title": "Configure automatic server cleanup", "description": "Automatic cleanup is independently disabled by default. When consciously enabled, the first run starts after {delay_seconds} seconds and later repeats every {interval_hours} hours. Every history record older than the threshold can be deleted in one run; there is deliberately no maximum deletion count. Active players and records without a valid activity timestamp are always skipped. To enable it for the first time, enter exactly ‘{phrase}’ and confirm the warning.", "data": {"server_auto_cleanup_enabled": "Enable automatic server cleanup", "server_auto_cleanup_age_days": "Automatically delete records older than (days)", "server_auto_cleanup_remove_ha_entities": "Remove matching Home Assistant media players after successful deletion", "confirm_auto_cleanup": "I understand that all eligible records may be deleted in one run", "auto_cleanup_confirmation_text": "Activation text"}, "data_description": {"server_auto_cleanup_enabled": "Default: off. Disabling the master server-cleanup switch also disables this automation.", "server_auto_cleanup_age_days": "Default: 365 days. There is no per-run limit; all eligible records are processed independently.", "server_auto_cleanup_remove_ha_entities": "The registry entry is removed only after server deletion, after a fresh /Devices query confirms no surviving record with the same ReportedDeviceId.AppName, and during a reload where no entity state exists.", "confirm_auto_cleanup": "Required only for the transition from disabled to enabled.", "auto_cleanup_confirmation_text": "Required only for first activation; enter the exact text shown above."}},
+      "about": {"title": "About Emby Integration - EMBi", "description": "EMBi extends Home Assistant’s Emby integration with UI configuration, controlled media-player selection, guarded registry cleanup, manual age-filtered server cleanup, and an explicitly activated automatic cleanup for historical Emby devices.\n\nVersion {version} · Project: Seger · Based on Home Assistant Emby and pyemby."}
     },
-    "error": {
-      "cannot_connect": "Could not connect to the Emby server.",
-      "invalid_cleanup_auth": "The cleanup API key was rejected.",
-      "confirmation_required": "Please enable the confirmation switch.",
-      "confirmation_text_mismatch": "The confirmation text does not match.",
-      "selection_required": "Select at least one device record.",
-      "invalid_selection": "The submitted selection is no longer valid. Reopen the dialog and try again."
-    },
-    "abort": {
-      "server_cleanup_disabled": "Server cleanup is disabled. Enable it in the cleanup settings first.",
-      "server_cleanup_complete": "Server cleanup finished: {success_count} successful, {failed_count} failed. Failed records: {failed_devices}"
-    }
+    "error": {"cannot_connect": "Could not connect to the Emby server.", "invalid_cleanup_auth": "The cleanup API key was rejected.", "confirmation_required": "Please enable the confirmation switch.", "confirmation_text_mismatch": "The confirmation text does not match.", "selection_required": "Select at least one device record.", "invalid_selection": "The submitted selection is no longer valid or has become active. Reopen the dialog and try again."},
+    "abort": {"server_cleanup_disabled": "Server cleanup is disabled. Enable it in the cleanup settings first.", "server_cleanup_complete": "Server cleanup finished: {success_count} successful, {failed_count} failed, {ha_cleanup_count} Home Assistant registry removals queued. Failed records: {failed_devices}"}
   },
-  "selector": {
-    "client_mode": {
-      "options": {
-        "all": "Display all devices",
-        "active_only": "Active playback only",
-        "allowlist": "Selected devices only"
-      }
-    }
-  }
+  "selector": {"client_mode": {"options": {"all": "Display all devices", "active_only": "Active playback only", "allowlist": "Selected devices only"}}}
 }

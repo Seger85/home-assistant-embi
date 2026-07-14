@@ -4,36 +4,49 @@
 
 - lokale Kommunikation
 - keine direkte `.storage`-Manipulation
-- Least Privilege, soweit Emby dies zulässt
 - destruktive Funktionen standardmäßig aus
-- konkrete Auswahl statt pauschaler Löschaktion
-- zweistufige Bestätigung
-- Teilerfolge transparent melden
+- separater Master- und Automatik-Schalter
+- bewusste Erstaktivierung mit Warnung und exaktem Text
+- Altersfilter standardmäßig 365 Tage
+- aktive Wiedergaben immer geschützt
+- unbekannte Aktivitätszeitpunkte fail-closed geschützt
+- keine maximale Löschzahl, aber unabhängige Fehlerbehandlung pro Datensatz
+- serverseitige Löschung vor jeder Registry-Nachbereitung
+- frische `/Devices`-Revalidierung nach Löschung
+- Registry-Entfernung nur während eines kontrollierten Reloads ohne Entity-State
 - sensible Werte in Diagnostics redigieren
 - gespeicherte API-Schlüssel nie als Passwortfeld-Standardwert zurückgeben
-- Registry-Kandidaten unmittelbar vor dem Entfernen erneut prüfen
+
+## Sicherheitsgrenzen der Identitäten
+
+- `Id` wird ausschließlich für einen konkreten historischen Serverdatensatz und `DELETE /Devices` verwendet.
+- `ReportedDeviceId` bleibt die rohe, geräteweite Ignorieridentität.
+- `ReportedDeviceId.AppName` bleibt die bestehende pyemby-/HA-Unique-ID und die einzige Identität für die präzise Registry-Nachbereitung.
+
+Ein historischer `Id`-Wert darf niemals als HA-Unique-ID verwendet werden.
+
+## Schutz vor falscher Registry-Löschung
+
+Eine automatische oder manuelle Serverlöschung führt nur dann zu einer HA-Registry-Entfernung, wenn:
+
+- der Serverdatensatz erfolgreich gelöscht wurde
+- eine neue Serverabfrage keinen gleichen Player-Key mehr liefert
+- der Registry-Eintrag zur Plattform und zum Config Entry gehört
+- während des Reloads kein Entity-State existiert
+
+Die vorgemerkte Queue enthält nur exakte Player-Keys und keine rohen `ReportedDeviceId`-Werte. Dadurch werden andere App-Varianten nicht mitgelöscht.
 
 ## Redigierte Felder
 
 - primärer `api_key`
 - optionaler `server_cleanup_api_key`
-- serverseitige Geräte-Historien-ID
+- serverseitige Historien-ID
 - gemeldete Client-ID
-- daraus gebildeter Player-Key
+- Player-Key
 - Gerätename
 - letzter Benutzername
 
-App-Name, App-Version und letzter Aktivitätszeitpunkt bleiben für die technische Diagnose sichtbar.
-
-## API-Schlüsselrotation
-
-Nach einer vermuteten Offenlegung:
-
-1. betroffenen Schlüssel auf dem Emby-Server widerrufen
-2. neuen Schlüssel erzeugen
-3. EMBi über „Verbindung bearbeiten“ bzw. „Serverbereinigung einrichten“ aktualisieren
-4. Diagnostics und Logs auf Authentifizierungsfehler prüfen
-5. alte Backups und Skripte auf Klartextschlüssel untersuchen
+Automatische Laufdiagnosen enthalten nur Zähler, Zeitpunkt, Schalterstatus und eine kategorisierte Fehlerursache.
 
 ## Repository-Hygiene
 
@@ -41,6 +54,6 @@ Verboten im Repository:
 
 - echte API-Schlüssel
 - Home-Assistant-Long-Lived-Access-Tokens
-- echte interne IPs in Test-Fixtures, soweit nicht ausdrücklich anonymisiert
+- private Geräte-IDs oder Benutzernamen
 - vollständige private Diagnostics
 - `.storage`, Datenbanken oder Backups

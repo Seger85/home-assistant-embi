@@ -1,19 +1,22 @@
 # Visuelle Qualitätssicherung
 
-Config- und Options-Flows verwenden native Home-Assistant-Komponenten. Trotzdem muss jede Version im produktiven Theme geprüft werden.
+Config- und Options-Flows verwenden native Home-Assistant-Komponenten. Jede Version muss im produktiven Theme geprüft werden.
 
 ## Prüfumfang
 
-- Config Flow: neu verbinden
-- Reconfigure Flow
-- Hauptmenü des Options Flow
-- Geräteverwaltung
-- geöffnete und geschlossene Mehrfachauswahl
-- Sammelaktionen
-- Registry-Bereinigung
-- Serverbereinigung ausgeschaltet
-- Serverbereinigung eingeschaltet
-- Auswahl, Bestätigung, Fehler und Abschlussmeldung
+- Config Flow und Reconfigure Flow
+- Options-Hauptmenü
+- Geräteverwaltung und Sammelaktionen
+- HA-Registry-Bereinigung
+- Master-Schalter Serverbereinigung aus/an
+- manueller Altersfilter
+- gefilterte Datensatzauswahl
+- Optionen „ignorieren“ und „HA-Player entfernen“
+- manueller Bestätigungsdialog und Ergebnis
+- automatische Bereinigung aus/an
+- Altersfeld der Automatik
+- Warnschalter und exakter Aktivierungstext
+- Hinweis auf 120 Sekunden, 24 Stunden und keine maximale Löschzahl
 - About-Dialog
 
 ## Breakpoints
@@ -24,14 +27,20 @@ Config- und Options-Flows verwenden native Home-Assistant-Komponenten. Trotzdem 
 
 ## Sichtkriterien
 
-- Feldhintergrund und Text ausreichend kontrastreich
-- ausgeschaltete Schalter klar erkennbar
-- Fokusrahmen sichtbar
 - keine abgeschnittenen Beschreibungen
-- lange Gerätenamen umbrechen sinnvoll
-- Bestätigungstext und Anzahl vollständig sichtbar
+- Warnhinweis zur unbegrenzten Kandidatenzahl vollständig sichtbar
+- Bestätigungstexte vollständig sichtbar
+- lange Gerätenamen und Labels umbrechen sinnvoll
+- Zahlenfelder auf Mobilgeräten bedienbar
+- Schalterzustände eindeutig
 - keine horizontalen Überstände
+- Passwortfelder leer
+- keine privaten IDs oder Schlüssel sichtbar
+
+## Funktionale Screenshot-Grenze
+
+Die Automatik darf nicht nur für einen Screenshot aktiviert werden. Eine visuelle Prüfung des aktivierten Zustands benötigt Backup, geplanten Rollback und bewusste Freigabe. Screenshots ergänzen technische Prüfungen, ersetzen sie aber nicht.
 
 ## Verantwortungsgrenze
 
-Weiße oder zu helle native Selektoren sind ein Theme-Problem. EMBi darf dafür kein eigenes Shadow-DOM- oder Config-Flow-CSS injizieren. Die Theme-Korrektur muss zentral erfolgen und anschließend mit EMBi erneut geprüft werden.
+Theme-Probleme nativer Selektoren werden zentral im Home-Assistant-Theme gelöst. EMBi injiziert kein Shadow-DOM- oder Config-Flow-CSS.

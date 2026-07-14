@@ -12,7 +12,7 @@ def test_manifest_points_to_canonical_repository() -> None:
 
     assert manifest["domain"] == "emby"
     assert manifest["name"] == "Emby Integration - EMBi"
-    assert manifest["version"] == "0.3.0-rc2"
+    assert manifest["version"] == "0.3.0-rc3"
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["documentation"].endswith("Seger85/home-assistant-embi")
     assert manifest["issue_tracker"].endswith("Seger85/home-assistant-embi/issues")
@@ -42,11 +42,12 @@ def test_server_cleanup_credentials_are_redacted() -> None:
 
 def test_password_fields_do_not_reuse_stored_secrets_as_defaults() -> None:
     config_flow = (COMPONENT / "config_flow.py").read_text()
+    maintenance_flow = (COMPONENT / "maintenance_flow.py").read_text()
 
     assert "defaults.get(CONF_API_KEY" not in config_flow
-    assert "default=current.get(CONF_SERVER_CLEANUP_API_KEY" not in config_flow
+    assert "default=current.get(CONF_SERVER_CLEANUP_API_KEY" not in maintenance_flow
     assert "submitted_api_key or entry.data[CONF_API_KEY]" in config_flow
-    assert "submitted_cleanup_key or stored_cleanup_key" in config_flow
+    assert "submitted_cleanup_key or stored_cleanup_key" in maintenance_flow
 
 
 def test_media_player_unique_id_contract_is_unchanged() -> None:
@@ -66,3 +67,25 @@ def test_all_sensitive_device_identity_fields_are_redacted() -> None:
         '"last_user_name"',
     ):
         assert field in diagnostics
+
+
+def test_automatic_cleanup_contract_is_explicit_and_uncapped() -> None:
+    constants = (COMPONENT / "const.py").read_text()
+    cleanup = (COMPONENT / "cleanup.py").read_text()
+    maintenance = (COMPONENT / "maintenance.py").read_text()
+
+    assert "AUTO_CLEANUP_INITIAL_DELAY_SECONDS = 120" in constants
+    assert "DEFAULT_SERVER_CLEANUP_AGE_DAYS = 365" in constants
+    assert "there is deliberately no run cap" in cleanup
+    assert "plan.candidates" in maintenance
+    assert "[:" not in maintenance
+
+
+def test_registry_removal_requires_post_delete_revalidation() -> None:
+    maintenance = (COMPONENT / "maintenance.py").read_text()
+    maintenance_flow = (COMPONENT / "maintenance_flow.py").read_text()
+
+    assert "remaining_player_keys" in maintenance
+    assert "hass.states.get(entity.entity_id) is not None" in maintenance
+    assert "removable_player_keys" in maintenance_flow
+    assert "queue_registry_cleanup" in maintenance_flow

@@ -3,64 +3,76 @@
 ## Code und Metadaten
 
 - [ ] `const.py` und `manifest.json` tragen dieselbe Version
-- [ ] Manifest verweist auf das richtige Repository und den richtigen Codeowner
+- [ ] Manifest verweist auf Repository und Codeowner
 - [ ] `strings.json` und `translations/en.json` sind identisch
 - [ ] deutsche Übersetzung vollständig
-- [ ] Changelog aktualisiert
-- [ ] keine Secrets oder internen Diagnosedaten im Diff
+- [ ] Changelog, Roadmap und Projektstatus aktualisiert
+- [ ] keine Secrets oder privaten Diagnosedaten im Diff
+- [ ] rc2-Tag wurde nicht verschoben oder ersetzt
 
 ## Automatische Tests
 
 - [ ] Python-Kompilierung erfolgreich
-- [ ] Ruff-Lint erfolgreich
-- [ ] Ruff-Formatprüfung erfolgreich
+- [ ] Ruff-Lint und Format erfolgreich
+- [ ] JSON- und YAML-Validierung erfolgreich
 - [ ] Unit-Tests erfolgreich
-- [ ] JSON-Validierung erfolgreich
-- [ ] Hassfest erfolgreich
 - [ ] HACS-Validierung erfolgreich
+- [ ] Hassfest erfolgreich
+- [ ] Test: 250+ Löschungen ohne Laufbegrenzung
+- [ ] Test: Standard-Altersfilter 365 Tage
+- [ ] Test: aktive Player übersprungen
+- [ ] Test: ungültige Zeitstempel übersprungen
+- [ ] Test: doppelter Player-Key verhindert vorzeitige Registry-Entfernung
+- [ ] Test: Registry-Key erst nach letztem Serverdatensatz zulässig
 
 ## Testinstallation
 
-- [ ] Backup erstellt
-- [ ] Installation über HACS-Custom-Repository
+- [ ] Home-Assistant-Backup erstellt
+- [ ] Emby-Backup beziehungsweise belastbarer Wiederherstellungsweg vorhanden
+- [ ] Installation über HACS-Prerelease
 - [ ] Config Entry lädt
-- [ ] 28 bzw. erwartete Entity-IDs unverändert
+- [ ] erwartete Entity-IDs und Unique IDs unverändert
 - [ ] aktive Wiedergabe korrekt
-- [ ] Unload/Reload korrekt
 - [ ] Neustart ohne EMBi-Fehler
 - [ ] keine Repairs
 
-## Options Flow
+## Manuelle Bereinigung
 
-- [ ] alle Geräte anzeigen
-- [ ] nur aktive Wiedergaben
-- [ ] nur ausgewählte Geräte
-- [ ] Ignorierliste hat Vorrang
-- [ ] alle auswählen
-- [ ] Auswahl leeren
-- [ ] alle ignorieren mit Warnung
-- [ ] Ignorierliste leeren
-- [ ] sichere Registry-Kandidaten
-- [ ] Serverbereinigung standardmäßig verborgen
-- [ ] separater Cleanup-Key validiert
-- [ ] Bestätigungstext lokalisiert
+- [ ] Master-Schalter standardmäßig aus
+- [ ] Standard-Altersfilter 365 Tage
+- [ ] aktive Player nicht auswählbar
+- [ ] unbekannte Zeitstempel nicht auswählbar
+- [ ] Auswahl unmittelbar vor Löschung revalidiert
 - [ ] Teilerfolg korrekt
+- [ ] HA-Registry-Entfernung nur nach letzter gleicher Player-Identität
+
+## Automatische Bereinigung
+
+- [ ] separater Schalter standardmäßig aus
+- [ ] erstmalige Aktivierung benötigt Warnschalter und exakten Text
+- [ ] erster Lauf nach 120 Sekunden
+- [ ] Folgeintervall 24 Stunden
+- [ ] keine maximale Löschzahl
+- [ ] paralleler Lauf blockiert
+- [ ] aggregierte Diagnose ohne IDs
+- [ ] Master aus deaktiviert Automatik
+- [ ] keine automatische geräteweite Ignorierung
 
 ## Visuelle QA
 
 - [ ] iPhone
 - [ ] iPad
 - [ ] Desktop
-- [ ] helles und dunkles Standardtheme als Referenz
 - [ ] produktives Seger-Theme
-- [ ] Mehrfachselektor geöffnet/geschlossen
-- [ ] Schalter an/aus
-- [ ] Fehlerzustände
-- [ ] lange Gerätenamen
+- [ ] lange Labels
+- [ ] Warnung „keine maximale Löschzahl“
+- [ ] leere Passwortfelder
+- [ ] Bestätigungsdialoge
 
 ## Rollback
 
-- [ ] vorheriges Release installierbar
+- [ ] vorheriges Prerelease installierbar
 - [ ] Backup-ID dokumentiert
-- [ ] Optionsmigration verändert keine Entity-ID
+- [ ] Emby-Backup geprüft
+- [ ] Config-Entry- und Entity-Baseline dokumentiert
 - [ ] Rollback-Anleitung aktuell

@@ -13,83 +13,71 @@ Status: abgeschlossen und versioniert.
 
 Status: über das öffentliche HACS-Custom-Repository installiert und in Home Assistant 2026.7.2 erfolgreich live verifiziert.
 
-Bestätigt:
-
 - korrekte Trennung von Emby-`Id` und `ReportedDeviceId`
 - automatische Optionsmigration
 - Legacy-YAML-Code vollständig entfernt
-- bestehender Config Entry erhalten
-- alle 28 Media-Player erhalten
+- bestehender Config Entry und 28 Media-Player erhalten
 - Entity-IDs, Unique IDs und individuelle Namen erhalten
-- Live-Wiedergabestatus, Push-Updates und ergänzende Sensoren funktional
+- Live-Wiedergabestatus und Push-Updates funktional
 - sichere Standardstellung der Serverbereinigung
 - redigierte Diagnostics
-- HACS-, Hassfest-, Ruff- und Unit-Test-CI erfolgreich
-
-## Repository- und Release-Governance
-
-Status: auf `develop` umgesetzt; öffentliche Historie wurde nicht zurückgesetzt.
-
-- `develop` wurde regulär mit `main` synchronisiert
-- zukünftige Dependabot-PRs zielen auf `develop`
-- Ruleset `Protect main and develop` ist aktiv
-- Force-Push und Löschung sind für `main` und `develop` blockiert
-- Pull Requests und definierte Statuschecks sind verpflichtend
-- CI-Checks besitzen stabile Namen
-- ausdrücklich freigegebene `release/v...`-Branches erzeugen nach erfolgreicher CI automatisch den versionsgleichen Tag und GitHub-Release
-- RC-Versionen werden als Prerelease und nicht als `latest` veröffentlicht
-- stabile Versionen werden als normale Releases und `latest` veröffentlicht
-- `embi.zip` und `embi.zip.sha256` werden automatisch erzeugt
-- Tagziel, Assets, Prerelease- und Latest-Status werden nach der Veröffentlichung geprüft
-- temporäre Release-Anforderungsbranches werden automatisch entfernt
 
 ## 0.3.0-rc2 – Runtime-, Safety- und UI-Härtung
 
-Status: als GitHub-Prerelease `v0.3.0-rc2` veröffentlicht; Tag und Release-Automation vollständig geprüft. HACS-Liveupgrade und UI-/Safety-Verifikation stehen noch aus.
+Status: als GitHub-Prerelease `v0.3.0-rc2` veröffentlicht. Der Tag bleibt unverändert auf Commit `f69224ff6dc6609f2923e391dda428dd0b91bf69`.
 
-Veröffentlicht:
+- deduplizierte Allowlist- und Ignore-Sammelaktionen
+- aktive Registry-Einträge vollständig geschützt
+- Revalidierung vor jedem Registry-Remove
+- eindeutige Serverbereinigungs-Labels
+- keine gespeicherten API-Schlüssel in Passwortfeld-Defaults
+- automatisierter, geprüfter Prerelease-Workflow
 
-- Tag `v0.3.0-rc2` auf Commit `f69224ff6dc6609f2923e391dda428dd0b91bf69`
-- Prerelease-Status bestätigt
-- nicht als `latest` markiert
-- `embi.zip` und `embi.zip.sha256` vorhanden
-- temporärer Release-Anforderungsbranch entfernt
+## 0.3.0-rc3 – Finale Gerätebereinigung
+
+Status: Implementierung auf Basis des aktuellen `develop`; Releaseziel `v0.3.0-rc3`. rc2 wird nicht verschoben oder überschrieben.
 
 Enthalten:
 
-- deduplizierte Allowlist- und Ignore-Sammelaktionen
-- korrekte Anzahl eindeutiger Client-Identitäten in Sammeldialogen
-- aktive Legacy-YAML-, ignorierte und normale Entitäten von Registry-Bereinigung ausgeschlossen
-- unmittelbare Revalidierung vor jedem Registry-Remove
-- eindeutige Serverbereinigungs-Labels mit App, Version, Aktivität und kurzer Datensatz-ID
-- keine gespeicherten API-Schlüssel als Passwortfeld-Standardwerte
-- erweiterte Unit- und Repository-Vertragstests
-- aktualisierte deutsche und englische UI-Hinweise
+- zwei klar getrennte Bereinigungswege: manuell und automatisch
+- manueller Altersfilter vor Datensatzauswahl
+- Standard-Altersfilter: älter als 365 Tage
+- separat aktivierbare Automatik mit ausdrücklicher Warnung und Bestätigungstext
+- erster automatischer Lauf 120 Sekunden nach der bewussten Erstaktivierung
+- weitere automatische Läufe alle 24 Stunden
+- bewusst keine maximale Löschzahl pro Lauf
+- aktive Wiedergaben und Datensätze ohne gültigen Aktivitätszeitpunkt werden übersprungen
+- Fehler eines Datensatzes stoppen die übrigen Löschungen nicht
+- optionales Entfernen des zugehörigen HA-Media-Players nach erfolgreicher Emby-Löschung
+- HA-Registry-Entfernung nur nach frischer `/Devices`-Revalidierung, ohne verbleibende gleiche `ReportedDeviceId.AppName`-Identität und ohne Entity-State beim Reload
+- aggregierte automatische Laufdiagnose ohne private IDs
 
-Live-Freigabekriterien für rc2:
+Live-Freigabekriterien für rc3:
 
-- Upgrade von `v0.3.0-rc1` auf `v0.3.0-rc2` über HACS erfolgreich
-- weiterhin 28 Media-Player ohne Entity-/Unique-ID-Änderung
-- Allow-all speichert keine doppelten Player-Keys
-- aktive Registry-Einträge werden nicht angeboten
-- Auswahlbeschriftungen sind auf Desktop, iPad und iPhone verständlich
-- gespeicherte Schlüssel bleiben erhalten, werden aber nicht angezeigt
-- keine neue EMBi-Warnung, kein Repair und keine unbeabsichtigte Löschung
+- Upgrade über HACS erfolgreich
+- Config Entry, 28 Media-Player und bestehende Unique IDs unverändert
+- Automatik standardmäßig ausgeschaltet
+- Erstaktivierung erfordert Schalter und exakten Text
+- erster Lauf nach 120 Sekunden nachvollziehbar
+- Altersfilter 365 Tage korrekt
+- keine Begrenzung der Kandidatenzahl
+- aktive Player und unbekannte Zeitstempel sicher übersprungen
+- HA-Registry-Eintrag nur nach letzter Serverhistorie und kontrolliertem Reload entfernt
+- UI-QA auf iPhone, iPad und Desktop
+- keine neuen EMBi-Warnungen, Repairs oder unbeabsichtigten Löschungen
 
 ## 0.3.0 – stabile Freigabe
 
 Freigabekriterien:
 
 - GitHub Actions vollständig erfolgreich
-- 0.3.0-rc2-Liveprüfung abgeschlossen
+- rc3-Liveprüfung einschließlich manueller und automatischer Bereinigung abgeschlossen
 - bestehende Entity-IDs und Unique IDs unverändert
 - Optionsmigration und alle Optionsmenüs geprüft
 - Registry- und Serverbereinigung sicher geprüft
 - Screenshot-QA auf iPhone, iPad und Desktop abgeschlossen
+- Backup- und Rollback-Weg praktisch bestätigt
 - keine neuen EMBi-Warnungen oder Fehler
-- GitHub-Rulesets aktiv
-- automatisierter Release-Workflow einschließlich Release-Branch-Auslöser geprüft
-- temporäre HACS-Metadatenausnahmen geprüft und soweit möglich entfernt
 - ausdrückliche Freigabe durch Gerry
 
 ## 0.4.0 – vertiefte Testabdeckung
