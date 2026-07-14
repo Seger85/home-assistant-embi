@@ -23,6 +23,7 @@ from .helpers import migrate_stable_options
 from .maintenance_flow import ServerMaintenanceOptionsMixin
 from .models import EmbiRuntimeData
 from .options_clients import ClientOptionsMixin
+from .options_draft import OptionsDraft
 from .options_registry import RegistryOptionsMixin
 
 
@@ -34,15 +35,16 @@ class EmbyOptionsFlow(
 ):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
-        self._original_options = dict(config_entry.options)
-        self._draft_options = dict(config_entry.options)
+        self._draft = OptionsDraft.from_options(config_entry.options)
+        self._original_options = self._draft.original
+        self._draft_options = self._draft.current
         self._pending_cleanup_records: dict[str, EmbyDeviceRecord] = {}
         self._pending_remove_ha_entities = False
         self._pending_auto_settings: dict[str, Any] | None = None
 
     @property
     def _dirty(self) -> bool:
-        return self._draft_options != self._original_options
+        return self._draft.dirty
 
     @property
     def _runtime(self) -> EmbiRuntimeData:
@@ -123,6 +125,7 @@ class EmbyOptionsFlow(
                 "registry_missing": str(report.registry_entities_missing),
                 "registry_protected": str(report.registry_entities_protected),
                 "last_error": report.last_error or "-",
+                "counts_complete": str(report.result_counts_complete),
                 "next_run_at": local_time(report.next_run_at),
             },
         )
@@ -154,7 +157,7 @@ class EmbyOptionsFlow(
                         state.report.next_run_at = None
                         try:
                             await self._runtime.maintenance_store.async_save(state)
-                        except Exception:  # noqa: BLE001
+                        except Exception:
                             errors["base"] = "storage_failed"
                     if not errors:
                         return self.async_create_entry(title="", data=updated)
@@ -173,7 +176,7 @@ class EmbyOptionsFlow(
             if not user_input.get(CONF_CONFIRM_DISCARD):
                 errors["base"] = "confirmation_required"
             else:
-                self._draft_options = dict(self._original_options)
+                self._draft.discard()
                 return await self.async_step_init()
         return self.async_show_form(
             step_id="discard",
