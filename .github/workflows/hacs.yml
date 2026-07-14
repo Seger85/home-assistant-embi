@@ -11,7 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  hacs:
+    name: HACS validation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
