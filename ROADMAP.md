@@ -35,7 +35,7 @@ Status: als GitHub-Prerelease `v0.3.0-rc2` veröffentlicht. Der Tag bleibt unver
 
 ## 0.3.0-rc3 – Finale Gerätebereinigung
 
-Status: Implementierung auf Basis des aktuellen `develop`; Releaseziel `v0.3.0-rc3`. rc2 wird nicht verschoben oder überschrieben.
+Status: als GitHub-Prerelease `v0.3.0-rc3` auf Commit `0d776720b527d1285b258159edc8f30b933385ca` veröffentlicht. Release-Workflow, HACS-Archiv, Prüfsumme, Prerelease-Status, Nicht-`latest`-Status und Tagziel wurden automatisch geprüft. Der Home-Assistant-Livetest steht noch aus.
 
 Enthalten:
 
