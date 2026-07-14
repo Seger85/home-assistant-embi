@@ -14,9 +14,9 @@ from homeassistant.util import dt as dt_util
 from .api import EmbyApiClient, EmbyApiError, EmbyAuthError
 from .const import (
     AUTO_CLEANUP_INTERVAL_HOURS,
+    CONF_MAINTENANCE_STORE_INITIALIZED,
     FOLLOW_UP_INTERRUPTED,
     MAINTENANCE_NOTIFICATION_ID_PREFIX,
-    MAINTENANCE_STORE_INITIALIZED,
     PLATFORMS,
     RUN_MODE_AUTOMATIC,
     RUN_STATUS_INTERRUPTED,
@@ -40,35 +40,6 @@ def _notification_id(entry: ConfigEntry) -> str:
     return f"{MAINTENANCE_NOTIFICATION_ID_PREFIX}_{entry.entry_id}"
 
 
-async def _async_initialize_store(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    store: EmbiMaintenanceStore,
-) -> tuple[MaintenanceState, bool]:
-    """Load or initialize the Store and fail closed on unexpected missing data."""
-    try:
-        loaded = resolve_store_load(
-            await store.async_load_data(),
-            initialized_marker=bool(entry.options.get(MAINTENANCE_STORE_INITIALIZED, False)),
-        )
-        if loaded.needs_initial_save:
-            await store.async_save(loaded.state)
-            options = dict(entry.options)
-            options[MAINTENANCE_STORE_INITIALIZED] = True
-            hass.config_entries.async_update_entry(entry, options=options)
-        return loaded.state, True
-    except Exception:  # noqa: BLE001
-        _LOGGER.exception("EMBi failed to load or initialize persistent maintenance state")
-        persistent_notification.async_create(
-            hass,
-            "EMBi konnte den persistenten Lauf- und Schedulerstatus nicht sicher laden. "
-            "Automatische Läufe bleiben aus Sicherheitsgründen angehalten.",
-            title="EMBi-Wartung angehalten",
-            notification_id=_notification_id(entry),
-        )
-        return MaintenanceState(), False
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up EMBi from a config entry."""
     client = EmbyApiClient(
@@ -86,15 +57,63 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except EmbyApiError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
-    rc3_initial_run_completed = legacy_initial_run_completed(entry.options)
-    migrated_options, changed = migrate_stable_options(dict(entry.options), devices)
-    if changed:
-        hass.config_entries.async_update_entry(entry, options=migrated_options)
+    rc3_initial_run_completed = legacy_initial_run_completed(dict(entry.options))
+    migrated_options, _ = migrate_stable_options(dict(entry.options), devices)
+    store_expected = bool(migrated_options.get(CONF_MAINTENANCE_STORE_INITIALIZED, False))
 
     store = EmbiMaintenanceStore.create(hass, entry.entry_id)
-    maintenance_state, storage_available = await _async_initialize_store(hass, entry, store)
-    if rc3_initial_run_completed:
-        maintenance_state.initial_run_completed = True
+    storage_available = True
+    try:
+        loaded_state = await store.async_load()
+    except Exception:
+        storage_available = False
+        maintenance_state = MaintenanceState()
+        _LOGGER.exception("EMBi failed to load persistent maintenance state")
+        persistent_notification.async_create(
+            hass,
+            "EMBi konnte den persistenten Lauf- und Schedulerstatus nicht laden. "
+            "Automatische Läufe bleiben aus Sicherheitsgründen angehalten.",
+            title="EMBi-Wartung angehalten",
+            notification_id=_notification_id(entry),
+        )
+    else:
+        decision = resolve_store_load(
+            loaded_state,
+            store_expected=store_expected,
+            legacy_initial_run_completed=rc3_initial_run_completed,
+        )
+        maintenance_state = decision.state
+        storage_available = decision.storage_available
+        if not storage_available:
+            _LOGGER.error("EMBi maintenance Store was expected but could not be loaded")
+            persistent_notification.async_create(
+                hass,
+                "Der bereits initialisierte EMBi-Wartungsspeicher fehlt oder wurde von "
+                "Home Assistant als beschädigt verworfen. Automatische Läufe bleiben "
+                "aus Sicherheitsgründen angehalten.",
+                title="EMBi-Wartung angehalten",
+                notification_id=_notification_id(entry),
+            )
+        elif decision.initialize_store:
+            try:
+                await store.async_save(maintenance_state)
+            except Exception:
+                storage_available = False
+                _LOGGER.exception("EMBi failed to initialize persistent maintenance state")
+                persistent_notification.async_create(
+                    hass,
+                    "EMBi konnte den Wartungsspeicher nicht initialisieren. "
+                    "Automatische Läufe bleiben aus Sicherheitsgründen angehalten.",
+                    title="EMBi-Wartung angehalten",
+                    notification_id=_notification_id(entry),
+                )
+            else:
+                migrated_options[CONF_MAINTENANCE_STORE_INITIALIZED] = True
+        elif not store_expected:
+            migrated_options[CONF_MAINTENANCE_STORE_INITIALIZED] = True
+
+    if migrated_options != dict(entry.options):
+        hass.config_entries.async_update_entry(entry, options=migrated_options)
 
     runtime = EmbiRuntimeData(
         api_client=client,
@@ -122,7 +141,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ).isoformat()
         try:
             await store.async_save(maintenance_state)
-        except Exception:  # noqa: BLE001
+        except Exception:
             runtime.maintenance_storage_available = False
             _LOGGER.exception("EMBi failed to persist interrupted maintenance state")
 
