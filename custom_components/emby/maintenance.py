@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from .maintenance_common import active_player_keys, cleanup_lock
+from .maintenance_cycle import (
+    async_run_automatic_cleanup,
+    async_run_manual_cleanup,
+)
 from .maintenance_registry import (
     PendingRegistryTarget,
     RegistryCleanupResult,
     async_apply_pending_registry_cleanup,
     queue_registry_cleanup,
-)
-from .maintenance_runner import (
-    async_run_automatic_cleanup,
-    async_run_manual_cleanup,
 )
 from .maintenance_scheduler import (
     async_schedule_automatic_cleanup,
