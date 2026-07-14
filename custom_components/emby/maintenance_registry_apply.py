@@ -138,6 +138,6 @@ async def async_apply_pending_registry_cleanup(
             hass,
             entry,
             "Die EMBi-Bereinigung wurde nur teilweise abgeschlossen. "
-            "Details stehen unter ‚Letzter Bereinigungslauf‘ und in den Diagnosedaten.",
+            "Details stehen unter Letzter Bereinigungslauf und in den Diagnosedaten.",
         )
     return result
