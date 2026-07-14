@@ -6,7 +6,7 @@ import voluptuous as vol
 from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
-from .api import EmbyApiError, EmbyDeviceRecord
+from .api import EmbyApiError
 from .cleanup import plan_device_cleanup
 from .const import (
     AGE_PRESET_CUSTOM,
@@ -235,9 +235,7 @@ class ServerMaintenanceOptionsMixin:
                     selector.SelectSelectorConfig(
                         options=[
                             {"value": key, "label": label}
-                            for key, label in server_device_selector_options(
-                                plan.candidates
-                            ).items()
+                            for key, label in server_device_selector_options(plan.candidates).items()
                         ],
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -279,7 +277,9 @@ class ServerMaintenanceOptionsMixin:
             },
         )
 
-    async def async_step_server_cleanup_confirm(self, user_input: dict[str, Any] | None = None):
+    async def async_step_server_cleanup_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ):
         if not self._pending_cleanup_records:
             return await self.async_step_server_cleanup()
         count = len(self._pending_cleanup_records)
@@ -322,8 +322,14 @@ class ServerMaintenanceOptionsMixin:
             step_id="server_cleanup_confirm",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_CONFIRM_DELETE, default=False): selector.BooleanSelector(),
-                    vol.Required(CONF_CONFIRMATION_TEXT, default=""): selector.TextSelector(),
+                    vol.Required(
+                        CONF_CONFIRM_DELETE,
+                        default=False,
+                    ): selector.BooleanSelector(),
+                    vol.Required(
+                        CONF_CONFIRMATION_TEXT,
+                        default="",
+                    ): selector.TextSelector(),
                 }
             ),
             errors=errors,
