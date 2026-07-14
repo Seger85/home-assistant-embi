@@ -40,9 +40,7 @@ from .helpers import server_device_selector_options
 from .maintenance import active_player_keys, queue_registry_cleanup
 
 
-def _api_client(
-    hass, data: dict[str, Any], api_key: str | None = None
-) -> EmbyApiClient:
+def _api_client(hass, data: dict[str, Any], api_key: str | None = None) -> EmbyApiClient:
     return EmbyApiClient(
         session=async_get_clientsession(hass),
         host=data[CONF_HOST],
@@ -71,9 +69,7 @@ def _age_selector() -> selector.NumberSelector:
 
 
 class ServerMaintenanceOptionsMixin:
-    async def async_step_server_cleanup_settings(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_server_cleanup_settings(self, user_input: dict[str, Any] | None = None):
         current = dict(self._entry.options)
         errors: dict[str, str] = {}
         schema = vol.Schema(
@@ -91,12 +87,8 @@ class ServerMaintenanceOptionsMixin:
 
         if user_input is not None:
             enabled = bool(user_input.get(CONF_SERVER_CLEANUP_ENABLED))
-            submitted_cleanup_key = str(
-                user_input.get(CONF_SERVER_CLEANUP_API_KEY, "")
-            ).strip()
-            stored_cleanup_key = str(
-                current.get(CONF_SERVER_CLEANUP_API_KEY, "")
-            ).strip()
+            submitted_cleanup_key = str(user_input.get(CONF_SERVER_CLEANUP_API_KEY, "")).strip()
+            stored_cleanup_key = str(current.get(CONF_SERVER_CLEANUP_API_KEY, "")).strip()
             effective_cleanup_key = submitted_cleanup_key or stored_cleanup_key
             if enabled and effective_cleanup_key:
                 try:
@@ -152,14 +144,10 @@ class ServerMaintenanceOptionsMixin:
         return self.async_show_form(
             step_id="server_cleanup",
             data_schema=schema,
-            description_placeholders={
-                "default_age_days": str(DEFAULT_SERVER_CLEANUP_AGE_DAYS)
-            },
+            description_placeholders={"default_age_days": str(DEFAULT_SERVER_CLEANUP_AGE_DAYS)},
         )
 
-    async def async_step_server_cleanup_select(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_server_cleanup_select(self, user_input: dict[str, Any] | None = None):
         if not self._entry.options.get(CONF_SERVER_CLEANUP_ENABLED, False):
             return self.async_abort(reason="server_cleanup_disabled")
 
@@ -183,21 +171,14 @@ class ServerMaintenanceOptionsMixin:
         options = server_device_selector_options(plan.candidates)
         schema = vol.Schema(
             {
-                vol.Optional(
-                    CONF_DELETE_DEVICE_RECORD_IDS, default=[]
-                ): selector.SelectSelector(
+                vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[]): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=[
-                            {"value": key, "label": value}
-                            for key, value in options.items()
-                        ],
+                        options=[{"value": key, "label": value} for key, value in options.items()],
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Required(
-                    CONF_ADD_DELETED_TO_IGNORED, default=True
-                ): selector.BooleanSelector(),
+                vol.Required(CONF_ADD_DELETED_TO_IGNORED, default=True): selector.BooleanSelector(),
                 vol.Required(
                     CONF_REMOVE_DELETED_HA_ENTITIES,
                     default=True,
@@ -235,9 +216,7 @@ class ServerMaintenanceOptionsMixin:
             },
         )
 
-    async def async_step_server_cleanup_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_server_cleanup_confirm(self, user_input: dict[str, Any] | None = None):
         if not self._pending_cleanup_records:
             return await self.async_step_server_cleanup()
 
@@ -246,9 +225,7 @@ class ServerMaintenanceOptionsMixin:
         errors: dict[str, str] = {}
         schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_CONFIRM_DELETE, default=False
-                ): selector.BooleanSelector(),
+                vol.Required(CONF_CONFIRM_DELETE, default=False): selector.BooleanSelector(),
                 vol.Required(CONF_CONFIRMATION_TEXT, default=""): _text_selector(),
             }
         )
@@ -276,22 +253,16 @@ class ServerMaintenanceOptionsMixin:
                     if any(record_id not in allowed for record_id in selected_ids):
                         errors["base"] = "invalid_selection"
                     else:
-                        selected_records = [
-                            allowed[record_id] for record_id in selected_ids
-                        ]
+                        selected_records = [allowed[record_id] for record_id in selected_ids]
                         result = await async_delete_device_records(
                             self._cleanup_client(), selected_records
                         )
                         current_options = dict(self._entry.options)
                         updated = dict(current_options)
-                        updated[CONF_SERVER_CLEANUP_AGE_DAYS] = (
-                            self._pending_cleanup_age_days
-                        )
+                        updated[CONF_SERVER_CLEANUP_AGE_DAYS] = self._pending_cleanup_age_days
                         if self._pending_add_to_ignored and result.succeeded:
                             ignored = set(updated.get(CONF_IGNORED_DEVICE_IDS, []))
-                            ignored.update(
-                                record.reported_device_id for record in result.succeeded
-                            )
+                            ignored.update(record.reported_device_id for record in result.succeeded)
                             updated[CONF_IGNORED_DEVICE_IDS] = sorted(ignored)
 
                         queued = 0
@@ -304,9 +275,7 @@ class ServerMaintenanceOptionsMixin:
                                 removable = removable_player_keys(
                                     result.succeeded,
                                     remaining,
-                                    active_player_keys=active_player_keys(
-                                        self.hass, self._entry
-                                    ),
+                                    active_player_keys=active_player_keys(self.hass, self._entry),
                                 )
                                 queued = queue_registry_cleanup(
                                     self.hass,
@@ -321,9 +290,7 @@ class ServerMaintenanceOptionsMixin:
                             )
                         elif queued:
                             self.hass.async_create_task(
-                                self.hass.config_entries.async_reload(
-                                    self._entry.entry_id
-                                ),
+                                self.hass.config_entries.async_reload(self._entry.entry_id),
                                 "Reload EMBi after manual device cleanup",
                             )
 
@@ -390,14 +357,11 @@ class ServerMaintenanceOptionsMixin:
 
         if user_input is not None:
             enabled = bool(user_input.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
-            enabling = enabled and not current.get(
-                CONF_SERVER_AUTO_CLEANUP_ENABLED, False
-            )
+            enabling = enabled and not current.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
             if enabling and not user_input.get(CONF_CONFIRM_AUTO_CLEANUP):
                 errors["base"] = "confirmation_required"
             elif enabling and (
-                str(user_input.get(CONF_AUTO_CLEANUP_CONFIRMATION_TEXT, "")).strip()
-                != phrase
+                str(user_input.get(CONF_AUTO_CLEANUP_CONFIRMATION_TEXT, "")).strip() != phrase
             ):
                 errors["base"] = "confirmation_text_mismatch"
             else:
