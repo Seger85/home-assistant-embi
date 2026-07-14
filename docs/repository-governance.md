@@ -9,11 +9,13 @@ Feature-/Fix-Branch
 → Pull Request nach develop
 → Quality, HACS und Hassfest
 → Review und Merge nach develop
+→ bei Release Candidate: ausdrücklich freigegebener release/v...-Branch von develop
+→ automatischer versionsgleicher Git-Tag und GitHub-Prerelease
+→ Home-Assistant-Livetest
 → Draft-Release-PR develop nach main
-→ Home-Assistant-Livetest und ausdrückliche Freigabe
-→ Merge nach main
-→ versionsgleicher Git-Tag
-→ automatisierter GitHub-Release
+→ ausdrückliche Freigabe und Merge nach main
+→ bei stabilem Release: ausdrücklich freigegebener release/v...-Branch von main
+→ automatischer versionsgleicher Git-Tag und stabiler GitHub-Release
 ```
 
 ## Branchrollen
@@ -29,13 +31,22 @@ Feature-/Fix-Branch
 
 - gemeinsamer Integrationsbranch
 - Ziel für Feature-, Fix-, Dokumentations-, CI- und Dependabot-PRs
-- Ausgangspunkt für Release-PRs nach `main`
+- Ausgangspunkt für Release Candidates und Release-PRs nach `main`
 
 ### Arbeitsbranches
 
 - von `develop` erstellen
 - nach Zweck benennen, zum Beispiel `feat/...`, `fix/...`, `docs/...` oder `chore/...`
 - nach erfolgreichem Merge entfernen
+
+### Release-Anforderungsbranches
+
+- Format `release/vMAJOR.MINOR.PATCH` oder `release/vMAJOR.MINOR.PATCH-PRERELEASE`
+- erst nach ausdrücklicher Releasefreigabe erstellen
+- Release Candidates müssen exakt auf einem freigegebenen Commit aus `develop` basieren
+- stabile Releases müssen exakt auf einem freigegebenen Commit aus `main` basieren
+- lösen Tag-, Paket- und Release-Erstellung automatisch aus
+- werden nach erfolgreicher Veröffentlichung automatisch entfernt
 
 ## Pull-Request-Regeln
 
@@ -51,7 +62,7 @@ Dependabot zielt für GitHub-Actions- und Python-Abhängigkeiten auf `develop`. 
 
 ## Releasevertrag
 
-Ein Release entsteht ausschließlich durch einen Git-Tag im Format:
+Der veröffentlichte Release wird immer durch einen Git-Tag im Format identifiziert:
 
 ```text
 vMAJOR.MINOR.PATCH
@@ -65,12 +76,18 @@ v0.3.0
 v0.3.0-rc2
 ```
 
+Der Tag kann auf zwei kontrollierten Wegen entstehen:
+
+1. Ein extern erzeugter versionsgleicher Git-Tag löst den Workflow direkt aus.
+2. Ein ausdrücklich freigegebener Branch `release/v...` löst denselben Workflow aus; der Workflow erzeugt den versionsgleichen Tag selbst und entfernt den Release-Branch anschließend.
+
 Der Release-Workflow prüft vor der Veröffentlichung:
 
-- Tagformat
-- exakte Übereinstimmung von Tag und `manifest.json`-Version
-- Prerelease-Tags liegen in der Historie von `develop`
-- stabile Tags liegen in der Historie von `main`
+- Tag- beziehungsweise Release-Branch-Format
+- exakte Übereinstimmung von Releaseversion und `manifest.json`-Version
+- Prerelease-Commits liegen in der Historie von `develop`
+- stabile Release-Commits liegen in der Historie von `main`
+- der Ziel-Tag existiert bei einer Release-Branch-Anforderung noch nicht
 - JSON-Validierung
 - Python-Kompilierung
 - Ruff Lint und Format
@@ -79,9 +96,18 @@ Der Release-Workflow prüft vor der Veröffentlichung:
 - Hassfest
 - Inhalt und Manifestversion des Release-Archivs
 
-Erst danach werden `embi.zip` und `embi.zip.sha256` veröffentlicht.
+Erst danach werden der versionsgleiche Git-Tag, `embi.zip`, `embi.zip.sha256` und der GitHub-Release erzeugt.
 
-Tags mit einem Prerelease-Suffix werden automatisch als GitHub-Prerelease veröffentlicht und niemals als `latest` markiert. Tags ohne Prerelease-Suffix werden als stabile Releases veröffentlicht.
+Tags mit einem Prerelease-Suffix werden automatisch als GitHub-Prerelease veröffentlicht und niemals als `latest` markiert. Tags ohne Prerelease-Suffix werden als stabile Releases veröffentlicht und als `latest` markiert.
+
+Nach der Veröffentlichung kontrolliert der Workflow zusätzlich:
+
+- Tagname
+- Tagziel-Commit
+- Prerelease-Status
+- `latest`-Status
+- Vorhandensein von `embi.zip`
+- Vorhandensein von `embi.zip.sha256`
 
 ## HACS und Vorabversionen
 
