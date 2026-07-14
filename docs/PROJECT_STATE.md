@@ -90,7 +90,7 @@ Completed before synchronizing PR #12 with the governance commit:
 - Hassfest: passed
 - synthetic test identities only
 
-The full GitHub CI suite must run again on the synchronized PR #12 head before any merge consideration.
+The synchronized PR #12 head is conflict-free and ready for the required full GitHub CI rerun with the stable ruleset check names.
 
 ## HACS release status
 
