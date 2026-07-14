@@ -9,6 +9,10 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import EmbyApiClient, EmbyApiError, EmbyAuthError
 from .const import PLATFORMS
 from .helpers import migrate_legacy_device_options
+from .maintenance import (
+    async_apply_pending_registry_cleanup,
+    async_setup_automatic_cleanup,
+)
 from .models import EmbiRuntimeData
 
 
@@ -34,13 +38,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except EmbyApiError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
-    migrated_options, changed = migrate_legacy_device_options(dict(entry.options), devices)
+    migrated_options, changed = migrate_legacy_device_options(
+        dict(entry.options), devices
+    )
     if changed:
         hass.config_entries.async_update_entry(entry, options=migrated_options)
 
+    await async_apply_pending_registry_cleanup(hass, entry, devices)
     entry.runtime_data = EmbiRuntimeData(api_client=client, devices=devices)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    async_setup_automatic_cleanup(hass, entry)
     return True
 
 
