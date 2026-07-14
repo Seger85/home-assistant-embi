@@ -13,6 +13,8 @@ from homeassistant.util import dt as dt_util
 from .const import (
     AUTO_CLEANUP_INTERVAL_HOURS,
     DOMAIN,
+    FOLLOW_UP_INTERRUPTED,
+    FOLLOW_UP_SKIPPED,
     MAINTENANCE_NOTIFICATION_ID_PREFIX,
     RUN_STATUS_COMPLETED,
     RUN_STATUS_FAILED,
@@ -149,3 +151,35 @@ def _log_report(report: CleanupRunReport) -> None:
         _LOGGER.warning(message, *args)
     else:
         _LOGGER.info(message, *args)
+
+
+async def _async_finish_without_registry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    *,
+    automatic: bool,
+) -> bool:
+    runtime: EmbiRuntimeData = entry.runtime_data
+    report = runtime.maintenance_state.report
+    if report.follow_up_status != FOLLOW_UP_INTERRUPTED:
+        report.follow_up_status = FOLLOW_UP_SKIPPED
+    report.completed_at = _utc_iso()
+    _set_terminal_status(report)
+    if automatic:
+        runtime.maintenance_state.initial_run_completed = True
+        report.next_run_at = _next_regular_run()
+    if not await _async_save_state(hass, entry):
+        report.status = RUN_STATUS_INTERRUPTED
+        report.last_error = "storage_failed_after_cleanup"
+        return False
+    _log_report(report)
+    if report.status == RUN_STATUS_COMPLETED:
+        _dismiss_failure(hass, entry)
+    else:
+        _notify_failure(
+            hass,
+            entry,
+            "Die EMBi-Bereinigung wurde nur teilweise abgeschlossen. "
+            "Details stehen unter ‚Letzter Bereinigungslauf‘ und in den Diagnosedaten.",
+        )
+    return True
