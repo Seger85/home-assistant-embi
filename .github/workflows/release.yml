@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - "release/v*"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -17,8 +19,10 @@ jobs:
     name: Validate release contract
     runs-on: ubuntu-latest
     outputs:
+      tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
       prerelease: ${{ steps.release.outputs.prerelease }}
+      release_branch: ${{ steps.release.outputs.release_branch }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -32,13 +36,23 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
 
-      - name: Validate tag, manifest and source branch
+      - name: Validate release request, manifest and source branch
         id: release
         shell: bash
         run: |
           set -euo pipefail
 
-          tag="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+            release_branch="false"
+          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == release/v* ]]; then
+            tag="${GITHUB_REF_NAME#release/}"
+            release_branch="true"
+          else
+            echo "::error::Release workflow requires a v* tag or release/v* branch."
+            exit 1
+          fi
+
           if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Release tag must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE."
             exit 1
@@ -57,7 +71,7 @@ jobs:
           )"
 
           if [[ "${version}" != "${manifest_version}" ]]; then
-            echo "::error::Tag ${tag} does not match manifest version ${manifest_version}."
+            echo "::error::Release ${tag} does not match manifest version ${manifest_version}."
             exit 1
           fi
 
@@ -74,12 +88,20 @@ jobs:
           fi
 
           if ! git merge-base --is-ancestor "${GITHUB_SHA}" "${required_ref}"; then
-            echo "::error::Tag ${tag} must point to a commit contained in ${required_ref}."
+            echo "::error::Release ${tag} must point to a commit contained in ${required_ref}."
             exit 1
           fi
 
+          if [[ "${release_branch}" == "true" ]] && \
+             git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::Tag ${tag} already exists."
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
+          echo "release_branch=${release_branch}" >> "${GITHUB_OUTPUT}"
 
       - name: Install test dependencies
         run: python -m pip install --upgrade pip -r requirements_test.txt
@@ -134,6 +156,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Build and verify integration archive
         shell: bash
@@ -184,6 +208,8 @@ jobs:
       - name: Publish release and assets
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ needs.validate.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             embi.zip
             embi.zip.sha256
@@ -192,17 +218,18 @@ jobs:
           prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
           make_latest: ${{ needs.validate.outputs.prerelease == 'true' && 'false' || 'true' }}
 
-      - name: Verify published release metadata
+      - name: Verify published release metadata and tag target
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
           EXPECTED_PRERELEASE: ${{ needs.validate.outputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
 
-          release_json="$(gh release view "${GITHUB_REF_NAME}" --json tagName,isPrerelease,assets)"
+          release_json="$(gh release view "${RELEASE_TAG}" --json tagName,isPrerelease,isLatest,assets)"
 
-          jq -e --arg tag "${GITHUB_REF_NAME}" '.tagName == $tag' <<<"${release_json}" >/dev/null
+          jq -e --arg tag "${RELEASE_TAG}" '.tagName == $tag' <<<"${release_json}" >/dev/null
           jq -e '.assets | any(.name == "embi.zip")' <<<"${release_json}" >/dev/null
           jq -e '.assets | any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
 
@@ -211,3 +238,31 @@ jobs:
             echo "::error::Published prerelease state ${actual_prerelease} does not match ${EXPECTED_PRERELEASE}."
             exit 1
           fi
+
+          actual_latest="$(jq -r '.isLatest' <<<"${release_json}")"
+          if [[ "${EXPECTED_PRERELEASE}" == "true" && "${actual_latest}" != "false" ]]; then
+            echo "::error::Prerelease ${RELEASE_TAG} must not be latest."
+            exit 1
+          fi
+          if [[ "${EXPECTED_PRERELEASE}" == "false" && "${actual_latest}" != "true" ]]; then
+            echo "::error::Stable release ${RELEASE_TAG} must be latest."
+            exit 1
+          fi
+
+          git fetch --no-tags origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          tag_commit="$(git rev-list -n 1 "${RELEASE_TAG}")"
+          if [[ "${tag_commit}" != "${GITHUB_SHA}" ]]; then
+            echo "::error::Tag ${RELEASE_TAG} points to ${tag_commit}, expected ${GITHUB_SHA}."
+            exit 1
+          fi
+
+      - name: Remove processed release branch
+        if: ${{ needs.validate.outputs.release_branch == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api \
+            --method DELETE \
+            "repos/${GITHUB_REPOSITORY}/git/refs/heads/${GITHUB_REF_NAME}"
