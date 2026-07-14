@@ -1,0 +1,100 @@
+name: Synchronize EMBi rc2 branch
+
+on:
+  push:
+    branches:
+      - fix/rc2-runtime-safety
+    paths:
+      - ".github/workflows/embi-rc2-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out rc2 branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Merge current develop and resolve documented overlaps
+        shell: bash
+        env:
+          CHANGELOG_GZ_B64: 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
+          ROADMAP_GZ_B64: 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
+          PROJECT_STATE_GZ_B64: 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
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin develop:refs/remotes/origin/develop
+
+          set +e
+          git merge --no-commit --no-ff refs/remotes/origin/develop
+          merge_status=$?
+          set -e
+
+          conflicts="$(git diff --name-only --diff-filter=U || true)"
+          unexpected="$(printf '%s\n' "${conflicts}" | grep -v -E '^(CHANGELOG.md|ROADMAP.md|docs/PROJECT_STATE.md)$' || true)"
+          if [[ -n "${unexpected}" ]]; then
+            echo "::error::Unexpected merge conflicts:"
+            printf '%s\n' "${unexpected}"
+            exit 1
+          fi
+          if [[ ${merge_status} -ne 0 && -z "${conflicts}" ]]; then
+            echo "::error::Merge failed without documented conflicts."
+            exit 1
+          fi
+
+          printf '%s' "${CHANGELOG_GZ_B64}" | base64 --decode | gzip -dc > CHANGELOG.md
+          printf '%s' "${ROADMAP_GZ_B64}" | base64 --decode | gzip -dc > ROADMAP.md
+          printf '%s' "${PROJECT_STATE_GZ_B64}" | base64 --decode | gzip -dc > docs/PROJECT_STATE.md
+          rm -f .github/workflows/embi-rc2-sync.yml
+          git add -A
+
+          if [[ -n "$(git diff --name-only --diff-filter=U)" ]]; then
+            echo "::error::Unresolved merge conflicts remain."
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip -r requirements_test.txt
+
+      - name: Validate synchronized branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool custom_components/emby/manifest.json >/dev/null
+          python -m json.tool custom_components/emby/strings.json >/dev/null
+          python -m json.tool custom_components/emby/translations/de.json >/dev/null
+          python -m json.tool custom_components/emby/translations/en.json >/dev/null
+          python -m json.tool hacs.json >/dev/null
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          paths = [Path('.github/dependabot.yml')]
+          paths.extend(sorted(Path('.github/workflows').glob('*.yml')))
+          for path in paths:
+              yaml.load(path.read_text(encoding='utf-8'), Loader=yaml.BaseLoader)
+          PY
+          python -m compileall -q custom_components/emby
+          ruff check .
+          ruff format --check .
+          pytest -q
+
+      - name: Commit synchronized rc2 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git commit -m "chore: sync rc2 with release governance"
+          git push origin HEAD:fix/rc2-runtime-safety
