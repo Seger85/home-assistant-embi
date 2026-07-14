@@ -15,6 +15,7 @@ jobs:
     name: Quality (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version:
           - "3.13"
@@ -55,7 +56,7 @@ jobs:
           PY
 
       - name: Compile Python
-        run: python -m compileall -q custom_components/emby
+        run: python -m compileall -q custom_components/emby scripts tests
 
       - name: Ruff lint
         run: ruff check .
@@ -65,3 +66,19 @@ jobs:
 
       - name: Unit tests
         run: pytest -q
+
+      - name: Validate stable contract
+        run: python scripts/validate_stable_contract.py
+
+      - name: Secret and privacy scan
+        run: python scripts/secret_scan.py
+
+      - name: Build and verify release-equivalent asset
+        run: |
+          rm -rf dist
+          python scripts/build_package.py \
+            --output-dir dist \
+            --expected-version 0.3.0 \
+            --commit "${GITHUB_SHA}"
+          (cd dist && sha256sum --check embi.zip.sha256)
+          test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"

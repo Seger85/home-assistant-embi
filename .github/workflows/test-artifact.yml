@@ -23,71 +23,26 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Build and verify integration archive
-        shell: bash
+      - name: Validate stable contract
+        run: python scripts/validate_stable_contract.py
+
+      - name: Build release-equivalent integration archive
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          from __future__ import annotations
-
-          import json
-          from pathlib import Path
-          import zipfile
-
-          source = Path("custom_components/emby")
-          archive = Path("embi.zip")
-          with zipfile.ZipFile(
-              archive,
-              mode="w",
-              compression=zipfile.ZIP_DEFLATED,
-              compresslevel=9,
-          ) as target:
-              for path in sorted(source.rglob("*")):
-                  if not path.is_file():
-                      continue
-                  if "__pycache__" in path.parts or path.suffix in {".pyc", ".pyo"}:
-                      continue
-                  target.write(path, path.relative_to(source).as_posix())
-
-          with zipfile.ZipFile(archive) as packaged:
-              names = set(packaged.namelist())
-              required = {"__init__.py", "manifest.json", "strings.json"}
-              missing = sorted(required - names)
-              if missing:
-                  raise RuntimeError(f"Test archive misses required files: {missing}")
-              manifest = json.loads(packaged.read("manifest.json"))
-              if manifest.get("version") != "0.3.0":
-                  raise RuntimeError(
-                      f"Test archive manifest version is {manifest.get('version')!r}, expected '0.3.0'"
-                  )
-          PY
-          sha256sum embi.zip > embi.zip.sha256
-          printf '%s\n' "${GITHUB_SHA}" > BUILD_COMMIT
-          sha256sum --check embi.zip.sha256
+          rm -rf dist
+          python scripts/build_package.py \
+            --output-dir dist \
+            --expected-version 0.3.0 \
+            --commit "${GITHUB_SHA}"
+          (cd dist && sha256sum --check embi.zip.sha256)
+          test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
 
       - name: Upload unpublished integration package
         uses: actions/upload-artifact@v4
         with:
           name: embi-test-${{ github.sha }}
           path: |
-            embi.zip
-            embi.zip.sha256
-            BUILD_COMMIT
+            dist/embi.zip
+            dist/embi.zip.sha256
+            dist/BUILD_COMMIT
           if-no-files-found: error
           retention-days: 14
-
-      - name: Build temporary PR source snapshot
-        if: ${{ github.event_name == 'pull_request' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git archive --format=tar.gz --output=embi-source.tar.gz HEAD
-
-      - name: Upload temporary PR source snapshot
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: embi-source-${{ github.sha }}
-          path: embi-source.tar.gz
-          if-no-files-found: error
-          retention-days: 3
