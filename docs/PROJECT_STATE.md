@@ -13,13 +13,16 @@
 - Legacy YAML: none
 - Active repairs: none
 - Stale, restored, or orphaned EMBi entities: none
-- Server maintenance: disabled
+- Optional server maintenance: disabled
 
 No raw private device identifiers, credentials, diagnostics, or internal config-entry identifiers are stored in this document.
 
-## Published release
+## Published releases
 
-`v0.3.0-rc2` remains an immutable public prerelease on commit `f69224ff6dc6609f2923e391dda428dd0b91bf69`. It is not marked as latest and includes the verified HACS archive and checksum.
+- `v0.3.0-rc2`: immutable public prerelease on commit `f69224ff6dc6609f2923e391dda428dd0b91bf69`
+- `v0.3.0-rc3`: public prerelease on commit `0d776720b527d1285b258159edc8f30b933385ca`
+
+For rc3, both Quality versions, HACS validation, Hassfest, archive generation, checksum generation, prerelease classification, non-latest classification, and tag-target verification completed successfully. The temporary release-request branch was removed by the workflow.
 
 ## Repository state
 
@@ -28,13 +31,10 @@ No raw private device identifiers, credentials, diagnostics, or internal config-
 - integration branch: `develop`
 - protected pull-request workflow with stable required checks
 - validated release-request automation
-- no open rc2 implementation pull request
+- rc3 implementation merged through PR #16 using Squash and merge
+- stable `0.3.0` has not been released
 
-## 0.3.0-rc3 development target
-
-The additional maintenance requirements are implemented as `0.3.0-rc3` because rc2 has already been published and will not be moved or replaced.
-
-Scope:
+## 0.3.0-rc3 scope
 
 - manual maintenance filtered by last-activity age
 - default threshold: 365 days
@@ -44,22 +44,18 @@ Scope:
 - recurring run every 24 hours
 - no per-run candidate cap
 - active players and records without a valid timestamp are excluded
-- per-record error isolation
-- optional Home Assistant registry follow-up after successful server maintenance
-- fresh server revalidation and exact `ReportedDeviceId.AppName` matching before registry follow-up
-- registry changes only during a controlled reload and without a current entity state
+- independent per-record result handling
+- optional Home Assistant registry follow-up after successful server maintenance and fresh server revalidation
 - aggregate diagnostics without private identities
 
 ## Identity contract
 
-- `Id`: historical server record used only by the server-maintenance endpoint
+- `Id`: one historical server record
 - `ReportedDeviceId`: durable raw client identity and device-wide ignore rule
 - `ReportedDeviceId.AppName`: pyemby player key and existing Home Assistant unique ID
 
 No entity-ID or unique-ID migration is introduced.
 
-## Release safety gate
+## Remaining live gate
 
-Before publishing rc3, both Quality versions, JSON/YAML validation, Ruff, unit tests, HACS validation, and Hassfest must pass. Tests cover uncapped processing, age filtering, active-player protection, invalid timestamps, duplicate history records, and post-operation registry eligibility. No secrets or real private device identities may exist in the diff.
-
-After publication and before stable 0.3.0, the release requires a controlled HACS installation, backup, UI review, 120-second first-run verification, safe maintenance testing, and confirmation that all existing entity IDs and unique IDs remain stable.
+Before stable `0.3.0`, rc3 requires controlled HACS installation with backup, verification that the existing config entry and all entity identities remain unchanged, UI and screenshot review, confirmation that automatic maintenance is disabled by default, deliberate validation of the 120-second first-run behavior, log and diagnostics review, and a tested rollback path.
