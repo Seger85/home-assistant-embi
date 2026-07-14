@@ -4,30 +4,41 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 ## [Unreleased]
 
+### Remaining
+
+- kontrolliertes HACS-Liveupgrade von rc1 beziehungsweise rc2 auf 0.3.0-rc3
+- visuelle Prüfung der neuen manuellen und automatischen Bereinigungsdialoge
+- kontrollierter produktiver Test mit Backup und bewusst ausgewählten alten Datensätzen
+- Entscheidung über einen weiteren Release Candidate oder die stabile 0.3.0
+
+## [0.3.0-rc3] - Finale Gerätebereinigung
+
 ### Added
 
-- automatisierter Release-Workflow mit Tag-/Manifest-Abgleich
-- automatische Unterscheidung von Prerelease und stabilem Release
-- Release-Archiv `embi.zip` und SHA-256-Prüfsumme
-- dokumentierte Repository-, Branch- und Release-Governance
-- eindeutige CI-Checknamen für GitHub-Rulesets
+- manuelle Altersfilterung vor der Auswahl historischer Emby-Geräte
+- Standard-Altersfilter von 365 Tagen
+- separat aktivierbare automatische Serverbereinigung
+- bewusste Erstaktivierung per Warnschalter und exaktem Bestätigungstext
+- erster automatischer Lauf 120 Sekunden nach der bewussten Erstaktivierung
+- Wiederholung der Automatik alle 24 Stunden
+- sichere Nachlaufbereinigung zugehöriger Home-Assistant-Media-Player
+- aggregierte, identitätsfreie Laufzeitdiagnose der Automatik
 
 ### Changed
 
-- Dependabot-PRs zielen auf `develop`
-- Release-Veröffentlichung wird erst nach Quality, HACS und Hassfest ausgeführt
-- Projektstatus und Roadmap bilden den erfolgreichen rc1-Livetest und die rc2-Härtung ab
+- automatische Bereinigung verarbeitet bewusst alle zulässigen Datensätze ohne maximale Löschzahl pro Lauf
+- aktive Player und Datensätze ohne gültigen letzten Aktivitätszeitpunkt sind von manueller und automatischer Altersbereinigung ausgeschlossen
+- das Deaktivieren der übergeordneten Serverbereinigung deaktiviert ebenfalls die Automatik
+- manuelle Serverbereinigung kann erfolgreich gelöschte HA-Media-Player zusätzlich entfernen
 
-### Fixed
+### Security
 
-- nicht destruktive Synchronisierung von `main` zurück nach `develop` nach dem vorzeitigen Merge von PR #1
-- dokumentierte Abgrenzung zwischen einer veröffentlichten EMBi-Version und einem neueren Repository-Commit in HACS
-
-### Remaining
-
-- Live-Upgrade und UI-Prüfung von 0.3.0-rc2 in Home Assistant
-- kontrollierte Prüfung der Registry- und Serverbereinigungsdialoge ohne unbeabsichtigte Löschung
-- Entscheidung über einen weiteren Release Candidate oder die stabile 0.3.0
+- ein HA-Registry-Eintrag wird nur nach erfolgreicher Emby-Löschung berücksichtigt
+- eine frische `/Devices`-Abfrage muss bestätigen, dass kein verbleibender Datensatz dieselbe `ReportedDeviceId.AppName`-Identität verwendet
+- die Registry-Entfernung erfolgt erst nach einem kontrollierten Config-Entry-Reload und nur ohne vorhandenen Entity-State
+- aktive Wiedergaben (`playing`/`paused`) werden bereits vor der Serverlöschung ausgeschlossen
+- unbekannte oder nicht parsebare Aktivitätszeitpunkte werden fail-closed übersprungen
+- Logs und Diagnostics enthalten nur aggregierte Zähler, keine privaten Geräte-IDs
 
 ## [0.3.0-rc2] - Runtime-, Safety- und UI-Härtung
 
@@ -82,8 +93,8 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 ### Fixed
 
-- Gerätefilter nutzten in 0.2 fälschlich die serverseitige `/Devices`-Historien-ID statt `ReportedDeviceId`; dadurch konnten Auswahl- und Ignorierregeln die tatsächlichen pyemby-Unique-IDs verfehlen
-- erfolgreich gelöschte Geräte werden anhand ihrer stabilen Client-ID ignoriert, nicht anhand der nur für den Löschendpunkt gültigen Historien-ID
+- Gerätefilter nutzten in 0.2 teilweise die serverseitige `/Devices`-Historien-ID statt `ReportedDeviceId`
+- erfolgreich gelöschte Geräte werden anhand ihrer stabilen Client-ID ignoriert
 
 ### Live verification
 
@@ -101,4 +112,3 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 - Migration vorhandener Media-Player auf einen Config Entry
 - Erhalt der bestehenden Entity-IDs und Unique IDs
 - Deutsch/Englisch und Diagnostics
-- temporäre Legacy-YAML-Unterstützung für die kontrollierte Migration
