@@ -37,9 +37,7 @@ from .helpers import (
 from .maintenance_flow import ServerMaintenanceOptionsMixin
 
 
-def _api_client(
-    hass, data: dict[str, Any], api_key: str | None = None
-) -> EmbyApiClient:
+def _api_client(hass, data: dict[str, Any], api_key: str | None = None) -> EmbyApiClient:
     return EmbyApiClient(
         session=async_get_clientsession(hass),
         host=data[CONF_HOST],
@@ -63,9 +61,7 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
         return _api_client(self.hass, dict(self._entry.data))
 
     def _cleanup_client(self) -> EmbyApiClient:
-        cleanup_key = str(
-            self._entry.options.get(CONF_SERVER_CLEANUP_API_KEY, "")
-        ).strip()
+        cleanup_key = str(self._entry.options.get(CONF_SERVER_CLEANUP_API_KEY, "")).strip()
         return _api_client(
             self.hass,
             dict(self._entry.data),
@@ -109,12 +105,8 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
             if self._is_de()
             else "not currently reported by the server"
         )
-        options = merge_missing_options(
-            device_selector_options(devices), configured, missing_label
-        )
-        selector_options = [
-            {"value": key, "label": value} for key, value in options.items()
-        ]
+        options = merge_missing_options(device_selector_options(devices), configured, missing_label)
+        selector_options = [{"value": key, "label": value} for key, value in options.items()]
         schema = vol.Schema(
             {
                 vol.Required(
@@ -151,17 +143,11 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
         )
         if user_input is not None and not errors:
             updated = {**current, **user_input}
-            updated[CONF_ALLOWED_DEVICE_IDS] = sorted(
-                set(updated.get(CONF_ALLOWED_DEVICE_IDS, []))
-            )
-            updated[CONF_IGNORED_DEVICE_IDS] = sorted(
-                set(updated.get(CONF_IGNORED_DEVICE_IDS, []))
-            )
+            updated[CONF_ALLOWED_DEVICE_IDS] = sorted(set(updated.get(CONF_ALLOWED_DEVICE_IDS, [])))
+            updated[CONF_IGNORED_DEVICE_IDS] = sorted(set(updated.get(CONF_IGNORED_DEVICE_IDS, [])))
             return self.async_create_entry(title="", data=updated)
 
-        return self.async_show_form(
-            step_id="clients", data_schema=schema, errors=errors
-        )
+        return self.async_show_form(step_id="clients", data_schema=schema, errors=errors)
 
     async def async_step_clients_bulk(self, user_input: dict[str, Any] | None = None):
         return self.async_show_menu(
@@ -208,12 +194,8 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
             },
         )
 
-    async def async_step_clients_allow_all(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        def apply_action(
-            options: dict[str, Any], devices: list[EmbyDeviceRecord]
-        ) -> None:
+    async def async_step_clients_allow_all(self, user_input: dict[str, Any] | None = None):
+        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
             options[CONF_ALLOWED_DEVICE_IDS] = unique_player_keys(devices)
             options[CONF_CLIENT_MODE] = CLIENT_MODE_ALLOWLIST
 
@@ -224,24 +206,14 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
             item_count=lambda devices: len(unique_player_keys(devices)),
         )
 
-    async def async_step_clients_allow_none(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        def apply_action(
-            options: dict[str, Any], devices: list[EmbyDeviceRecord]
-        ) -> None:
+    async def async_step_clients_allow_none(self, user_input: dict[str, Any] | None = None):
+        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
             options[CONF_ALLOWED_DEVICE_IDS] = []
 
-        return await self._async_bulk_step(
-            "clients_allow_none", apply_action, user_input
-        )
+        return await self._async_bulk_step("clients_allow_none", apply_action, user_input)
 
-    async def async_step_clients_ignore_all(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        def apply_action(
-            options: dict[str, Any], devices: list[EmbyDeviceRecord]
-        ) -> None:
+    async def async_step_clients_ignore_all(self, user_input: dict[str, Any] | None = None):
+        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
             options[CONF_IGNORED_DEVICE_IDS] = unique_reported_device_ids(devices)
 
         return await self._async_bulk_step(
@@ -251,17 +223,11 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
             item_count=lambda devices: len(unique_reported_device_ids(devices)),
         )
 
-    async def async_step_clients_ignore_none(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        def apply_action(
-            options: dict[str, Any], devices: list[EmbyDeviceRecord]
-        ) -> None:
+    async def async_step_clients_ignore_none(self, user_input: dict[str, Any] | None = None):
+        def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
             options[CONF_IGNORED_DEVICE_IDS] = []
 
-        return await self._async_bulk_step(
-            "clients_ignore_none", apply_action, user_input
-        )
+        return await self._async_bulk_step("clients_ignore_none", apply_action, user_input)
 
     def _registry_cleanup_choices(self) -> list[dict[str, str]]:
         registry = er.async_get(self.hass)
@@ -274,9 +240,7 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
             "ignored": "Ignoriert" if self._is_de() else "Ignored",
         }
 
-        for entry in sorted(
-            registry.entities.values(), key=lambda item: item.entity_id
-        ):
+        for entry in sorted(registry.entities.values(), key=lambda item: item.entity_id):
             if entry.domain != "media_player" or entry.platform != DOMAIN:
                 continue
 
@@ -308,18 +272,14 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
 
         schema = vol.Schema(
             {
-                vol.Optional(
-                    CONF_CLEANUP_ENTITY_IDS, default=[]
-                ): selector.SelectSelector(
+                vol.Optional(CONF_CLEANUP_ENTITY_IDS, default=[]): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=choices,
                         multiple=True,
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Required(
-                    CONF_CONFIRM_CLEANUP, default=False
-                ): selector.BooleanSelector(),
+                vol.Required(CONF_CONFIRM_CLEANUP, default=False): selector.BooleanSelector(),
             }
         )
 
@@ -339,9 +299,7 @@ class EmbyOptionsFlow(ServerMaintenanceOptionsMixin, config_entries.OptionsFlow)
                     for entity_id in selected:
                         if registry.async_get(entity_id) is not None:
                             registry.async_remove(entity_id)
-                    return self.async_create_entry(
-                        title="", data=dict(self._entry.options)
-                    )
+                    return self.async_create_entry(title="", data=dict(self._entry.options))
 
         return self.async_show_form(
             step_id="ha_cleanup",
