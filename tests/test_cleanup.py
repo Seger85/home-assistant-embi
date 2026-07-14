@@ -36,9 +36,7 @@ def _record(
             "ReportedDeviceId": client_id or f"client-{record_id}",
             "Name": f"Device {record_id}",
             "AppName": app_name,
-            "DateLastActivity": activity.isoformat().replace("+00:00", "Z")
-            if activity
-            else None,
+            "DateLastActivity": activity.isoformat().replace("+00:00", "Z") if activity else None,
         }
     )
 
@@ -101,8 +99,7 @@ def test_age_plan_uses_default_style_cutoff_and_skips_active_or_unknown() -> Non
 def test_age_plan_does_not_limit_number_of_candidates() -> None:
     now = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
     records = [
-        _record(str(index), activity=now - timedelta(days=800 + index))
-        for index in range(300)
+        _record(str(index), activity=now - timedelta(days=800 + index)) for index in range(300)
     ]
 
     plan = plan_device_cleanup(records, now=now, age_days=365)
