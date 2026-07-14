@@ -15,7 +15,7 @@ Empfohlene Standardports:
 - HTTP: 8096
 - HTTPS: 8920
 
-Der API-Schlüssel wird in den Config-Entry-Daten gespeichert und in Diagnostics redigiert.
+Der API-Schlüssel wird in den Config-Entry-Daten gespeichert und in Diagnostics redigiert. Bei der Rekonfiguration wird ein gespeicherter Schlüssel nie in das Passwortfeld zurückgegeben. Ein leeres Feld behält den vorhandenen Schlüssel bei.
 
 ## Gerätemodus
 
@@ -56,7 +56,7 @@ Native Mehrfachselektoren bieten nicht in jeder Home-Assistant-Version eine verl
 - alle aktuellen Geräte ignorieren
 - Ignorierliste leeren
 
-Jede Aktion hat einen eigenen Bestätigungsdialog. Die besonders weitreichende Aktion „alle ignorieren“ weist ausdrücklich auf die Folgen hin.
+Jede Aktion hat einen eigenen Bestätigungsdialog. Historische `/Devices`-Datensätze werden dabei auf eindeutige Client-/App-Identitäten beziehungsweise rohe Client-IDs dedupliziert. Die besonders weitreichende Aktion „alle ignorieren“ weist ausdrücklich auf die Folgen hin.
 
 ## Verhalten bei fehlenden Geräten
 

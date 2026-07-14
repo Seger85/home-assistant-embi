@@ -2,44 +2,65 @@
 
 ## Production
 
-- Production version: EMBi 0.2.0
-- Production Home Assistant: Core 2026.7.2
-- Config entry: `01KXDH0G0CK724G1STHY69B22A`
-- Production state: loaded
+- Installed version: `v0.3.0-rc1` via the public HACS custom repository
+- Home Assistant: Core 2026.7.2
+- Existing config entry: retained and loaded
 - Media-player entities: 28
+- Base `ReportedDeviceId` values behind the players: 25
+- Historical `/Devices` records observed during the live analysis: 74
+- Existing entity IDs, unique IDs, and individual names: retained
+- Push updates and active-playback detection: working
 - Legacy YAML: none
 - Active repairs: none
-- Stale or restored entities: none
+- Stale, restored, or orphaned EMBi entities: none
+- Server cleanup: disabled
+- Registry or server deletions during verification: none
+
+No raw private device identifiers or diagnostics are stored in this repository.
 
 ## Development
 
 - Repository visibility: public
-- Development branch: `develop`
-- Development version: `0.3.0-rc1`
-- Live-test status: not installed in production yet
-- Merge status: blocked until Home Assistant live tests and explicit approval by Gerry
+- Target branch: `develop`
+- Current hardening version: `0.3.0-rc2`
+- Runtime hardening branch: `fix/rc2-runtime-safety`
+- Separate governance PR #10 remains open and Draft and is not part of rc2 runtime changes
+- `main` must not be reset or rewritten
 
-## CI status
+## 0.3.0-rc2 scope
 
-- Quality workflow: passed on Python 3.13 and 3.14
-- Ruff lint and format checks: passed
-- Unit tests: passed
-- Hassfest: passed
-- Official HACS action: passed against the public repository
-- HACS metadata checks temporarily ignored: `brands`, `description`, `license`, and `topics`
-- The metadata exceptions do not skip repository structure, `hacs.json`, integration manifest, or downloadable-content validation
+- deduplicate allow-all values from repeated historical device records
+- count unique client identities in bulk-action UI text
+- exclude every active state from Home Assistant registry cleanup, including legacy and ignored entries
+- revalidate cleanup candidates immediately before registry removal
+- make destructive server-record labels unambiguous with app, version, activity, and a short record ID
+- never return stored connection or cleanup API keys as password-field defaults
+- preserve existing keys when the user leaves the replacement field empty
+- preserve the `ReportedDeviceId.AppName` entity/unique-ID contract
+- keep diagnostics redaction intact
 
-## Known remaining work
+## Validation status
 
-- Install the release candidate through the public HACS custom repository
-- Live migration test from EMBi 0.2.0 to 0.3.0-rc1
-- Confirm that all 28 existing media-player entity IDs remain unchanged
-- Test the options migration and all options menus
-- Server-cleanup safety test
-- UI and theme quality assurance on iPhone, iPad, and desktop
-- Finalize repository description/topics and remove temporary HACS metadata exceptions when applicable
-- Final changelog review and release decision
+Local validation completed for the rc2 implementation candidate:
+
+- Python compilation: passed
+- Unit tests: 24 passed
+- Ruff lint: passed
+- Ruff formatting: passed
+- JSON parsing: passed
+- synthetic test identities only
+
+GitHub CI, HACS validation, and Hassfest must pass on the Draft PR before any merge consideration.
 
 ## Release safety gate
 
-The pull request from `develop` to `main` must remain a draft. Do not merge, publish a stable release, perform server-side cleanup, or install this release candidate in production without a new explicit approval from Gerry after the documented live tests.
+0.3.0-rc2 is recommended instead of a stable 0.3.0 because the fixes affect runtime filtering, destructive-action candidate selection, secret handling, and maintenance UI labels.
+
+Without a new explicit approval from Gerry:
+
+- do not merge the rc2 Draft PR
+- do not merge or change Draft PR #10
+- do not create or move a tag
+- do not publish a release
+- do not remove entity-registry entries
+- do not delete Emby server records

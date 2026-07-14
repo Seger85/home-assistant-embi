@@ -12,7 +12,7 @@ def test_manifest_points_to_canonical_repository() -> None:
 
     assert manifest["domain"] == "emby"
     assert manifest["name"] == "Emby Integration - EMBi"
-    assert manifest["version"] == "0.3.0-rc1"
+    assert manifest["version"] == "0.3.0-rc2"
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["documentation"].endswith("Seger85/home-assistant-embi")
     assert manifest["issue_tracker"].endswith("Seger85/home-assistant-embi/issues")
@@ -38,3 +38,31 @@ def test_server_cleanup_credentials_are_redacted() -> None:
 
     assert "CONF_SERVER_CLEANUP_API_KEY" in diagnostics
     assert "TO_REDACT" in diagnostics
+
+
+def test_password_fields_do_not_reuse_stored_secrets_as_defaults() -> None:
+    config_flow = (COMPONENT / "config_flow.py").read_text()
+
+    assert "defaults.get(CONF_API_KEY" not in config_flow
+    assert "default=current.get(CONF_SERVER_CLEANUP_API_KEY" not in config_flow
+    assert "submitted_api_key or entry.data[CONF_API_KEY]" in config_flow
+    assert "submitted_cleanup_key or stored_cleanup_key" in config_flow
+
+
+def test_media_player_unique_id_contract_is_unchanged() -> None:
+    media_player = (COMPONENT / "media_player.py").read_text()
+
+    assert "self._attr_unique_id = device_id" in media_player
+
+
+def test_all_sensitive_device_identity_fields_are_redacted() -> None:
+    diagnostics = (COMPONENT / "diagnostics.py").read_text()
+
+    for field in (
+        '"record_id"',
+        '"reported_device_id"',
+        '"player_key"',
+        '"name"',
+        '"last_user_name"',
+    ):
+        assert field in diagnostics

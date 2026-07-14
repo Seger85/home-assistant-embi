@@ -8,7 +8,7 @@
 
 Die Integration erhält die bekannten Media-Player-Entity-IDs, ergänzt eine kontrollierte Geräteauswahl und stellt bewusst abgesicherte Wartungsfunktionen für Home Assistant und – optional – den lokalen Emby-Server bereit.
 
-> Projektstatus: **0.3.0-rc1 Release Candidate**. Der produktive Ausgangsstand 0.2.0 ist separat als Baseline versioniert. Vor produktiven Updates immer ein Home-Assistant-Backup erstellen.
+> Projektstatus: **0.3.0-rc2 Release Candidate**. Der produktive Ausgangsstand 0.2.0 ist separat als Baseline versioniert. Vor produktiven Updates immer ein Home-Assistant-Backup erstellen.
 
 ## Warum EMBi?
 
@@ -20,9 +20,9 @@ EMBi setzt an der Quelle der Entity-Erzeugung an:
 - stabile Übernahme vorhandener Media-Player-Entity-IDs
 - Anzeige aller, nur aktiver oder gezielt ausgewählter Clients
 - Ignorierliste mit Vorrang vor allen anderen Regeln
-- sichere Sammelaktionen für Geräteauswahl und Ignorierliste
-- kontrollierte Bereinigung geeigneter Entity-Registry-Altlasten
-- optionale, standardmäßig ausgeschaltete Bereinigung historischer Emby-Geräte
+- sichere, deduplizierte Sammelaktionen für Geräteauswahl und Ignorierliste
+- kontrollierte Bereinigung ausschließlich inaktiver, unmittelbar erneut geprüfter Entity-Registry-Altlasten
+- optionale, standardmäßig ausgeschaltete Bereinigung historischer Emby-Geräte mit eindeutig beschrifteten Datensätzen
 - separater zweiter Bestätigungsschritt vor serverseitigen Löschungen
 - Teilerfolgsauswertung bei mehreren Löschungen
 - Deutsch und Englisch
@@ -90,17 +90,19 @@ Die Ignorierliste hat immer Vorrang. Eine rohe `ReportedDeviceId` ignoriert alle
 
 ### Home-Assistant-Einträge bereinigen
 
-EMBi bietet nur vorselektierte Kandidaten an:
+EMBi bietet nur inaktive, unmittelbar vor dem Entfernen erneut geprüfte Kandidaten an:
 
-- alte YAML-Einträge
+- alte YAML-Einträge ohne aktiven State
 - reine Registry-Einträge ohne aktiven State
-- bereits durch EMBi ignorierte Entitäten
+- bereits durch EMBi ignorierte Entitäten ohne aktiven State
 
-Normale aktive Media-Player werden bewusst nicht angeboten.
+Aktive alte YAML-, ignorierte und normale Media-Player werden bewusst nicht angeboten.
 
 ### Geräte auf dem Emby-Server löschen
 
-Diese Funktion ist standardmäßig deaktiviert und muss zuerst ausdrücklich eingeschaltet werden. Optional kann ein separater API-Schlüssel hinterlegt werden; ohne separaten Schlüssel wird der normale Verbindungsschlüssel verwendet.
+Diese Funktion ist standardmäßig deaktiviert und muss zuerst ausdrücklich eingeschaltet werden. Optional kann ein separater API-Schlüssel hinterlegt werden; ohne separaten Schlüssel wird der normale Verbindungsschlüssel verwendet. Gespeicherte Schlüssel werden in Passwortfeldern nie als Standardwert zurückgegeben.
+
+Historische Datensätze werden mit Gerätename, App, App-Version, letzter Aktivität und kurzer Datensatz-ID eindeutig beschriftet.
 
 Vor jeder Löschung sind erforderlich:
 

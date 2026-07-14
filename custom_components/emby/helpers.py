@@ -43,6 +43,16 @@ def should_expose_device(
     return True
 
 
+def unique_player_keys(devices: Iterable[EmbyDeviceRecord]) -> list[str]:
+    """Return sorted unique pyemby/HA player identities."""
+    return sorted({device.player_key for device in devices})
+
+
+def unique_reported_device_ids(devices: Iterable[EmbyDeviceRecord]) -> list[str]:
+    """Return sorted unique raw client identities."""
+    return sorted({device.reported_device_id for device in devices})
+
+
 def device_selector_options(devices: Iterable[EmbyDeviceRecord]) -> dict[str, str]:
     """Return selector options keyed by pyemby/HA player identity."""
     return {device.player_key: device.label for device in devices}
@@ -52,7 +62,27 @@ def server_device_selector_options(
     devices: Iterable[EmbyDeviceRecord],
 ) -> dict[str, str]:
     """Return destructive-cleanup options keyed by server record ID."""
-    return {device.record_id: device.label for device in devices}
+    return {device.record_id: device.server_cleanup_label for device in devices}
+
+
+def registry_cleanup_reason(
+    *,
+    has_state: bool,
+    config_entry_id: str | None,
+    target_entry_id: str,
+    unique_id: str,
+    ignored_ids: Iterable[str],
+) -> str | None:
+    """Return why an inactive EMBi registry entry is safe to offer for cleanup."""
+    if has_state:
+        return None
+    if config_entry_id is None:
+        return "legacy_yaml"
+    if config_entry_id != target_entry_id:
+        return None
+    if identifier_matches(unique_id, ignored_ids):
+        return "ignored"
+    return "registry_only"
 
 
 def merge_missing_options(

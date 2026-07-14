@@ -23,7 +23,7 @@
       },
       "reconfigure": {
         "title": "Verbindung bearbeiten",
-        "description": "Ändere Serveradresse, Port, HTTPS-Einstellung oder API-Schlüssel. Nach dem Speichern wird EMBi neu geladen.",
+        "description": "Ändere Serveradresse, Port, HTTPS-Einstellung oder API-Schlüssel. Aus Sicherheitsgründen wird der gespeicherte API-Schlüssel nie angezeigt. Lasse das Feld leer, um ihn beizubehalten. Nach dem Speichern wird EMBi neu geladen.",
         "data": {
           "name": "Name",
           "host": "Host/IP-Adresse",
@@ -36,7 +36,7 @@
           "host": "Lokale IP-Adresse oder Hostname ohne Protokollpräfix",
           "port": "Port des lokalen Emby-Endpunkts",
           "ssl": "Nur aktivieren, wenn der Endpunkt HTTPS verwendet",
-          "api_key": "API-Schlüssel für Wiedergabe und Geräteerkennung"
+          "api_key": "Nur einen Ersatzschlüssel eingeben, wenn er geändert werden soll. Leer lassen, um den gespeicherten Schlüssel beizubehalten."
         }
       }
     },
@@ -90,7 +90,7 @@
       },
       "clients_allow_all": {
         "title": "Alle aktuellen Geräte auswählen",
-        "description": "Fügt alle {count} aktuell von Emby gemeldeten Geräte zu „Anzuzeigende Geräte“ hinzu und wechselt in den Modus „Nur ausgewählte Geräte“.",
+        "description": "Fügt alle {count} eindeutigen, aktuell von Emby gemeldeten Client-/App-Kombinationen zu „Anzuzeigende Geräte“ hinzu und wechselt in den Modus „Nur ausgewählte Geräte“.",
         "data": {
           "confirm_bulk": "Ich bestätige diese Sammeländerung"
         }
@@ -104,7 +104,7 @@
       },
       "clients_ignore_all": {
         "title": "Alle aktuellen Geräte ignorieren",
-        "description": "Fügt alle {count} aktuell von Emby gemeldeten Geräte zur Ignorierliste hinzu. Nach dem Neuladen werden dadurch alle aktuellen EMBi-Player nicht verfügbar.",
+        "description": "Fügt alle {count} eindeutigen, aktuell von Emby gemeldeten Clients zur Ignorierliste hinzu. Nach dem Neuladen werden dadurch alle aktuellen EMBi-Player nicht verfügbar.",
         "data": {
           "confirm_bulk": "Ich verstehe und bestätige diese Sammeländerung"
         }
@@ -118,25 +118,25 @@
       },
       "ha_cleanup": {
         "title": "Home-Assistant-Einträge bereinigen",
-        "description": "Es werden nur {count} sichere Kandidaten angeboten: alte YAML-Einträge, reine Registry-Einträge oder bereits von EMBi ignorierte Entitäten. Normale aktive Player sind bewusst geschützt.",
+        "description": "Es werden nur {count} inaktive und unmittelbar erneut geprüfte Kandidaten angeboten: alte YAML-Einträge, reine Registry-Einträge oder inaktive, bereits von EMBi ignorierte Entitäten. Aktive alte YAML-, ignorierte und normale Player sind bewusst geschützt.",
         "data": {
           "cleanup_entity_ids": "Zu entfernende Einträge",
           "confirm_cleanup": "Ich bestätige die Entfernung aus der Home-Assistant-Entity-Registry"
         },
         "data_description": {
-          "cleanup_entity_ids": "Das Entfernen eines Registry-Eintrags löscht kein Gerät aus Emby. Ein Client kann zurückkehren, wenn EMBi ihn weiterhin zulässt."
+          "cleanup_entity_ids": "Die Kandidaten werden direkt vor dem Entfernen erneut geprüft. Das Entfernen eines Registry-Eintrags löscht kein Gerät aus Emby. Ein Client kann zurückkehren, wenn EMBi ihn weiterhin zulässt."
         }
       },
       "server_cleanup_settings": {
         "title": "Optionale Serverbereinigung einrichten",
-        "description": "Die Serverbereinigung ist standardmäßig ausgeschaltet. Aktiviere sie nur, wenn historische Geräte direkt vom lokalen Emby-Server gelöscht werden sollen. Ohne separaten Schlüssel verwendet EMBi den normalen Verbindungsschlüssel.",
+        "description": "Die Serverbereinigung ist standardmäßig ausgeschaltet. Aktiviere sie nur, wenn historische Geräte direkt vom lokalen Emby-Server gelöscht werden sollen. Gespeicherte API-Schlüssel werden nie angezeigt. Ist kein separater Schlüssel gespeichert, verwendet EMBi den normalen Verbindungsschlüssel.",
         "data": {
           "server_cleanup_enabled": "Serverbereinigung aktivieren",
           "server_cleanup_api_key": "Optionaler separater API-Schlüssel für die Bereinigung"
         },
         "data_description": {
           "server_cleanup_enabled": "Bei ausgeschalteter Funktion wird das destruktive Bereinigungsmenü ausgeblendet.",
-          "server_cleanup_api_key": "Optional. Nutze einen eigenen Schlüssel, sofern dein Emby-System getrennte Zugangsdaten unterstützt; ansonsten leer lassen."
+          "server_cleanup_api_key": "Optional. Nur einen Ersatzschlüssel eingeben, wenn er geändert werden soll. Leer lassen, um einen vorhandenen separaten Schlüssel beizubehalten; zum Entfernen die Serverbereinigung einmal deaktivieren."
         }
       },
       "server_cleanup": {
@@ -147,7 +147,7 @@
           "add_deleted_to_ignored": "Erfolgreich gelöschte Clients zusätzlich in Home Assistant ignorieren"
         },
         "data_description": {
-          "delete_device_record_ids": "Jeder Eintrag ist ein serverseitiger Historieneintrag. Vor dem gesonderten Bestätigungsschritt wird nichts gelöscht.",
+          "delete_device_record_ids": "Jeder Eintrag ist ein serverseitiger Historieneintrag und enthält App, Version, letzte Aktivität und eine kurze Datensatz-ID zur eindeutigen Auswahl. Vor dem gesonderten Bestätigungsschritt wird nichts gelöscht.",
           "add_deleted_to_ignored": "Verwendet die stabile gemeldete Client-ID, damit der gelöschte Client nicht unmittelbar wieder als EMBi-Player angelegt wird."
         }
       },

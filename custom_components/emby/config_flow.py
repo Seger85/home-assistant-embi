@@ -36,9 +36,11 @@ from .const import (
 )
 from .helpers import (
     device_selector_options,
-    identifier_matches,
     merge_missing_options,
+    registry_cleanup_reason,
     server_device_selector_options,
+    unique_player_keys,
+    unique_reported_device_ids,
 )
 
 
@@ -49,8 +51,15 @@ def _text_selector(*, password: bool = False) -> selector.TextSelector:
     return selector.TextSelector(selector.TextSelectorConfig(**config))
 
 
-def _connection_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+def _connection_schema(
+    defaults: dict[str, Any] | None = None, *, require_api_key: bool = True
+) -> vol.Schema:
     defaults = defaults or {}
+    api_key_marker = (
+        vol.Required(CONF_API_KEY, default="")
+        if require_api_key
+        else vol.Optional(CONF_API_KEY, default="")
+    )
     return vol.Schema(
         {
             vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "EMBi")): _text_selector(),
@@ -68,9 +77,7 @@ def _connection_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Required(
                 CONF_SSL, default=defaults.get(CONF_SSL, DEFAULT_SSL)
             ): selector.BooleanSelector(),
-            vol.Required(CONF_API_KEY, default=defaults.get(CONF_API_KEY, "")): _text_selector(
-                password=True
-            ),
+            api_key_marker: _text_selector(password=True),
         }
     )
 
@@ -126,21 +133,22 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
         entry = self._get_reconfigure_entry()
         defaults = {CONF_NAME: entry.title, **entry.data}
+        defaults.pop(CONF_API_KEY, None)
         errors: dict[str, str] = {}
         if user_input is not None:
+            data = dict(user_input)
+            submitted_api_key = str(data.get(CONF_API_KEY, "")).strip()
+            data[CONF_API_KEY] = submitted_api_key or entry.data[CONF_API_KEY]
             try:
-                info = await _validate(self.hass, user_input)
+                info = await _validate(self.hass, data)
             except EmbyAuthError:
                 errors["base"] = "invalid_auth"
             except EmbyApiError:
                 errors["base"] = "cannot_connect"
             else:
-                server_id = str(
-                    info.get("Id") or f"{user_input[CONF_HOST]}:{int(user_input[CONF_PORT])}"
-                )
+                server_id = str(info.get("Id") or f"{data[CONF_HOST]}:{int(data[CONF_PORT])}")
                 await self.async_set_unique_id(server_id)
                 self._abort_if_unique_id_mismatch()
-                data = dict(user_input)
                 data[CONF_PORT] = int(data[CONF_PORT])
                 title = data.pop(CONF_NAME)
                 self.hass.config_entries.async_update_entry(entry, title=title)
@@ -148,7 +156,14 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=_connection_schema(user_input or defaults),
+            data_schema=_connection_schema(
+                {
+                    key: value
+                    for key, value in (user_input or defaults).items()
+                    if key != CONF_API_KEY
+                },
+                require_api_key=False,
+            ),
             errors=errors,
         )
 
@@ -274,6 +289,7 @@ class EmbyOptionsFlow(config_entries.OptionsFlow):
         step_id: str,
         apply_action: Callable[[dict[str, Any], list[EmbyDeviceRecord]], None],
         user_input: dict[str, Any] | None,
+        item_count: Callable[[list[EmbyDeviceRecord]], int] | None = None,
     ):
         errors: dict[str, str] = {}
         try:
@@ -297,15 +313,22 @@ class EmbyOptionsFlow(config_entries.OptionsFlow):
             step_id=step_id,
             data_schema=schema,
             errors=errors,
-            description_placeholders={"count": str(len(devices))},
+            description_placeholders={
+                "count": str(item_count(devices) if item_count else len(devices))
+            },
         )
 
     async def async_step_clients_allow_all(self, user_input: dict[str, Any] | None = None):
         def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
-            options[CONF_ALLOWED_DEVICE_IDS] = sorted(device.player_key for device in devices)
+            options[CONF_ALLOWED_DEVICE_IDS] = unique_player_keys(devices)
             options[CONF_CLIENT_MODE] = CLIENT_MODE_ALLOWLIST
 
-        return await self._async_bulk_step("clients_allow_all", apply_action, user_input)
+        return await self._async_bulk_step(
+            "clients_allow_all",
+            apply_action,
+            user_input,
+            item_count=lambda devices: len(unique_player_keys(devices)),
+        )
 
     async def async_step_clients_allow_none(self, user_input: dict[str, Any] | None = None):
         def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
@@ -315,11 +338,14 @@ class EmbyOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_clients_ignore_all(self, user_input: dict[str, Any] | None = None):
         def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
-            options[CONF_IGNORED_DEVICE_IDS] = sorted(
-                {device.reported_device_id for device in devices}
-            )
+            options[CONF_IGNORED_DEVICE_IDS] = unique_reported_device_ids(devices)
 
-        return await self._async_bulk_step("clients_ignore_all", apply_action, user_input)
+        return await self._async_bulk_step(
+            "clients_ignore_all",
+            apply_action,
+            user_input,
+            item_count=lambda devices: len(unique_reported_device_ids(devices)),
+        )
 
     async def async_step_clients_ignore_none(self, user_input: dict[str, Any] | None = None):
         def apply_action(options: dict[str, Any], devices: list[EmbyDeviceRecord]) -> None:
@@ -332,21 +358,27 @@ class EmbyOptionsFlow(config_entries.OptionsFlow):
         ignored_ids = self._entry.options.get(CONF_IGNORED_DEVICE_IDS, [])
         choices: list[dict[str, str]] = []
 
+        reason_labels = {
+            "legacy_yaml": "Altes YAML" if self._is_de() else "Legacy YAML",
+            "registry_only": "Nur Registry" if self._is_de() else "Registry only",
+            "ignored": "Ignoriert" if self._is_de() else "Ignored",
+        }
+
         for entry in sorted(registry.entities.values(), key=lambda item: item.entity_id):
             if entry.domain != "media_player" or entry.platform != DOMAIN:
                 continue
 
-            status: str | None = None
-            if entry.config_entry_id is None:
-                status = "Legacy YAML" if not self._is_de() else "Altes YAML"
-            elif entry.config_entry_id == self._entry.entry_id:
-                if self.hass.states.get(entry.entity_id) is None:
-                    status = "Registry only" if not self._is_de() else "Nur Registry"
-                elif identifier_matches(str(entry.unique_id), ignored_ids):
-                    status = "Ignored" if not self._is_de() else "Ignoriert"
-            if status is None:
+            reason = registry_cleanup_reason(
+                has_state=self.hass.states.get(entry.entity_id) is not None,
+                config_entry_id=entry.config_entry_id,
+                target_entry_id=self._entry.entry_id,
+                unique_id=str(entry.unique_id),
+                ignored_ids=ignored_ids,
+            )
+            if reason is None:
                 continue
 
+            status = reason_labels[reason]
             label = entry.name or entry.original_name or entry.entity_id
             choices.append(
                 {
@@ -382,10 +414,16 @@ class EmbyOptionsFlow(config_entries.OptionsFlow):
             elif selected and not user_input.get(CONF_CONFIRM_CLEANUP):
                 errors["base"] = "confirmation_required"
             else:
-                for entity_id in selected:
-                    if registry.async_get(entity_id) is not None:
-                        registry.async_remove(entity_id)
-                return self.async_create_entry(title="", data=dict(self._entry.options))
+                revalidated_values = {
+                    choice["value"] for choice in self._registry_cleanup_choices()
+                }
+                if any(entity_id not in revalidated_values for entity_id in selected):
+                    errors["base"] = "invalid_selection"
+                else:
+                    for entity_id in selected:
+                        if registry.async_get(entity_id) is not None:
+                            registry.async_remove(entity_id)
+                    return self.async_create_entry(title="", data=dict(self._entry.options))
 
         return self.async_show_form(
             step_id="ha_cleanup",
@@ -405,18 +443,20 @@ class EmbyOptionsFlow(config_entries.OptionsFlow):
                 ): selector.BooleanSelector(),
                 vol.Optional(
                     CONF_SERVER_CLEANUP_API_KEY,
-                    default=current.get(CONF_SERVER_CLEANUP_API_KEY, ""),
+                    default="",
                 ): _text_selector(password=True),
             }
         )
 
         if user_input is not None:
             enabled = bool(user_input.get(CONF_SERVER_CLEANUP_ENABLED))
-            cleanup_key = str(user_input.get(CONF_SERVER_CLEANUP_API_KEY, "")).strip()
-            if enabled and cleanup_key:
+            submitted_cleanup_key = str(user_input.get(CONF_SERVER_CLEANUP_API_KEY, "")).strip()
+            stored_cleanup_key = str(current.get(CONF_SERVER_CLEANUP_API_KEY, "")).strip()
+            effective_cleanup_key = submitted_cleanup_key or stored_cleanup_key
+            if enabled and effective_cleanup_key:
                 try:
                     await _api_client(
-                        self.hass, dict(self._entry.data), cleanup_key
+                        self.hass, dict(self._entry.data), effective_cleanup_key
                     ).async_validate()
                 except EmbyAuthError:
                     errors["base"] = "invalid_cleanup_auth"
@@ -426,8 +466,8 @@ class EmbyOptionsFlow(config_entries.OptionsFlow):
             if not errors:
                 updated = dict(current)
                 updated[CONF_SERVER_CLEANUP_ENABLED] = enabled
-                if enabled and cleanup_key:
-                    updated[CONF_SERVER_CLEANUP_API_KEY] = cleanup_key
+                if enabled and effective_cleanup_key:
+                    updated[CONF_SERVER_CLEANUP_API_KEY] = effective_cleanup_key
                 else:
                     updated.pop(CONF_SERVER_CLEANUP_API_KEY, None)
                 return self.async_create_entry(title="", data=updated)
