@@ -10,6 +10,7 @@ CONF_ALLOWED_DEVICE_IDS = "allowed_device_ids"
 CONF_IGNORED_PLAYER_KEYS = "ignored_player_keys"
 CONF_IGNORED_REPORTED_DEVICE_IDS = "ignored_reported_device_ids"
 CONF_UNRESOLVED_IGNORED_IDS = "unresolved_ignored_ids"
+CONF_MAINTENANCE_STORE_INITIALIZED = "maintenance_store_initialized"
 
 CONF_CLEANUP_ENTITY_IDS = "cleanup_entity_ids"
 CONF_CONFIRM_CLEANUP = "confirm_cleanup"
@@ -81,5 +82,4 @@ FOLLOW_UP_SKIPPED = "skipped"
 
 MAINTENANCE_STORE_VERSION = 1
 MAINTENANCE_STORE_KEY_PREFIX = f"{DOMAIN}.maintenance"
-MAINTENANCE_STORE_INITIALIZED = "maintenance_store_initialized"
 MAINTENANCE_NOTIFICATION_ID_PREFIX = f"{DOMAIN}_maintenance"

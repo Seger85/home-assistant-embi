@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .entry_lifecycle import async_migrate_entry, async_unload_entry
