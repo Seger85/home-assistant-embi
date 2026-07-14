@@ -2,22 +2,24 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.3.0-rc3"
+VERSION = "0.3.0"
 PLATFORMS = ["media_player"]
 
 CONF_CLIENT_MODE = "client_mode"
 CONF_ALLOWED_DEVICE_IDS = "allowed_device_ids"
-CONF_IGNORED_DEVICE_IDS = "ignored_device_ids"
+CONF_IGNORED_PLAYER_KEYS = "ignored_player_keys"
+CONF_IGNORED_REPORTED_DEVICE_IDS = "ignored_reported_device_ids"
+CONF_UNRESOLVED_IGNORED_IDS = "unresolved_ignored_ids"
 
 CONF_CLEANUP_ENTITY_IDS = "cleanup_entity_ids"
 CONF_CONFIRM_CLEANUP = "confirm_cleanup"
 CONF_CONFIRM_BULK = "confirm_bulk"
+CONF_CONFIRM_APPLY = "confirm_apply"
+CONF_CONFIRM_DISCARD = "confirm_discard"
 
 CONF_SERVER_CLEANUP_ENABLED = "server_cleanup_enabled"
-CONF_SERVER_CLEANUP_API_KEY = "server_cleanup_api_key"
 CONF_SERVER_CLEANUP_AGE_DAYS = "server_cleanup_age_days"
 CONF_DELETE_DEVICE_RECORD_IDS = "delete_device_record_ids"
-CONF_ADD_DELETED_TO_IGNORED = "add_deleted_to_ignored"
 CONF_REMOVE_DELETED_HA_ENTITIES = "remove_deleted_ha_entities"
 CONF_CONFIRM_DELETE = "confirm_delete"
 CONF_CONFIRMATION_TEXT = "confirmation_text"
@@ -27,7 +29,22 @@ CONF_SERVER_AUTO_CLEANUP_AGE_DAYS = "server_auto_cleanup_age_days"
 CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES = "server_auto_cleanup_remove_ha_entities"
 CONF_SERVER_AUTO_CLEANUP_INITIAL_RUN_COMPLETED = "server_auto_cleanup_initial_run_completed"
 CONF_CONFIRM_AUTO_CLEANUP = "confirm_auto_cleanup"
-CONF_AUTO_CLEANUP_CONFIRMATION_TEXT = "auto_cleanup_confirmation_text"
+
+CONF_AGE_PRESET = "age_preset"
+CONF_CUSTOM_AGE_DAYS = "custom_age_days"
+AGE_PRESET_7 = "preset_7"
+AGE_PRESET_30 = "preset_30"
+AGE_PRESET_90 = "preset_90"
+AGE_PRESET_180 = "preset_180"
+AGE_PRESET_365 = "preset_365"
+AGE_PRESET_CUSTOM = "custom"
+AGE_PRESETS = {
+    AGE_PRESET_7: 7,
+    AGE_PRESET_30: 30,
+    AGE_PRESET_90: 90,
+    AGE_PRESET_180: 180,
+    AGE_PRESET_365: 365,
+}
 
 CLIENT_MODE_ALL = "all"
 CLIENT_MODE_ACTIVE_ONLY = "active_only"
@@ -39,7 +56,31 @@ DEFAULT_SSL_PORT = 8920
 DEFAULT_SSL = False
 
 DEFAULT_SERVER_CLEANUP_AGE_DAYS = 365
+DEFAULT_REMOVE_HA_ENTITIES = False
 MIN_SERVER_CLEANUP_AGE_DAYS = 1
 MAX_SERVER_CLEANUP_AGE_DAYS = 3650
 AUTO_CLEANUP_INITIAL_DELAY_SECONDS = 120
 AUTO_CLEANUP_INTERVAL_HOURS = 24
+AUTO_CLEANUP_INTERVAL_SECONDS = AUTO_CLEANUP_INTERVAL_HOURS * 60 * 60
+
+RUN_STATUS_IDLE = "idle"
+RUN_STATUS_RUNNING = "running"
+RUN_STATUS_SERVER_COMPLETED = "server_completed"
+RUN_STATUS_REGISTRY_PENDING = "registry_pending"
+RUN_STATUS_COMPLETED = "completed"
+RUN_STATUS_PARTIAL_FAILURE = "partial_failure"
+RUN_STATUS_FAILED = "failed"
+RUN_STATUS_INTERRUPTED = "interrupted"
+
+RUN_MODE_MANUAL = "manual"
+RUN_MODE_AUTOMATIC = "automatic"
+
+FOLLOW_UP_IDLE = "idle"
+FOLLOW_UP_PENDING = "pending"
+FOLLOW_UP_COMPLETED = "completed"
+FOLLOW_UP_INTERRUPTED = "interrupted"
+FOLLOW_UP_SKIPPED = "skipped"
+
+MAINTENANCE_STORE_VERSION = 1
+MAINTENANCE_STORE_KEY_PREFIX = f"{DOMAIN}.maintenance"
+MAINTENANCE_NOTIFICATION_ID_PREFIX = f"{DOMAIN}_maintenance"
