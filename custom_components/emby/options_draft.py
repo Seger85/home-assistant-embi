@@ -1,29 +1,32 @@
 from __future__ import annotations
 
-from copy import deepcopy
+from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 
+@dataclass(slots=True)
 class OptionsDraft:
-    """Mutable draft that never writes through to stored options."""
+    """Mutable draft whose original value remains unchanged until final apply."""
 
-    def __init__(self, options: dict[str, Any]) -> None:
-        self.original = deepcopy(options)
-        self.current = deepcopy(options)
+    original: dict[str, Any]
+    current: dict[str, Any]
+
+    @classmethod
+    def from_options(cls, options: Mapping[str, Any]) -> OptionsDraft:
+        original = dict(options)
+        return cls(original=original, current=dict(original))
 
     @property
     def dirty(self) -> bool:
-        """Return whether the draft differs from the original options."""
         return self.current != self.original
 
-    def discard(self) -> None:
-        """Discard all changes without replacing public dict references."""
-        self.current.clear()
-        self.current.update(deepcopy(self.original))
+    def update(self, values: Mapping[str, Any]) -> None:
+        self.current.update(values)
 
-    def applied(self, options: dict[str, Any]) -> None:
-        """Update both snapshots after a successful apply."""
-        self.original.clear()
-        self.original.update(deepcopy(options))
+    def discard(self) -> None:
         self.current.clear()
-        self.current.update(deepcopy(options))
+        self.current.update(self.original)
+
+    def applied(self) -> dict[str, Any]:
+        return dict(self.current)
