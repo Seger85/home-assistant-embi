@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from datetime import timedelta
-import logging
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT, CONF_SSL
