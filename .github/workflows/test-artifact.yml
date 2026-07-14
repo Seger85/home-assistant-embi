@@ -81,10 +81,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tar \
-            --exclude=.git \
-            --exclude=embi-source.tar.gz \
-            -czf embi-source.tar.gz .
+          git archive --format=tar.gz --output=embi-source.tar.gz HEAD
 
       - name: Upload temporary PR source snapshot
         if: ${{ github.event_name == 'pull_request' }}
