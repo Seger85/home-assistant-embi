@@ -32,12 +32,8 @@ def _connection_schema(
     )
     return vol.Schema(
         {
-            vol.Required(
-                CONF_NAME, default=defaults.get(CONF_NAME, "EMBi")
-            ): _text_selector(),
-            vol.Required(
-                CONF_HOST, default=defaults.get(CONF_HOST, "")
-            ): _text_selector(),
+            vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "EMBi")): _text_selector(),
+            vol.Required(CONF_HOST, default=defaults.get(CONF_HOST, "")): _text_selector(),
             vol.Required(
                 CONF_PORT, default=defaults.get(CONF_PORT, DEFAULT_PORT)
             ): selector.NumberSelector(
@@ -89,8 +85,7 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
             else:
                 server_id = str(
-                    info.get("Id")
-                    or f"{user_input[CONF_HOST]}:{int(user_input[CONF_PORT])}"
+                    info.get("Id") or f"{user_input[CONF_HOST]}:{int(user_input[CONF_PORT])}"
                 )
                 await self.async_set_unique_id(server_id)
                 self._abort_if_unique_id_configured()
@@ -121,9 +116,7 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except EmbyApiError:
                 errors["base"] = "cannot_connect"
             else:
-                server_id = str(
-                    info.get("Id") or f"{data[CONF_HOST]}:{int(data[CONF_PORT])}"
-                )
+                server_id = str(info.get("Id") or f"{data[CONF_HOST]}:{int(data[CONF_PORT])}")
                 await self.async_set_unique_id(server_id)
                 self._abort_if_unique_id_mismatch()
                 data[CONF_PORT] = int(data[CONF_PORT])

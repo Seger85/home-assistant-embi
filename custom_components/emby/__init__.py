@@ -38,9 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except EmbyApiError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
-    migrated_options, changed = migrate_legacy_device_options(
-        dict(entry.options), devices
-    )
+    migrated_options, changed = migrate_legacy_device_options(dict(entry.options), devices)
     if changed:
         hass.config_entries.async_update_entry(entry, options=migrated_options)
 

@@ -81,8 +81,7 @@ class EmbyDeviceRecord:
             app_name=data.get("AppName"),
             app_version=data.get("AppVersion"),
             last_user_name=data.get("LastUserName"),
-            last_activity_date=data.get("DateLastActivity")
-            or data.get("LastActivityDate"),
+            last_activity_date=data.get("DateLastActivity") or data.get("LastActivityDate"),
         )
 
     @property
