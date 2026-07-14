@@ -4,7 +4,26 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 ## [Unreleased]
 
-### Geplant
+### Added
+
+- automatisierter Release-Workflow mit Tag-/Manifest-Abgleich
+- automatische Unterscheidung von Prerelease und stabilem Release
+- Release-Archiv `embi.zip` und SHA-256-Prüfsumme
+- dokumentierte Repository-, Branch- und Release-Governance
+- eindeutige CI-Checknamen für GitHub-Rulesets
+
+### Changed
+
+- Dependabot-PRs zielen auf `develop`
+- Release-Veröffentlichung wird erst nach Quality, HACS und Hassfest ausgeführt
+- Projektstatus und Roadmap bilden den erfolgreichen rc1-Livetest und die rc2-Härtung ab
+
+### Fixed
+
+- nicht destruktive Synchronisierung von `main` zurück nach `develop` nach dem vorzeitigen Merge von PR #1
+- dokumentierte Abgrenzung zwischen einer veröffentlichten EMBi-Version und einem neueren Repository-Commit in HACS
+
+### Remaining
 
 - Live-Upgrade und UI-Prüfung von 0.3.0-rc2 in Home Assistant
 - kontrollierte Prüfung der Registry- und Serverbereinigungsdialoge ohne unbeabsichtigte Löschung
@@ -65,6 +84,15 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 - Gerätefilter nutzten in 0.2 fälschlich die serverseitige `/Devices`-Historien-ID statt `ReportedDeviceId`; dadurch konnten Auswahl- und Ignorierregeln die tatsächlichen pyemby-Unique-IDs verfehlen
 - erfolgreich gelöschte Geräte werden anhand ihrer stabilen Client-ID ignoriert, nicht anhand der nur für den Löschendpunkt gültigen Historien-ID
+
+### Live verification
+
+- HACS-Installation von `v0.3.0-rc1` erfolgreich
+- bestehender Config Entry erhalten
+- 28 Media-Player sowie Entity-IDs, Unique IDs und individuelle Namen erhalten
+- Live-Wiedergabestatus und Push-Updates erfolgreich
+- keine EMBi-Laufzeitfehler oder Duplicate-Unique-ID-Meldungen
+- Diagnostics redigieren Zugangsdaten und Geräteidentitäten
 
 ## [0.2.0] - Produktive Baseline
 

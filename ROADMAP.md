@@ -11,21 +11,39 @@ Status: abgeschlossen und versioniert.
 
 ## 0.3.0-rc1 – Identität, Sicherheit und Repository
 
-Status: über HACS installiert und in Home Assistant 2026.7.2 erfolgreich live geprüft.
+Status: über das öffentliche HACS-Custom-Repository installiert und in Home Assistant 2026.7.2 erfolgreich live verifiziert.
+
+Bestätigt:
 
 - korrekte Trennung von Emby-`Id` und `ReportedDeviceId`
 - automatische Optionsmigration
 - Legacy-YAML-Code vollständig entfernt
-- verständlichere deutsche und englische UI
-- abgesicherte Registry- und optionale Serverbereinigung
+- bestehender Config Entry erhalten
+- alle 28 Media-Player erhalten
+- Entity-IDs, Unique IDs und individuelle Namen erhalten
+- Live-Wiedergabestatus, Push-Updates und ergänzende Sensoren funktional
+- sichere Standardstellung der Serverbereinigung
 - redigierte Diagnostics
-- HACS-Struktur, Tests und GitHub Actions
-- 28 bestehende Media-Player, Entity-IDs, Unique IDs und individuelle Namen erhalten
-- Push-Updates, aktive Wiedergabe und ergänzende Sensoren bestätigt
+- HACS-, Hassfest-, Ruff- und Unit-Test-CI erfolgreich
+
+## Repository- und Release-Governance
+
+Status: auf `develop` umgesetzt; öffentliche Historie wurde nicht zurückgesetzt.
+
+- `develop` wurde regulär mit `main` synchronisiert
+- zukünftige Dependabot-PRs zielen auf `develop`
+- Ruleset `Protect main and develop` ist aktiv
+- Force-Push und Löschung sind für `main` und `develop` blockiert
+- Pull Requests und definierte Statuschecks sind verpflichtend
+- CI-Checks besitzen stabile Namen
+- RC-Tags erzeugen nach erfolgreicher CI automatisch Prereleases
+- stabile Tags erzeugen nach erfolgreicher CI normale Releases
+- `embi.zip` und `embi.zip.sha256` werden automatisch erzeugt
+- ohne Versions-Tag wird kein Release veröffentlicht
 
 ## 0.3.0-rc2 – Runtime-, Safety- und UI-Härtung
 
-Status: Umsetzung in separatem Draft-PR; noch nicht installiert, getaggt oder veröffentlicht.
+Status: Umsetzung in Draft-PR #12; mit dem aktuellen `develop`-Stand synchronisiert, noch nicht installiert, getaggt oder veröffentlicht.
 
 - deduplizierte Allowlist- und Ignore-Sammelaktionen
 - korrekte Anzahl eindeutiger Client-Identitäten in Sammeldialogen
@@ -38,7 +56,7 @@ Status: Umsetzung in separatem Draft-PR; noch nicht installiert, getaggt oder ve
 
 Live-Freigabekriterien für rc2:
 
-- Upgrade von v0.3.0-rc1 auf v0.3.0-rc2 über HACS erfolgreich
+- Upgrade von `v0.3.0-rc1` auf `v0.3.0-rc2` über HACS erfolgreich
 - weiterhin 28 Media-Player ohne Entity-/Unique-ID-Änderung
 - Allow-all speichert keine doppelten Player-Keys
 - aktive Registry-Einträge werden nicht angeboten
@@ -57,7 +75,10 @@ Freigabekriterien:
 - Registry- und Serverbereinigung sicher geprüft
 - Screenshot-QA auf iPhone, iPad und Desktop abgeschlossen
 - keine neuen EMBi-Warnungen oder Fehler
+- GitHub-Rulesets aktiv
+- automatisierter Release-Workflow geprüft
 - temporäre HACS-Metadatenausnahmen geprüft und soweit möglich entfernt
+- ausdrückliche Freigabe durch Gerry
 
 ## 0.4.0 – vertiefte Testabdeckung
 
