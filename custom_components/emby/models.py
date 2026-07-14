@@ -94,6 +94,31 @@ class MaintenanceState:
         )
 
 
+@dataclass(slots=True, frozen=True)
+class PendingRegistryTarget:
+    """Transient exact target used only across a same-process config-entry reload."""
+
+    player_key: str
+    entity_id: str | None
+    ambiguous: bool = False
+
+
+@dataclass(slots=True, frozen=True)
+class RegistryCleanupResult:
+    """Aggregated registry follow-up result without private identities."""
+
+    queued: int = 0
+    matched: int = 0
+    removed: int = 0
+    missing: int = 0
+    protected_remaining_history: int = 0
+    wrong_entry: int = 0
+    wrong_platform: int = 0
+    wrong_unique_id: int = 0
+    state_still_present: int = 0
+    revalidation_ambiguous: int = 0
+
+
 @dataclass(slots=True)
 class EmbiRuntimeData:
     """Runtime data for one EMBi config entry."""
