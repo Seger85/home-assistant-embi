@@ -28,12 +28,23 @@ def _notification_id(entry: ConfigEntry) -> str:
     return f"{MAINTENANCE_NOTIFICATION_ID_PREFIX}_{entry.entry_id}"
 
 
-def _enabled(entry: ConfigEntry, runtime: EmbiRuntimeData) -> bool:
+def _registration_enabled(entry: ConfigEntry, runtime: EmbiRuntimeData) -> bool:
+    """Return whether this runtime may own one automatic-cleanup callback."""
     return bool(
-        runtime.maintenance_storage_available
-        and entry.state is ConfigEntryState.LOADED
+        getattr(entry, "runtime_data", None) is runtime
+        and not runtime.unloading
+        and runtime.maintenance_store is not None
+        and runtime.maintenance_storage_available
         and entry.options.get(CONF_SERVER_CLEANUP_ENABLED, False)
         and entry.options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
+    )
+
+
+def _execution_enabled(entry: ConfigEntry, runtime: EmbiRuntimeData) -> bool:
+    """Return whether the current callback may execute destructive work now."""
+    return bool(
+        entry.state is ConfigEntryState.LOADED
+        and _registration_enabled(entry, runtime)
     )
 
 
@@ -83,7 +94,7 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
         runtime.cancel_auto_cleanup = None
     runtime.auto_cleanup_scheduled = False
 
-    if not _enabled(entry, runtime):
+    if not _registration_enabled(entry, runtime):
         return
 
     now = normalize_utc(dt_util.utcnow())
@@ -107,14 +118,18 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
     async def _async_scheduled_run(_now: datetime) -> None:
         runtime.cancel_auto_cleanup = None
         runtime.auto_cleanup_scheduled = False
-        if not _enabled(entry, runtime):
+
+        if not _registration_enabled(entry, runtime):
+            return
+        if not _execution_enabled(entry, runtime):
+            await async_schedule_automatic_cleanup(hass, entry)
             return
         if runtime.cleanup_lock.locked():
             await async_schedule_automatic_cleanup(hass, entry)
             return
         if not await _async_refresh_persistent_state(hass, entry, runtime):
             return
-        if not _enabled(entry, runtime):
+        if not _execution_enabled(entry, runtime):
             return
 
         persisted = _parse_utc(runtime.maintenance_state.report.next_run_at)
@@ -124,10 +139,10 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
             return
 
         reload_needed = await async_run_automatic_cleanup(hass, entry)
-        if reload_needed and entry.state is ConfigEntryState.LOADED:
+        if reload_needed and _execution_enabled(entry, runtime):
             await hass.config_entries.async_reload(entry.entry_id)
             return
-        if entry.state is ConfigEntryState.LOADED:
+        if _execution_enabled(entry, runtime):
             await async_schedule_automatic_cleanup(hass, entry)
 
     runtime.cancel_auto_cleanup = async_track_point_in_utc_time(
