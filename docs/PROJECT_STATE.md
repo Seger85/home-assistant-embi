@@ -1,61 +1,71 @@
 # EMBi Project State
 
-## Production
+## Produktive Ausgangslage
 
-- Installed version: `v0.3.0-rc1` through the public HACS custom repository
+- produktive Vorversion: `v0.3.0-rc3`
 - Home Assistant: Core 2026.7.2
-- Existing config entry: retained and loaded
-- Media-player entities: 28
-- Base reported client identities behind the players: 25
-- Historical device records observed during live analysis: 74
-- Existing entity IDs, unique IDs, and individual names: retained
-- Push updates and active-playback detection: working
-- Legacy YAML: none
-- Active repairs: none
-- Stale, restored, or orphaned EMBi entities: none
-- Optional server maintenance: disabled
+- bestehender Config Entry: geladen und beizubehalten
+- Stable-Live-Baseline: 29 `media_player`-Entities
+- zusätzliche EMBi-Wartungsentity: keine
+- Entity-IDs, Unique IDs und individuelle Namen: unverändert zu erhalten
+- Legacy YAML: nicht Bestandteil des Stable-Laufzeitpfads
+- vorhandene Serverbereinigung und Automatik: bei der Migration zu erhalten
+- vorhandene HA-Mitbereinigung: Gerrys Wert `true` ist zu erhalten
+- vorhandene Alterswerte: 364 bleibt zunächst ein Custom-Wert
 
-No raw private device identifiers, credentials, diagnostics, or internal config-entry identifiers are stored in this document.
+Keine privaten Geräteidentitäten, Zugangsdaten oder internen Config-Entry-IDs werden in diesem Dokument gespeichert.
 
-## Published releases
+## Repositoryzustand
 
-- `v0.3.0-rc2`: immutable public prerelease on commit `f69224ff6dc6609f2923e391dda428dd0b91bf69`
-- `v0.3.0-rc3`: public prerelease on commit `0d776720b527d1285b258159edc8f30b933385ca`
+- Repository: öffentlich
+- `main`: veröffentlichte Linie; Stable-Promotion noch nicht gemergt
+- `develop`: Ziel des Implementierungs-PRs und Quelle des finalen Testartefakts
+- Implementierungsbranch: `feature/stable-0.3.0`
+- Implementierungs-PR: #18
+- Zielversion: `0.3.0`
+- Stable-Tag und Stable-Release: nicht erstellt
+- `v0.3.0-rc3` und alle bestehenden Tags/Releases: unverändert
 
-For rc3, both Quality versions, HACS validation, Hassfest, archive generation, checksum generation, prerelease classification, non-latest classification, and tag-target verification completed successfully. The temporary release-request branch was removed by the workflow.
+## Stable-Vertrag
 
-## Repository state
+- Config-Entry-Version 3.1
+- ausschließlich Plattform `media_player`
+- bestehende pyemby-Unique-ID-Logik unverändert
+- persistenter privater und atomarer Store
+- persistenter identitätsfreier Laufbericht
+- absolutes `next_run_at`
+- genau ein Catch-up nach 120 Sekunden bei fehlendem, ungültigem oder überfälligem Termin
+- gültiger Zukunftstermin bleibt über Reload und Neustart bestehen
+- Folgeplanung 24 Stunden nach Abschluss
+- gemeinsamer Lock für manuell und automatisch
+- keine unsichere Registry-Wiederaufnahme nach Neustart
+- Options-Entwurf, Apply und Discard
+- keine zusätzlichen Cleanup-Anmeldedaten neben der normalen Verbindung
+- keine Aktivierungsphrase
+- keine automatische Ignore-Regel nach Serverbereinigung
+- HA-Mitbereinigung bei neuen Aktivierungen standardmäßig `false`
 
-- public repository
-- default branch: `main`
-- integration branch: `develop`
-- protected pull-request workflow with stable required checks
-- validated release-request automation
-- rc3 implementation merged through PR #16 using Squash and merge
-- stable `0.3.0` has not been released
+## Korrigierter Referenztest
 
-## 0.3.0-rc3 scope
+Der produktive rc3-Test reduzierte die Emby-Gerätehistorie von 74 auf 69 Einträge. Fünf Serverbereinigungen waren erfolgreich und keine schlug fehl. Die damalige Queue enthielt fünf Player-Identitäten; da diese nie als HA-Player vorhanden waren, ergaben sich null Matches, null tatsächliche Registry-Entfernungen und fünf missing.
 
-- manual maintenance filtered by last-activity age
-- default threshold: 365 days
-- separate automatic-maintenance switch, default off
-- explicit warning and activation phrase
-- one initial run 120 seconds after conscious activation
-- recurring run every 24 hours
-- no per-run candidate cap
-- active players and records without a valid timestamp are excluded
-- independent per-record result handling
-- optional Home Assistant registry follow-up after successful server maintenance and fresh server revalidation
-- aggregate diagnostics without private identities
+Für 0.3.0 ist dieser Fall als automatisierter Vertragstest festgeschrieben. Queue und tatsächliche Entfernung werden getrennt gezählt.
 
-## Identity contract
+## Pre-Live-Zustand
 
-- `Id`: one historical server record
-- `ReportedDeviceId`: durable raw client identity and device-wide ignore rule
-- `ReportedDeviceId.AppName`: pyemby player key and existing Home Assistant unique ID
+Vor der öffentlichen Stable-Veröffentlichung müssen noch erledigt werden:
 
-No entity-ID or unique-ID migration is introduced.
+- unveröffentlichtes Testartefakt auf dem exakten Develop-Merge-Commit prüfen
+- Draft-Promotion-PR `develop` → `main` vorbereiten und gesperrt lassen
+- Home-Assistant-Backup und Emby-Rollbackweg bestätigen
+- Upgrade und Migration live prüfen
+- 29 Media-Player und Identitäten prüfen
+- 364 zunächst unverändert bestätigen und 365 bewusst auswählen
+- Scheduler, Catch-up, Reload und Neustart prüfen
+- Options Flow auf iPhone, iPad und Desktop prüfen
+- eine tatsächliche sichere Registry-Nachbereitung testen
+- Rollback auf `v0.3.0-rc3` prüfen
 
-## Remaining live gate
+## Veröffentlichungssperre
 
-Before stable `0.3.0`, rc3 requires controlled HACS installation with backup, verification that the existing config entry and all entity identities remain unchanged, UI and screenshot review, confirmation that automatic maintenance is disabled by default, deliberate validation of the 120-second first-run behavior, log and diagnostics review, and a tested rollback path.
+Kein Merge nach `main`, kein Tag `v0.3.0`, kein Stable Release, kein `latest`, keine HACS-Stable-Version und kein öffentliches rc4 vor Gerrys ausdrücklicher Live-Abnahme.
