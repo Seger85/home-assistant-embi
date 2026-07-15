@@ -138,19 +138,6 @@ class EmbyDeviceRecord:
         details.append(f"ID {self.short_record_id}")
         return " · ".join(details)
 
-    def as_diagnostics(self) -> dict[str, Any]:
-        """Return a diagnostics-ready representation."""
-        return {
-            "record_id": self.record_id,
-            "reported_device_id": self.reported_device_id,
-            "player_key": self.player_key,
-            "name": self.name,
-            "app_name": self.app_name,
-            "app_version": self.app_version,
-            "last_user_name": self.last_user_name,
-            "last_activity_date": self.last_activity_date,
-        }
-
 
 class EmbyApiClient:
     """Small asynchronous client for the local Emby REST API."""
