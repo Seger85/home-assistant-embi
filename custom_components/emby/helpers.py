@@ -178,14 +178,17 @@ def migrate_stable_options(
     """Migrate rc3 options to the stable identity and safety contract."""
     migrated = dict(options)
     records = list(devices)
-    by_record_id = {device.record_id: device for device in records}
+    by_record_id: dict[str, list[EmbyDeviceRecord]] = {}
+    for device in records:
+        by_record_id.setdefault(device.record_id, []).append(device)
     known_player_keys = {device.player_key for device in records}
     known_reported_ids = {device.reported_device_id for device in records}
 
     allowed: set[str] = set()
     for configured_id in options.get(CONF_ALLOWED_DEVICE_IDS, []):
         value = str(configured_id)
-        allowed.add(by_record_id[value].player_key if value in by_record_id else value)
+        matches = by_record_id.get(value, [])
+        allowed.add(matches[0].player_key if len(matches) == 1 else value)
     if CONF_ALLOWED_DEVICE_IDS in options:
         migrated[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
 
@@ -201,8 +204,8 @@ def migrate_stable_options(
             ignored_players.add(value)
         elif value in known_reported_ids:
             ignored_devices.add(value)
-        elif value in by_record_id:
-            ignored_devices.add(by_record_id[value].reported_device_id)
+        elif len(by_record_id.get(value, [])) == 1:
+            ignored_devices.add(by_record_id[value][0].reported_device_id)
         else:
             unresolved.add(value)
 
@@ -220,10 +223,3 @@ def migrate_stable_options(
         migrated.pop(legacy_key, None)
 
     return migrated, migrated != options
-
-
-def migrate_legacy_device_options(
-    options: dict[str, Any], devices: Iterable[EmbyDeviceRecord]
-) -> tuple[dict[str, Any], bool]:
-    """Backward-compatible alias for the stable options migration."""
-    return migrate_stable_options(options, devices)

@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+
+
+@dataclass(frozen=True, slots=True)
+class ScheduledRunDecision:
+    """Resolved absolute run time and whether a grace catch-up was required."""
+
+    run_at: datetime
+    catch_up: bool
 
 
 def normalize_utc(value: datetime) -> datetime:
@@ -16,7 +25,7 @@ def parse_utc(value: str | None) -> datetime | None:
         return None
     try:
         parsed = datetime.fromisoformat(value)
-    except ValueError:
+    except (TypeError, ValueError):
         return None
     return normalize_utc(parsed)
 
@@ -34,16 +43,22 @@ def next_regular_run(completed_at: datetime, *, interval_hours: int = 24) -> dat
 def resolve_scheduled_run(
     *,
     now: datetime,
-    stored_next_run: str | None,
+    persisted_next_run: datetime | str | None,
     grace_seconds: int = 120,
-) -> tuple[datetime, bool]:
-    """Resolve the next absolute run and whether it is a catch-up/initial grace run.
+) -> ScheduledRunDecision:
+    """Resolve the persistent schedule without moving a valid future deadline.
 
-    A future persisted value is preserved exactly. A missing, invalid, or overdue
-    value is scheduled once after the grace period instead of running during setup.
+    Missing, invalid, or overdue values receive one grace-period catch-up. A
+    future persisted deadline survives reloads and restarts unchanged.
     """
     normalized_now = normalize_utc(now)
-    stored = parse_utc(stored_next_run)
+    if isinstance(persisted_next_run, datetime):
+        stored = normalize_utc(persisted_next_run)
+    else:
+        stored = parse_utc(persisted_next_run)
     if stored is not None and stored > normalized_now:
-        return stored, False
-    return normalized_now + timedelta(seconds=grace_seconds), True
+        return ScheduledRunDecision(stored, False)
+    return ScheduledRunDecision(
+        normalized_now + timedelta(seconds=max(0, int(grace_seconds))),
+        True,
+    )

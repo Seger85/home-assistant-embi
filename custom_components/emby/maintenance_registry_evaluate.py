@@ -87,7 +87,7 @@ def evaluate_registry_targets(
         result=RegistryCleanupResult(
             queued=len(targets),
             matched=matched,
-            removed=len(removable_entity_ids),
+            removed=0,
             missing=missing,
             protected_remaining_history=protected_remaining,
             wrong_entry=wrong_entry,

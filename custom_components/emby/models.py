@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .api import EmbyApiClient, EmbyDeviceRecord
-from .const import FOLLOW_UP_IDLE, RUN_STATUS_IDLE
+from .const import FOLLOW_UP_IDLE, MAINTENANCE_STORE_VERSION, RUN_STATUS_IDLE
 
 
 @dataclass(slots=True)
@@ -41,7 +41,6 @@ class CleanupRunReport:
 
     @property
     def registry_entities_protected(self) -> int:
-        """Return the aggregate count of deliberately protected registry identities."""
         return sum(
             (
                 self.registry_entities_protected_active,
@@ -55,50 +54,88 @@ class CleanupRunReport:
         )
 
     def as_dict(self) -> dict[str, Any]:
-        """Return a JSON-serializable, identity-free representation."""
         data = asdict(self)
         data["registry_entities_protected"] = self.registry_entities_protected
         return data
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any] | None) -> CleanupRunReport:
-        """Build a report from a tolerant stored representation."""
+    def from_dict(cls, data: Mapping[str, Any]) -> CleanupRunReport:
         if not isinstance(data, Mapping):
-            return cls()
+            raise ValueError("maintenance report must be a mapping")
         fields = cls.__dataclass_fields__
         values = {key: data[key] for key in fields if key in data}
+        string_fields = {
+            "status",
+            "mode",
+            "started_at",
+            "completed_at",
+            "last_error",
+            "follow_up_status",
+            "next_run_at",
+        }
+        integer_fields = {
+            "age_threshold_days",
+            "server_candidates",
+            "server_deleted",
+            "server_failed",
+            "skipped_active",
+            "skipped_without_activity",
+            "registry_keys_queued",
+            "registry_entities_matched",
+            "registry_entities_removed",
+            "registry_entities_missing",
+            "registry_entities_protected_active",
+            "registry_entities_protected_remaining_history",
+            "registry_entities_wrong_entry",
+            "registry_entities_wrong_platform",
+            "registry_entities_wrong_unique_id",
+            "registry_entities_state_still_present",
+            "registry_entities_revalidation_ambiguous",
+        }
+        for key in string_fields & values.keys():
+            if values[key] is not None and not isinstance(values[key], str):
+                raise ValueError(f"maintenance report field {key} must be text or null")
+        for key in integer_fields & values.keys():
+            if values[key] is not None and (
+                not isinstance(values[key], int) or isinstance(values[key], bool) or values[key] < 0
+            ):
+                raise ValueError(f"maintenance report field {key} must be a non-negative integer")
+        if "result_counts_complete" in values and not isinstance(
+            values["result_counts_complete"], bool
+        ):
+            raise ValueError("result_counts_complete must be boolean")
         return cls(**values)
 
 
 @dataclass(slots=True)
 class MaintenanceState:
-    """Persistent maintenance state for one config entry."""
-
     report: CleanupRunReport = field(default_factory=CleanupRunReport)
     initial_run_completed: bool = False
 
     def as_dict(self) -> dict[str, Any]:
-        """Return a JSON-serializable representation."""
         return {
+            "schema_version": MAINTENANCE_STORE_VERSION,
             "report": self.report.as_dict(),
             "initial_run_completed": self.initial_run_completed,
         }
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any] | None) -> MaintenanceState:
-        """Build state from a tolerant stored representation."""
+    def from_dict(cls, data: Mapping[str, Any]) -> MaintenanceState:
         if not isinstance(data, Mapping):
-            return cls()
+            raise ValueError("maintenance state must be a mapping")
+        if data.get("schema_version") != MAINTENANCE_STORE_VERSION:
+            raise ValueError("unsupported maintenance Store schema version")
+        initial = data.get("initial_run_completed", False)
+        if not isinstance(initial, bool):
+            raise ValueError("initial_run_completed must be boolean")
         return cls(
-            report=CleanupRunReport.from_dict(data.get("report")),
-            initial_run_completed=bool(data.get("initial_run_completed", False)),
+            report=CleanupRunReport.from_dict(data.get("report", {})),
+            initial_run_completed=initial,
         )
 
 
 @dataclass(slots=True, frozen=True)
 class PendingRegistryTarget:
-    """Transient exact target used only across a same-process config-entry reload."""
-
     player_key: str
     entity_id: str | None
     ambiguous: bool = False
@@ -106,8 +143,6 @@ class PendingRegistryTarget:
 
 @dataclass(slots=True, frozen=True)
 class RegistryCleanupResult:
-    """Aggregated registry follow-up result without private identities."""
-
     queued: int = 0
     matched: int = 0
     removed: int = 0
@@ -122,8 +157,6 @@ class RegistryCleanupResult:
 
 @dataclass(slots=True)
 class EmbiRuntimeData:
-    """Runtime data for one EMBi config entry."""
-
     api_client: EmbyApiClient
     devices: list[EmbyDeviceRecord] = field(default_factory=list)
     pyemby: Any | None = None

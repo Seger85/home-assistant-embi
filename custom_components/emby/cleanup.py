@@ -98,20 +98,6 @@ def plan_registry_followup(
     )
 
 
-def removable_player_keys(
-    succeeded: Iterable[EmbyDeviceRecord],
-    remaining_records: Iterable[EmbyDeviceRecord],
-    *,
-    active_player_keys: Iterable[str] = (),
-) -> tuple[str, ...]:
-    """Backward-compatible view of registry-eligible player identities."""
-    return plan_registry_followup(
-        succeeded,
-        remaining_records,
-        active_player_keys=active_player_keys,
-    ).eligible_keys
-
-
 async def async_delete_device_records(
     client: DeviceDeleteClient, records: Iterable[EmbyDeviceRecord]
 ) -> DeviceCleanupResult:
