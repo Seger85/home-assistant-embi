@@ -106,16 +106,25 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install --upgrade pip -r requirements_test.txt
 
-      - name: Validate JSON
+      - name: Validate JSON and YAML
         run: |
           python -m json.tool custom_components/emby/manifest.json >/dev/null
           python -m json.tool custom_components/emby/strings.json >/dev/null
           python -m json.tool custom_components/emby/translations/de.json >/dev/null
           python -m json.tool custom_components/emby/translations/en.json >/dev/null
           python -m json.tool hacs.json >/dev/null
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = [Path(".github/dependabot.yml")]
+          paths.extend(sorted(Path(".github/workflows").glob("*.yml")))
+          for path in paths:
+              yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+          PY
 
       - name: Compile Python
-        run: python -m compileall -q custom_components/emby
+        run: python -m compileall -q custom_components/emby scripts tests
 
       - name: Ruff lint
         run: ruff check .
@@ -125,6 +134,12 @@ jobs:
 
       - name: Unit tests
         run: pytest -q
+
+      - name: Validate stable contract
+        run: python scripts/validate_stable_contract.py
+
+      - name: Secret and privacy scan
+        run: python scripts/secret_scan.py
 
   hacs:
     name: HACS validation
@@ -159,51 +174,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build and verify integration archive
+      - name: Build and verify release-equivalent assets
         shell: bash
         run: |
           set -euo pipefail
-
-          python - <<'PY'
-          from __future__ import annotations
-
-          import json
-          from pathlib import Path
-          import zipfile
-
-          source = Path("custom_components/emby")
-          archive = Path("embi.zip")
-
-          with zipfile.ZipFile(
-              archive,
-              mode="w",
-              compression=zipfile.ZIP_DEFLATED,
-              compresslevel=9,
-          ) as target:
-              for path in sorted(source.rglob("*")):
-                  if not path.is_file():
-                      continue
-                  if "__pycache__" in path.parts or path.suffix in {".pyc", ".pyo"}:
-                      continue
-                  target.write(path, path.relative_to(source).as_posix())
-
-          with zipfile.ZipFile(archive) as packaged:
-              names = set(packaged.namelist())
-              required = {"__init__.py", "manifest.json"}
-              missing = sorted(required - names)
-              if missing:
-                  raise RuntimeError(f"Release archive misses required files: {missing}")
-
-              manifest = json.loads(packaged.read("manifest.json"))
-              expected = "${{ needs.validate.outputs.version }}"
-              if manifest.get("version") != expected:
-                  raise RuntimeError(
-                      "Packaged manifest version does not match release version: "
-                      f"{manifest.get('version')!r} != {expected!r}"
-                  )
-          PY
-
-          sha256sum embi.zip > embi.zip.sha256
+          rm -rf dist
+          python scripts/build_package.py \
+            --output-dir dist \
+            --expected-version "${{ needs.validate.outputs.version }}" \
+            --commit "${GITHUB_SHA}"
+          (cd dist && sha256sum --check embi.zip.sha256)
+          test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
 
       - name: Publish release and assets
         uses: softprops/action-gh-release@v3
@@ -211,27 +192,29 @@ jobs:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           files: |
-            embi.zip
-            embi.zip.sha256
+            dist/embi.zip
+            dist/embi.zip.sha256
+            dist/BUILD_COMMIT
           fail_on_unmatched_files: true
           generate_release_notes: true
           prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
           make_latest: ${{ needs.validate.outputs.prerelease == 'true' && 'false' || 'true' }}
 
-      - name: Verify published release metadata and tag target
+      - name: Verify published release metadata, assets and tag target
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
           EXPECTED_PRERELEASE: ${{ needs.validate.outputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
 
           release_json="$(gh release view "${RELEASE_TAG}" --json tagName,isPrerelease,assets)"
-
           jq -e --arg tag "${RELEASE_TAG}" '.tagName == $tag' <<<"${release_json}" >/dev/null
           jq -e '.assets | any(.name == "embi.zip")' <<<"${release_json}" >/dev/null
           jq -e '.assets | any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
+          jq -e '.assets | any(.name == "BUILD_COMMIT")' <<<"${release_json}" >/dev/null
 
           actual_prerelease="$(jq -r '.isPrerelease' <<<"${release_json}")"
           if [[ "${actual_prerelease}" != "${EXPECTED_PRERELEASE}" ]]; then
@@ -239,34 +222,51 @@ jobs:
             exit 1
           fi
 
-          latest_tag=""
-          if latest_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" 2>/dev/null)"; then
-            latest_tag="$(jq -r '.tag_name' <<<"${latest_json}")"
+          rm -rf verify-release
+          mkdir verify-release
+          gh release download "${RELEASE_TAG}" \
+            --dir verify-release \
+            --pattern embi.zip \
+            --pattern embi.zip.sha256 \
+            --pattern BUILD_COMMIT
+          (cd verify-release && sha256sum --check embi.zip.sha256)
+          test "$(cat verify-release/BUILD_COMMIT)" = "${GITHUB_SHA}"
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import zipfile
+
+          with zipfile.ZipFile(Path("verify-release/embi.zip")) as archive:
+              manifest = json.loads(archive.read("manifest.json"))
+          expected = os.environ["RELEASE_VERSION"]
+          if manifest.get("version") != expected:
+              raise RuntimeError(
+                  f"Published archive version {manifest.get('version')!r} != {expected!r}"
+              )
+          PY
+
+          git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          tag_commit="$(git rev-list -n 1 "${RELEASE_TAG}")"
+          if [[ "${tag_commit}" != "${GITHUB_SHA}" ]]; then
+            echo "::error::Tag target ${tag_commit} does not match ${GITHUB_SHA}."
+            exit 1
           fi
 
+          latest_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name 2>/dev/null || true)"
           if [[ "${EXPECTED_PRERELEASE}" == "true" && "${latest_tag}" == "${RELEASE_TAG}" ]]; then
-            echo "::error::Prerelease ${RELEASE_TAG} must not be latest."
+            echo "::error::Prerelease ${RELEASE_TAG} must never be latest."
             exit 1
           fi
           if [[ "${EXPECTED_PRERELEASE}" == "false" && "${latest_tag}" != "${RELEASE_TAG}" ]]; then
-            echo "::error::Stable release ${RELEASE_TAG} must be latest."
+            echo "::error::Stable release ${RELEASE_TAG} must be latest; current latest is ${latest_tag}."
             exit 1
           fi
 
-          git fetch --no-tags origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
-          tag_commit="$(git rev-list -n 1 "${RELEASE_TAG}")"
-          if [[ "${tag_commit}" != "${GITHUB_SHA}" ]]; then
-            echo "::error::Tag ${RELEASE_TAG} points to ${tag_commit}, expected ${GITHUB_SHA}."
-            exit 1
-          fi
-
-      - name: Remove processed release branch
+      - name: Remove consumed release request branch
         if: ${{ needs.validate.outputs.release_branch == 'true' }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ github.ref_name }}
         shell: bash
-        run: |
-          set -euo pipefail
-          gh api \
-            --method DELETE \
-            "repos/${GITHUB_REPOSITORY}/git/refs/heads/${GITHUB_REF_NAME}"
+        run: git push origin --delete "${RELEASE_BRANCH}"
