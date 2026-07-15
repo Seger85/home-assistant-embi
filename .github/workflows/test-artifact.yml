@@ -42,7 +42,7 @@ jobs:
           test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"
 
       - name: Upload unpublished integration package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: embi-test-${{ env.BUILD_COMMIT_SHA }}
           path: |

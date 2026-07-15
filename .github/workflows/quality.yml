@@ -59,7 +59,7 @@ jobs:
           exit 0
       - name: Upload Ruff report
         if: ${{ steps.ruff.outputs.status != '0' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ruff-report-${{ matrix.python-version }}-${{ github.sha }}
           path: ruff-report.txt
