@@ -83,9 +83,7 @@ async def test_rc3_migration_schedules_once_after_120_seconds_and_persists(
         scheduled.append((callback, point))
         return lambda: None
 
-    monkeypatch.setattr(
-        "custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now
-    )
+    monkeypatch.setattr("custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now)
     monkeypatch.setattr(
         "custom_components.emby.maintenance_scheduler.async_track_point_in_utc_time",
         track,
@@ -93,9 +91,7 @@ async def test_rc3_migration_schedules_once_after_120_seconds_and_persists(
     await async_schedule_automatic_cleanup(hass, entry)
     assert len(scheduled) == 1
     assert scheduled[0][1] == now + timedelta(seconds=120)
-    assert entry.runtime_data.maintenance_state.report.next_run_at == utc_iso(
-        scheduled[0][1]
-    )
+    assert entry.runtime_data.maintenance_state.report.next_run_at == utc_iso(scheduled[0][1])
     assert entry.runtime_data.auto_cleanup_scheduled is True
     assert store.saves == 1
 
@@ -162,9 +158,7 @@ async def test_deactivation_during_grace_prevents_run(monkeypatch) -> None:
         runs += 1
         return False
 
-    monkeypatch.setattr(
-        "custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now
-    )
+    monkeypatch.setattr("custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now)
     monkeypatch.setattr(
         "custom_components.emby.maintenance_scheduler.async_track_point_in_utc_time",
         track,
@@ -198,9 +192,7 @@ async def test_reload_preserves_future_absolute_deadline_and_cancels_duplicate(
 
         return cancel
 
-    monkeypatch.setattr(
-        "custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now
-    )
+    monkeypatch.setattr("custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now)
     monkeypatch.setattr(
         "custom_components.emby.maintenance_scheduler.async_track_point_in_utc_time",
         track,
@@ -235,9 +227,7 @@ async def test_restart_preserves_future_deadline_and_stale_callback_cannot_run(
         runs += 1
         return False
 
-    monkeypatch.setattr(
-        "custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now
-    )
+    monkeypatch.setattr("custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now)
     monkeypatch.setattr(
         "custom_components.emby.maintenance_scheduler.async_track_point_in_utc_time",
         track,
@@ -284,9 +274,7 @@ async def test_locked_callback_reschedules_without_starting_second_series(
         runs += 1
         return False
 
-    monkeypatch.setattr(
-        "custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now
-    )
+    monkeypatch.setattr("custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now)
     monkeypatch.setattr(
         "custom_components.emby.maintenance_scheduler.async_track_point_in_utc_time",
         track,
@@ -307,9 +295,7 @@ async def test_locked_callback_reschedules_without_starting_second_series(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("failure_mode", ["missing", "corrupted"])
-async def test_missing_or_corrupted_store_prevents_registration(
-    monkeypatch, failure_mode
-) -> None:
+async def test_missing_or_corrupted_store_prevents_registration(monkeypatch, failure_mode) -> None:
     hass, entry, _store = setup()
     scheduled = []
 
@@ -343,9 +329,7 @@ async def test_unloading_runtime_neither_registers_nor_executes(monkeypatch) -> 
         runs += 1
         return False
 
-    monkeypatch.setattr(
-        "custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now
-    )
+    monkeypatch.setattr("custom_components.emby.maintenance_scheduler.dt_util.utcnow", lambda: now)
     monkeypatch.setattr(
         "custom_components.emby.maintenance_scheduler.async_track_point_in_utc_time",
         track,
