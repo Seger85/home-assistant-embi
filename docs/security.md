@@ -1,59 +1,79 @@
-# Sicherheitsarchitektur
+# Sicherheit
 
 ## Grundprinzipien
 
-- lokale Kommunikation
-- keine direkte `.storage`-Manipulation
-- destruktive Funktionen standardmäßig aus
-- separater Master- und Automatik-Schalter
-- bewusste Erstaktivierung mit Warnung und exaktem Text
-- Altersfilter standardmäßig 365 Tage
-- aktive Wiedergaben immer geschützt
-- unbekannte Aktivitätszeitpunkte fail-closed geschützt
-- keine maximale Löschzahl, aber unabhängige Fehlerbehandlung pro Datensatz
-- serverseitige Löschung vor jeder Registry-Nachbereitung
-- frische `/Devices`-Revalidierung nach Löschung
-- Registry-Entfernung nur während eines kontrollierten Reloads ohne Entity-State
-- sensible Werte in Diagnostics redigieren
-- gespeicherte API-Schlüssel nie als Passwortfeld-Standardwert zurückgeben
+- lokale Kommunikation zum konfigurierten Emby-Server
+- offizieller Home-Assistant-Config-Entry und offizieller `Store`
+- keine direkten Änderungen an `.storage`
+- keine versteckten Wartungsentities
+- kritische Wartungsaktionen nur nach expliziter Aktivierung und Bestätigung
+- fail-closed bei unklarem Zustand
 
-## Sicherheitsgrenzen der Identitäten
+## Zugangsdaten
 
-- `Id` wird ausschließlich für einen konkreten historischen Serverdatensatz und `DELETE /Devices` verwendet.
-- `ReportedDeviceId` bleibt die rohe, geräteweite Ignorieridentität.
-- `ReportedDeviceId.AppName` bleibt die bestehende pyemby-/HA-Unique-ID und die einzige Identität für die präzise Registry-Nachbereitung.
+EMBi speichert genau den normalen Verbindungsschlüssel im Config Entry. Es gibt kein zweites Cleanup-Feld. Der Wert wird:
 
-Ein historischer `Id`-Wert darf niemals als HA-Unique-ID verwendet werden.
+- nicht als Passwortfeld-Default an das Frontend zurückgegeben
+- in Diagnostics redigiert
+- nicht im Laufbericht oder Store gespeichert
+- nicht in Logs oder Notifications ausgegeben
 
-## Schutz vor falscher Registry-Löschung
+## Persistenter Store
 
-Eine automatische oder manuelle Serverlöschung führt nur dann zu einer HA-Registry-Entfernung, wenn:
+Der Maintenance-Store ist:
 
-- der Serverdatensatz erfolgreich gelöscht wurde
-- eine neue Serverabfrage keinen gleichen Player-Key mehr liefert
-- der Registry-Eintrag zur Plattform und zum Config Entry gehört
-- während des Reloads kein Entity-State existiert
+- privat
+- atomar geschrieben
+- versioniert
+- pro Config Entry getrennt
+- frei von Record-IDs, ReportedDeviceIds, Player-Keys, Benutzernamen und Zugangsdaten
 
-Die vorgemerkte Queue enthält nur exakte Player-Keys und keine rohen `ReportedDeviceId`-Werte. Dadurch werden andere App-Varianten nicht mitgelöscht.
+Ein erwarteter, aber fehlender oder beschädigter Store stoppt automatische Wartungsläufe. Ein neuer leerer Store wird nur bei eindeutiger Erstinitialisierung angelegt.
 
-## Redigierte Felder
+## Serveraktionen
 
-- primärer `api_key`
-- optionaler `server_cleanup_api_key`
-- serverseitige Historien-ID
-- gemeldete Client-ID
-- Player-Key
-- Gerätename
-- letzter Benutzername
+- Master-Schalter standardmäßig aus
+- Automatik standardmäßig aus
+- Warnseite und Pflichtbestätigung
+- manuelle Aktion zusätzlich mit dynamischem Bestätigungstext
+- aktive und undatierte Datensätze geschützt
+- frische Revalidierung vor jedem Lauf
+- kein automatisches Erzeugen einer Ignore-Regel
 
-Automatische Laufdiagnosen enthalten nur Zähler, Zeitpunkt, Schalterstatus und eine kategorisierte Fehlerursache.
+## Registry-Schutz
 
-## Repository-Hygiene
+Registry-Änderungen erfordern exakte Gleichheit. Unzulässig sind:
 
-Verboten im Repository:
+- Wildcards
+- Präfix-Matches
+- Teilstring-Matches
+- ungeprüfte Entity-IDs
+- Wiederaufnahme nach Neustart
+- Änderung bei vorhandenem State
+- Änderung bei verbleibender gleicher Serverhistorie
 
-- echte API-Schlüssel
-- Home-Assistant-Long-Lived-Access-Tokens
-- private Geräte-IDs oder Benutzernamen
-- vollständige private Diagnostics
-- `.storage`, Datenbanken oder Backups
+HA-Mitbereinigung ist bei neuen Aktivierungen aus. Bestehende Werte bleiben bewusst erhalten, um Migrationen nicht stillschweigend zu verändern.
+
+## Datenschutz
+
+Diagnostics und Laufberichte enthalten nur:
+
+- Integrationsversion
+- aggregierte Geräteanzahl
+- Schedulerstatus
+- Zeitpunkte
+- Statuscodes
+- aggregierte Server- und Registry-Zähler
+
+Private Identitäten werden weder gekürzt noch gehasht persistiert; sie werden vollständig weggelassen.
+
+## Backup und Rollback
+
+Vor jedem Live-Test erforderlich:
+
+- vollständiges Home-Assistant-Backup
+- belastbarer Emby-Backup- oder Wiederherstellungsweg
+- dokumentierter Ausgangsstand der 29 Media-Player
+- verfügbare Installationsquelle von `v0.3.0-rc3`
+
+Der Rollback der Integration stellt keine zuvor veränderten Emby-Historieneinträge wieder her. Dafür ist der separate Emby-Wiederherstellungsweg erforderlich.
