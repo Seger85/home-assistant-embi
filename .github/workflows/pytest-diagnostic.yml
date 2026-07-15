@@ -1,0 +1,28 @@
+name: Pytest diagnostic
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/pytest-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -q --upgrade pip -r requirements_test.txt
+      - name: Capture pytest output
+        run: |
+          pytest -q > pytest-output.txt 2>&1 || true
+          test -s pytest-output.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pytest-diagnostic-${{ github.sha }}
+          path: pytest-output.txt
+          retention-days: 1
