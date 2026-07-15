@@ -1,98 +1,91 @@
-# Konfiguration und Gerätefilter
+# Konfiguration
 
 ## Verbindung
 
-Pflichtfelder:
+EMBi benötigt genau einen Config Entry mit:
 
-- Anzeigename
-- Host/IP ohne Protokollpräfix
+- Name
+- Host oder IP-Adresse
 - Port
-- HTTPS-Schalter
-- API-Schlüssel
+- HTTPS an/aus
+- normalem Emby-Verbindungsschlüssel
 
-Der API-Schlüssel wird im Config Entry gespeichert und in Diagnostics redigiert. Bei der Rekonfiguration wird ein gespeicherter Schlüssel nie in das Passwortfeld zurückgegeben. Ein leeres Feld behält den vorhandenen Schlüssel bei.
+Es gibt keine zusätzlichen Cleanup-Anmeldedaten. Derselbe gespeicherte Verbindungsschlüssel wird für Wiedergabe, Geräteabfrage und ausdrücklich bestätigte Wartungsaktionen verwendet. Der gespeicherte Wert wird im Reconfigure-Flow nie als Standardwert an das Frontend zurückgegeben.
 
-## Gerätemodus
+## Media-Player-Modus
 
-### Alle Geräte anzeigen
+- **Alle Geräte anzeigen**: kompatibles Standardverhalten
+- **Nur aktive Wiedergaben**: nur `playing` oder `paused`
+- **Nur ausgewählte Geräte**: exakte `ReportedDeviceId.AppName`-Allowlist
 
-Alle von pyemby gelieferten Geräte dürfen Entitäten erzeugen, sofern sie nicht ignoriert sind.
+## Ignorierregeln
 
-### Nur aktive Wiedergaben
+- **Ignorierte App-Varianten**: exakte App-/Client-Identität
+- **Ignorierte Geräte**: exakte `ReportedDeviceId`, wirkt auf alle App-Varianten
+- **Nicht auflösbare Altregeln**: bleiben sichtbar erhalten, bis sie bewusst entfernt werden
 
-Zulässig sind `playing` und `paused`. Leerlaufende oder ausgeschaltete Clients werden nicht als verfügbar geführt.
+Ignorieren hat Vorrang vor Allowlist und Modus. Es gibt keine Präfix- oder Teilstring-Auswertung.
 
-### Nur ausgewählte Geräte
+## Options-Entwurf
 
-Die Liste **Anzuzeigende Geräte** speichert `ReportedDeviceId.AppName`. Zwei Apps auf demselben Client können getrennt behandelt werden.
+Eine Options-Sitzung kann mehrere Unterseiten umfassen. Änderungen bleiben im Entwurf, bis **Änderungen übernehmen** bestätigt wird.
 
-## Ignorierliste
+- Unterseiten schreiben nicht.
+- Sammelaktionen ändern nur den Entwurf.
+- Apply speichert genau einmal.
+- Bei unverändertem Entwurf erfolgt kein Write und kein Reload.
+- Discard verwirft den Entwurf vollständig.
+- Schließen über X schreibt nichts.
+- Kritische Wartungsaktionen sind bei Dirty Draft gesperrt.
 
-Die Ignorierliste hat immer Vorrang. Sie speichert standardmäßig die rohe `ReportedDeviceId` und schließt damit alle App-Varianten desselben Clients aus.
+## Serverbereinigung
 
-## Sammelaktionen
+Der Master-Schalter ist bei neuen Installationen aus. Wird er im Entwurf ausgeschaltet, wird auch die Automatik im Entwurf ausgeschaltet.
 
-- alle aktuellen Geräte auswählen
-- Auswahl anzuzeigender Geräte leeren
-- alle aktuellen Geräte ignorieren
-- Ignorierliste leeren
+Manuelle und automatische Alterswerte sind getrennt. Verfügbar sind:
 
-Historische Datensätze werden auf eindeutige Client-/App- beziehungsweise rohe Client-Identitäten dedupliziert.
+- 7 Tage
+- 30 Tage
+- 90 Tage
+- 180 Tage
+- 365 Tage
+- Benutzerdefiniert
 
-## Übergeordnete Serverbereinigung
+Der numerische Tageswert ist die Quelle der Wahrheit. Ein vorhandener Wert 364 bleibt 364 und erscheint als Custom. Es findet keine globale Umwandlung auf 365 statt.
 
-Die gesamte Serverbereinigung ist standardmäßig ausgeschaltet. Dieser Master-Schalter kontrolliert:
+## Automatische Bereinigung
 
-- manuelle altersbasierte Serverbereinigung
-- automatische Serverbereinigung
-- optionalen separaten Cleanup-API-Schlüssel
+- bei neuen Aktivierungen aus
+- Warnseite mit Pflichtschalter
+- keine Texteingabe und keine Aktivierungsphrase
+- Start erst nach finalem Apply
+- erster beziehungsweise Catch-up-Lauf nach 120 Sekunden
+- anschließend 24 Stunden nach Abschluss
+- kein Batchlimit
 
-Wird der Master-Schalter ausgeschaltet, wird die Automatik ebenfalls deaktiviert. Ein gespeicherter separater Schlüssel wird dabei entfernt. Ein leeres Passwortfeld bei aktivierter Bereinigung behält einen vorhandenen separaten Schlüssel bei.
+## HA-Mitbereinigung
 
-## Manuelle altersbasierte Bereinigung
+Die Option für passende HA-Media-Player ist bei neuen Aktivierungen standardmäßig `false`. Vorhandene Werte werden bei der Migration nicht verändert. Gerrys bestehender Wert `true` bleibt deshalb erhalten.
 
-Der manuelle Ablauf ist zweigeteilt:
+Eine tatsächliche Registry-Entfernung kann individuelle Namen, Entity-IDs, Dashboards, Automationen, HomeKit und Siri betreffen. Sie wird ausschließlich nach dem vollständigen Sicherheitsvertrag ausgeführt.
 
-1. Mindestalter in Tagen wählen
-2. aus den danach gefilterten Datensätzen konkrete Einträge auswählen
+## Migration von rc3
 
-Standardwert: **365 Tage**.
+Erhalten werden:
 
-Ausgeschlossen werden:
+- Config Entry
+- Entity-IDs und Unique IDs
+- individuelle Namen
+- Master-Schalter und Automatik
+- abgeschlossener rc3-Erstlauf
+- manuelle und automatische Alterswerte
+- HA-Mitbereinigung
+- gültige Auswahl- und Ignore-Werte
 
-- `playing`- oder `paused`-Player
-- Datensätze ohne gültigen letzten Aktivitätszeitpunkt
-- Datensätze, die den Altersfilter nicht erfüllen
+Entfernt werden:
 
-Optionen pro manueller Löschung:
-
-- erfolgreich gelöschte rohe Clients zusätzlich ignorieren
-- den zugehörigen HA-Media-Player nach erfolgreicher und revalidierter Serverlöschung entfernen
-
-## Automatische Serverbereinigung
-
-Die Automatik besitzt einen separaten Schalter und ist standardmäßig aus.
-
-Erstaktivierung:
-
-- Warnschalter aktivieren
-- exakten Aktivierungstext eingeben
-- Altersfilter festlegen; Standard 365 Tage
-- entscheiden, ob zugehörige HA-Media-Player sicher entfernt werden sollen
-
-Zeitverhalten:
-
-- erster Lauf einmalig 120 Sekunden nach der bewussten Aktivierung
-- anschließend alle 24 Stunden; Reloads oder Neustarts lösen den Erstlauf nicht erneut aus
-
-Löschverhalten:
-
-- keine maximale Zahl pro Lauf
-- alle zulässigen Datensätze werden unabhängig verarbeitet
-- Fehler eines Datensatzes stoppen die übrigen nicht
-- aktive Player und unbekannte Zeitstempel werden übersprungen
-- die Automatik trägt Clients nicht automatisch in die rohe Ignorierliste ein
-
-## Verhalten bei fehlenden Geräten
-
-Bereits konfigurierte IDs bleiben im Selektor sichtbar, auch wenn sie vom Server momentan nicht gemeldet werden. Sie erhalten einen entsprechenden Hinweis.
+- zusätzliches Cleanup-Zugangsfeld
+- bisheriger Aktivierungstext
+- automatische Ignore-Option nach Serverbereinigung
+- obsoleter rc3-Erstlauf-Hilfswert nach Übertragung in den Store
+- gemischte Legacy-Ignore-Liste nach sicherer Klassifizierung
