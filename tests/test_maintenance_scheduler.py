@@ -18,6 +18,8 @@ from custom_components.emby.maintenance_scheduler import (
 from custom_components.emby.models import EmbiRuntimeData, MaintenanceState
 from custom_components.emby.scheduling import utc_iso
 
+SETUP_ENTRY_STATE = object()
+
 
 class FakeStore:
     def __init__(self, state: MaintenanceState) -> None:
@@ -74,7 +76,7 @@ async def test_rc3_migration_schedules_once_after_120_seconds_and_persists(
     now = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
     state = MaintenanceState(initial_run_completed=True)
     hass, entry, store = setup(
-        state=ConfigEntryState.SETUP_IN_PROGRESS,
+        state=SETUP_ENTRY_STATE,
         maintenance_state=state,
     )
     scheduled = []
@@ -101,7 +103,7 @@ async def test_setup_registration_waits_for_loaded_then_executes_once(
     monkeypatch,
 ) -> None:
     clock = [datetime(2026, 7, 14, 12, 0, tzinfo=UTC)]
-    hass, entry, _store = setup(state=ConfigEntryState.SETUP_IN_PROGRESS)
+    hass, entry, _store = setup(state=SETUP_ENTRY_STATE)
     callbacks = []
     points = []
     runs = 0
