@@ -1,12 +1,19 @@
 {
   "domain": "emby",
   "name": "Emby Integration - EMBi",
-  "codeowners": ["@Seger85"],
+  "codeowners": [
+    "@Seger85"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/Seger85/home-assistant-embi",
   "integration_type": "service",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/Seger85/home-assistant-embi/issues",
-  "requirements": [],
+  "loggers": [
+    "pyemby"
+  ],
+  "requirements": [
+    "pyEmby==1.10"
+  ],
   "version": "0.3.0"
 }

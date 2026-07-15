@@ -16,6 +16,8 @@ def test_manifest_points_to_canonical_repository() -> None:
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["documentation"].endswith("Seger85/home-assistant-embi")
     assert manifest["issue_tracker"].endswith("Seger85/home-assistant-embi/issues")
+    assert manifest["requirements"] == ["pyEmby==1.10"]
+    assert manifest["loggers"] == ["pyemby"]
 
 
 def test_legacy_yaml_platform_is_removed() -> None:
@@ -64,6 +66,7 @@ def test_media_player_unique_id_contract_is_unchanged() -> None:
 def test_diagnostics_expose_only_aggregate_maintenance_data() -> None:
     diagnostics = (COMPONENT / "diagnostics.py").read_text()
     models = (COMPONENT / "models.py").read_text()
+    api = (COMPONENT / "api.py").read_text()
 
     for identity_option in (
         "CONF_ALLOWED_DEVICE_IDS",
@@ -86,6 +89,7 @@ def test_diagnostics_expose_only_aggregate_maintenance_data() -> None:
                 0
             ]
         )
+    assert "def as_diagnostics" not in api
 
 
 def test_automatic_cleanup_contract_is_explicit_persistent_and_uncapped() -> None:
@@ -116,3 +120,15 @@ def test_registry_removal_requires_exact_post_delete_revalidation() -> None:
     assert "entity.config_entry_id != entry.entry_id" in evaluator
     assert "str(entity.unique_id) != key" in evaluator
     assert "apply_exact_registry_removals" in committer
+
+
+def test_release_assets_are_zip_and_checksum_only() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text()
+    publish_block = workflow.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[0]
+
+    assert "dist/embi.zip" in publish_block
+    assert "dist/embi.zip.sha256" in publish_block
+    assert "BUILD_COMMIT" not in publish_block
+    assert "cmp dist/embi.zip verify-release/embi.zip" in workflow
+    assert "origin/main" in workflow
+    assert "origin/develop" in workflow
