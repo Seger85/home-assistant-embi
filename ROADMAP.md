@@ -1,98 +1,67 @@
 # EMBi Roadmap
 
-## 0.2.0 – produktive Baseline
+## 0.3.0 – Stable
 
-Status: abgeschlossen und versioniert.
-
-- Config Entry und Options Flow
-- Übernahme der vorhandenen 28 Media-Player
-- Erhalt der Entity-IDs
-- kontrollierte Migration weg vom Legacy-YAML-Pfad
-
-## 0.3.0-rc1 – Identität, Sicherheit und Repository
-
-Status: über das öffentliche HACS-Custom-Repository installiert und in Home Assistant 2026.7.2 erfolgreich live verifiziert.
-
-- korrekte Trennung von Emby-`Id` und `ReportedDeviceId`
-- automatische Optionsmigration
-- Legacy-YAML-Code vollständig entfernt
-- bestehender Config Entry und 28 Media-Player erhalten
-- Entity-IDs, Unique IDs und individuelle Namen erhalten
-- Live-Wiedergabestatus und Push-Updates funktional
-- sichere Standardstellung der Serverbereinigung
-- redigierte Diagnostics
-
-## 0.3.0-rc2 – Runtime-, Safety- und UI-Härtung
-
-Status: als GitHub-Prerelease `v0.3.0-rc2` veröffentlicht. Der Tag bleibt unverändert auf Commit `f69224ff6dc6609f2923e391dda428dd0b91bf69`.
-
-- deduplizierte Allowlist- und Ignore-Sammelaktionen
-- aktive Registry-Einträge vollständig geschützt
-- Revalidierung vor jedem Registry-Remove
-- eindeutige Serverbereinigungs-Labels
-- keine gespeicherten API-Schlüssel in Passwortfeld-Defaults
-- automatisierter, geprüfter Prerelease-Workflow
-
-## 0.3.0-rc3 – Finale Gerätebereinigung
-
-Status: als GitHub-Prerelease `v0.3.0-rc3` auf Commit `0d776720b527d1285b258159edc8f30b933385ca` veröffentlicht. Release-Workflow, HACS-Archiv, Prüfsumme, Prerelease-Status, Nicht-`latest`-Status und Tagziel wurden automatisch geprüft. Der Home-Assistant-Livetest steht noch aus.
+Status: Implementierung und Repositoryvertrag abgeschlossen; öffentliche Veröffentlichung gesperrt, bis die Live-Gates erfüllt und der Draft-Promotion-PR ausdrücklich freigegeben ist.
 
 Enthalten:
 
-- zwei klar getrennte Bereinigungswege: manuell und automatisch
-- manueller Altersfilter vor Datensatzauswahl
-- Standard-Altersfilter: älter als 365 Tage
-- separat aktivierbare Automatik mit ausdrücklicher Warnung und Bestätigungstext
-- erster automatischer Lauf 120 Sekunden nach der bewussten Erstaktivierung
-- weitere automatische Läufe alle 24 Stunden
-- bewusst keine maximale Löschzahl pro Lauf
-- aktive Wiedergaben und Datensätze ohne gültigen Aktivitätszeitpunkt werden übersprungen
-- Fehler eines Datensatzes stoppen die übrigen Löschungen nicht
-- optionales Entfernen des zugehörigen HA-Media-Players nach erfolgreicher Emby-Löschung
-- HA-Registry-Entfernung nur nach frischer `/Devices`-Revalidierung, ohne verbleibende gleiche `ReportedDeviceId.AppName`-Identität und ohne Entity-State beim Reload
-- aggregierte automatische Laufdiagnose ohne private IDs
+- persistenter Maintenance-Store und persistenter Laufbericht
+- absoluter Scheduler mit 120-Sekunden-Catch-up und 24 Stunden nach Abschluss
+- gemeinsamer Lock und Wiederholschutz
+- getrennte Registry-Zähler queued, matched, removed, missing und protected
+- fail-safe Verhalten bei Store-, API- und Revalidierungsfehlern
+- Options-Flow-Entwurf mit Apply und Discard
+- höchstens ein Reload nach Apply
+- ein normaler EMBi-Verbindungsschlüssel, kein zweites Cleanup-Feld
+- keine Aktivierungsphrase
+- manuelle und automatische Alterswerte mit Presets und Custom
+- getrennte App- und Geräte-Ignorierregeln
+- sichtbare unresolved Altwerte
+- keine automatische Ignore-Regel nach Serverbereinigung
+- HA-Mitbereinigung für neue Aktivierungen standardmäßig aus
+- Diagnostics-Redaktion
+- keine Wartungsentity
+- HACS-ZIP-Vertrag `embi.zip`
 
-Live-Freigabekriterien für rc3:
+Live-Gates:
 
-- Upgrade über HACS erfolgreich
-- Config Entry, 28 Media-Player und bestehende Unique IDs unverändert
-- Automatik standardmäßig ausgeschaltet
-- Erstaktivierung erfordert Schalter und exakten Text
-- erster Lauf nach 120 Sekunden nachvollziehbar
-- Altersfilter 365 Tage korrekt
-- keine Begrenzung der Kandidatenzahl
-- aktive Player und unbekannte Zeitstempel sicher übersprungen
-- HA-Registry-Eintrag nur nach letzter Serverhistorie und kontrolliertem Reload entfernt
-- UI-QA auf iPhone, iPad und Desktop
-- keine neuen EMBi-Warnungen, Repairs oder unbeabsichtigten Löschungen
+- vollständiges Home-Assistant- und Emby-Backup
+- Upgradepfad `v0.3.0-rc3` → unveröffentlichtes `0.3.0`-Testpaket
+- 29 Media-Player, Entity-IDs, Unique IDs und individuelle Namen unverändert
+- migrierter Wert 364 bleibt zunächst Custom
+- bewusste spätere Auswahl von 365 prüfen
+- Catch-up, `next_run_at`, Reload und Neustart prüfen
+- Apply, unveränderter Apply, Discard und Schließen über X prüfen
+- tatsächliche sichere Registry-Nachbereitung verifizieren
+- iPhone-, iPad- und Desktop-QA
+- Rollback auf `v0.3.0-rc3`
+- keine neuen Repairs, Fehler oder unbeabsichtigten Änderungen
 
-## 0.3.0 – stabile Freigabe
+## Nach 0.3.0
 
-Freigabekriterien:
+Die folgenden Themen bleiben ausdrücklich außerhalb des Stable-Scope und werden erst nach der Veröffentlichung neu priorisiert:
 
-- GitHub Actions vollständig erfolgreich
-- rc3-Liveprüfung einschließlich manueller und automatischer Bereinigung abgeschlossen
-- bestehende Entity-IDs und Unique IDs unverändert
-- Optionsmigration und alle Optionsmenüs geprüft
-- Registry- und Serverbereinigung sicher geprüft
-- Screenshot-QA auf iPhone, iPad und Desktop abgeschlossen
-- Backup- und Rollback-Weg praktisch bestätigt
-- keine neuen EMBi-Warnungen oder Fehler
-- ausdrückliche Freigabe durch Gerry
+- Report-only-Modus
+- Bibliothekssensoren
+- zuletzt hinzugefügte Medien
+- Benutzerstatistiken
+- Wiedergabezeitstatistiken
+- neue Plattformen
+- Premium-Code
+- weitere Produktvisionen
 
-## 0.4.0 – vertiefte Testabdeckung
+## 0.4.x – Wartung und Testvertiefung
 
 - vollständige Home-Assistant-Testumgebung für Config Flow und Options Flow
-- Tests der Entity Registry mit Mock Registry
-- Tests für Reload/Unload und pyemby-Callbacks
-- Tests für Reauth-/Auth-Fehler
-- strukturierter Audit-Log-Eintrag für Wartungsaktionen ohne sensible IDs
+- breitere Runtime-Kompatibilitätsmatrix
+- weitere Fehler- und Recovery-Szenarien
+- strukturierte, identitätsfreie Audit-Historie nur nach neuer Scope-Freigabe
 
-## 1.0.0 – Veröffentlichungsreife
+## 1.0.0 – Langfristige Veröffentlichungsreife
 
-- dokumentierte Kompatibilitätsmatrix
 - externe Beta-Tests
-- vollständige HACS- und Hassfest-Konformität
+- dokumentierte Kompatibilitätsmatrix
 - Datenschutz- und Sicherheitsreview
-- stabiler Migrationspfad über mindestens zwei Vorversionen
+- stabiler Migrationspfad über mehrere Vorversionen
 - klare Abgrenzung zum minimalen Home-Assistant-Core-Vorschlag

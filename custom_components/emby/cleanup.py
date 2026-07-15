@@ -33,6 +33,15 @@ class DeviceCleanupResult:
     failed: tuple[EmbyDeviceRecord, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class RegistryFollowupPlan:
+    """Transient exact player identities for registry follow-up."""
+
+    eligible_keys: tuple[str, ...]
+    protected_active_keys: tuple[str, ...]
+    protected_remaining_history_keys: tuple[str, ...]
+
+
 def plan_device_cleanup(
     records: Iterable[EmbyDeviceRecord],
     *,
@@ -69,17 +78,24 @@ def plan_device_cleanup(
     )
 
 
-def removable_player_keys(
+def plan_registry_followup(
     succeeded: Iterable[EmbyDeviceRecord],
     remaining_records: Iterable[EmbyDeviceRecord],
     *,
     active_player_keys: Iterable[str] = (),
-) -> tuple[str, ...]:
-    """Return deleted player identities with no surviving server record or playback."""
+) -> RegistryFollowupPlan:
+    """Separate eligible, active, and remaining-history player identities."""
     successful_keys = {record.player_key for record in succeeded}
     remaining_keys = {record.player_key for record in remaining_records}
     active = {str(value) for value in active_player_keys}
-    return tuple(sorted(successful_keys - remaining_keys - active))
+    protected_active = successful_keys & active
+    protected_remaining = (successful_keys & remaining_keys) - protected_active
+    eligible = successful_keys - protected_active - protected_remaining
+    return RegistryFollowupPlan(
+        eligible_keys=tuple(sorted(eligible)),
+        protected_active_keys=tuple(sorted(protected_active)),
+        protected_remaining_history_keys=tuple(sorted(protected_remaining)),
+    )
 
 
 async def async_delete_device_records(

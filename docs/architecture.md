@@ -2,143 +2,138 @@
 
 ## Zielbild
 
-EMBi ersetzt die eingebaute Home-Assistant-Komponente `emby` über dieselbe Domain. Es gibt genau einen Config Entry pro Emby-Server und ausschließlich einen Config-Entry-basierten Laufzeitpfad.
+EMBi ersetzt die Core-Integration unter derselben Domain `emby`, verwendet jedoch ausschließlich den Config-Entry-Laufzeitpfad. Pro Emby-Server existiert genau ein Config Entry. Die Plattform bleibt ausschließlich `media_player`.
 
 ```text
 Config Flow / Reconfigure
           │
           ▼
-Config Entry (Verbindung + Options)
+Config Entry 3.1
           │
-          ├── EmbyApiClient ── REST /System/Info, /Devices, DELETE /Devices
-          │
+          ├── EmbyApiClient ── /System/Info, /Devices, DELETE /Devices
           ├── pyemby.EmbyServer ── Push-Status und Fernsteuerung
-          │
-          └── Maintenance Scheduler
-                    │
-                    ├── Alters- und Aktivitätsprüfung
-                    ├── sequenzielle, unlimitierte Datensatzverarbeitung
-                    ├── erneute /Devices-Prüfung
-                    └── vorgemerkte Registry-Bereinigung beim Reload
+          ├── Options Draft ── Apply / Discard
+          └── Maintenance Runtime
+                    ├── privater atomarer Store
+                    ├── persistenter Laufbericht
+                    ├── absoluter Scheduler
+                    ├── gemeinsamer Lock
+                    └── exakte Registry-Nachbereitung
 ```
 
-## Verantwortlichkeiten
+## Module
 
-### `api.py`
+### `entry_setup.py`
 
-- asynchroner REST-Client
-- Validierung der Verbindung
-- Lesen der Emby-Gerätehistorie
-- Löschen eines ausdrücklich ausgewählten Historieneintrags
-- Normalisierung in `EmbyDeviceRecord`
-- robuste UTC-Normalisierung von Emby-Aktivitätszeitpunkten, einschließlich siebenstelliger Bruchteile
+- validiert die bestehende Verbindung mit dem normalen EMBi-Verbindungsschlüssel
+- liest Gerätehistorie
+- migriert rc3-Optionen idempotent
+- lädt beziehungsweise initialisiert den privaten Store
+- erzeugt `EmbiRuntimeData`
+- markiert unterbrochene Läufe fail-safe
+- verarbeitet ausschließlich eine vorhandene same-process Registry-Queue
+- startet Media-Player-Plattform und Scheduler
 
-### `cleanup.py`
+### `entry_lifecycle.py`
 
-- reine, testbare Alters- und Sicherheitsplanung
-- Ausschluss aktiver Player
-- Ausschluss unbekannter oder ungültiger Aktivitätszeitpunkte
-- keine Begrenzung der Kandidatenzahl
-- unabhängige Verarbeitung aller Datensätze
-- Ermittlung, welche `ReportedDeviceId.AppName`-Identitäten nach der Löschung keinen verbleibenden Serverdatensatz mehr besitzen
+- Config-Entry-Migration auf Version 3.1
+- sauberer Unload der Plattform
+- Abmeldung des Scheduler-Callbacks
+- Stoppen von pyemby
+- zentraler Update-Listener für höchstens einen Reload nach Apply
 
-### `maintenance.py`
+### `maintenance_store.py`
 
-- Aufbau des Cleanup-API-Clients
-- Ermittlung aktuell spielender oder pausierter Player
-- Zeitplanung: einmalig 120 Sekunden nach Erstaktivierung, danach 24 Stunden
-- automatische Bereinigung unter einem Laufzeit-Lock
-- aggregierte Laufzeitstatistik
-- Queue für sichere HA-Registry-Nachbereitung
-- tatsächliche Registry-Entfernung erst während des nächsten Config-Entry-Setups
+- offizieller Home-Assistant-`Store`
+- `private=True`
+- `atomic_writes=True`
+- Schema-Version und tolerantes Laden
+- fehlender erwarteter oder beschädigter Store führt zu fail-safe Anhalten der Automatik
 
 ### `models.py`
 
-`EmbiRuntimeData` hält pro Config Entry:
+`EmbiRuntimeData` enthält:
 
 - REST-Client
-- zuletzt gelesene Gerätehistorie
-- laufende pyemby-Instanz
-- Cleanup-Lock
-- Scheduler-Status
-- aggregierte Ergebnisse des letzten automatischen Laufs
+- aktuelle Gerätehistorie
+- pyemby-Instanz
+- gemeinsamen Cleanup-Lock
+- Store und `MaintenanceState`
+- Storage-Verfügbarkeitsstatus
+- Scheduler-Callback
 
-### `config_flow.py`
+`CleanupRunReport` enthält ausschließlich aggregierte Zähler und Zeitpunkte. Private Identitäten werden nicht persistiert.
 
-- Erstkonfiguration und Rekonfiguration
+### `scheduling.py` und `maintenance_scheduler.py`
 
-### `options_flow.py`
+- UTC-Normalisierung
+- persistentes absolutes `next_run_at`
+- Zukunftstermine bleiben unverändert
+- fehlende, ungültige oder überfällige Termine erhalten genau einen 120-Sekunden-Catch-up
+- nach Abschluss folgt der nächste Termin 24 Stunden später
+- vor dem Callback wird der Store erneut gelesen
+- Reloads und parallele Tasks erzeugen keinen doppelten Lauf
 
-- Gerätefilter und Sammelaktionen
-- manuelle Registry-Bereinigung
-- Menüführung und About/Credits
+### `cleanup.py` und `maintenance_cycle_execute.py`
 
-### `maintenance_flow.py`
+- strikter UTC-Cutoff
+- aktive und undatierte Datensätze geschützt
+- kein Batchlimit
+- Einzelfehler stoppen den restlichen Lauf nicht
+- Save vor jeder kritischen Phase
+- nach Serverbereinigung erneute `/Devices`-Abfrage
+- keine automatische Ignore-Regel
+- Registry-Follow-up nur bei eindeutiger Zulässigkeit
 
-- Master-Schalter und Cleanup-API-Schlüssel
-- manueller Altersfilter, Auswahl und Bestätigung
-- separat bestätigte automatische Bereinigung
+### `maintenance_registry_*`
 
-### `media_player.py`
+- Queue enthält nur exakte `ReportedDeviceId.AppName`-Keys und optional eine exakte Entity-ID
+- same-process Follow-up nach kontrolliertem Reload
+- Neustart mit `registry_pending` führt zu `interrupted`, nicht zu verspäteter Änderung
+- Revalidierung prüft Domain, Plattform, Config Entry, Unique ID, State und verbleibende Historie
+- Präfix-, Wildcard- und Teilstring-Matches sind ausgeschlossen
+- `removed` wird erst nach tatsächlichem `registry.async_remove()` gezählt
 
-- pyemby-Laufzeitverbindung
-- dynamische Anlage und Verfügbarkeit von Media-Playern
-- Erhalt der bestehenden Unique ID
-- Steuerbefehle und Medienattribute
+### `options_draft.py`, `options_flow.py` und Mixins
+
+- alle normalen Unterseiten ändern nur den Entwurf
+- Apply validiert und schreibt einmal
+- unveränderter Apply beendet ohne Write
+- Discard stellt den Originalzustand wieder her
+- Schließen über X schreibt nichts
+- kritische Aktionen sind bei Dirty Draft gesperrt
+- neue Automatik startet erst nach Apply
 
 ### `diagnostics.py`
 
-- Integrationsversion
-- redigierte Verbindung und Optionen
-- Runtime- und Schedulerstatus
-- aggregierte Cleanup-Zähler
-- redigierte Geräteübersicht
+- redigierte Verbindungsdaten
+- redigierte identitätsbezogene Optionen
+- aggregierter Laufbericht
+- keine vollständigen Geräte-, Benutzer- oder Schlüsselwerte
 
 ## Identitätsmodell
 
-| Feld | Bedeutung | Verwendung |
+| Feld | Bedeutung | Zulässige Verwendung |
 |---|---|---|
-| `Id` | serverseitiger Historieneintrag | Auswahl und Parameter für `DELETE /Devices` |
-| `ReportedDeviceId` | stabile rohe Client-Identität | geräteweite Ignorierregel |
-| `ReportedDeviceId.AppName` | konkrete Client-/App-Kombination | pyemby-/HA-Unique-ID und präzise Registry-Nachbereitung |
+| `Id` | serverseitiger Historieneintrag | ausschließlich Auswahl und `DELETE /Devices` |
+| `ReportedDeviceId` | exakte Client-Identität | geräteweite Ignore-Regel |
+| `ReportedDeviceId.AppName` | exakte App-/Client-Identität | pyemby-Key, HA-Unique-ID, Registry-Follow-up |
 
-EMBi verändert vorhandene Unique IDs nicht.
+Die bestehende Unique-ID-Logik wird nicht verändert. Das ist die Grundlage für die 29-Player-Baseline und den Erhalt manueller Entity-Namen.
 
-## Entity-Lifecycle nach Serverlöschung
+## Fail-safe Reihenfolge
 
-1. Datensatz muss den Altersfilter erfüllen und darf nicht aktiv sein.
-2. `DELETE /Devices` muss erfolgreich sein.
-3. EMBi liest `/Devices` erneut.
-4. Existiert noch ein Datensatz mit derselben `ReportedDeviceId.AppName`, bleibt der HA-Player erhalten.
-5. Andernfalls wird ausschließlich dieser Player-Key für die Registry-Nachbereitung vorgemerkt.
-6. EMBi lädt den Config Entry kontrolliert neu.
-7. Nach dem Unload darf kein Entity-State mehr vorhanden sein.
-8. Nur eine zum selben Config Entry gehörende `media_player`-Registry-Entität mit exakt passender Unique ID wird entfernt.
-9. Nutzt der Client Emby später erneut, kann er sich registrieren und wieder als Entity erscheinen.
+1. Lock erwerben.
+2. Laufstatus `running` speichern.
+3. Geräte frisch lesen und Kandidaten revalidieren.
+4. Kandidaten und Schutzfälle speichern.
+5. Serverdatensätze einzeln verarbeiten.
+6. Serverergebnis speichern.
+7. Geräte erneut lesen.
+8. exakte Registry-Keys planen und Queue speichern.
+9. kontrollierten Reload auslösen.
+10. Queue bei Setup erneut exakt prüfen.
+11. zulässige Registry-Änderung ausführen und tatsächliche Zähler speichern.
+12. Abschlusszeit und nächsten automatischen Termin speichern.
 
-## Scheduler
-
-Die Automatik ist nur aktiv, wenn sowohl der Master-Schalter der Serverbereinigung als auch der separate Automatik-Schalter gesetzt sind.
-
-- initialer Lauf: einmalig 120 Sekunden nach der bewussten Erstaktivierung
-- der abgeschlossene Erstversuch wird intern in den Config-Entry-Optionen markiert
-- Folgeintervall: 24 Stunden
-- ein normaler Reload oder Neustart startet den 120-Sekunden-Erstlauf nicht erneut; das 24-Stunden-Intervall wird neu geplant
-- Laufzeit-Lock verhindert parallele Bereinigungen
-- alle Löschungen bleiben altersbasiert, revalidiert und pro Datensatz unabhängig
-- es gibt bewusst kein Maximum pro Lauf
-
-## Options-Migration 0.2 → 0.3
-
-Alte numerische `/Devices.Id`-Werte werden anhand der aktuellen Gerätehistorie umgewandelt:
-
-- Positivliste: `Id` → `ReportedDeviceId.AppName`
-- Ignorierliste: `Id` → `ReportedDeviceId`
-
-Nicht mehr auflösbare Werte bleiben erhalten.
-
-## Abhängigkeiten
-
-- Home Assistant 2026.7 oder neuer
-- im Home-Assistant-Core-Image vorhandenes `pyemby`
-- lokaler HTTP- oder HTTPS-Zugriff auf den Emby-Server
+Scheitert ein Store-Write vor einer Serveränderung, wird sie nicht ausgeführt. Scheitert ein Write danach, wird keine Registry-Nachbereitung gestartet und der Bericht bleibt als unvollständig markiert.

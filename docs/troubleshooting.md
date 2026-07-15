@@ -1,42 +1,88 @@
-# Fehleranalyse
+# Troubleshooting
 
-## Duplicate Unique IDs nach Neustart
-
-Wahrscheinlich ist der alte YAML-Plattformblock noch aktiv. EMBi und YAML starten dann parallel.
+## Integration lädt nicht
 
 Prüfen:
 
-- `configuration.yaml`
-- Logs nach `already exists`
-- Config-Entry-Zuordnung der Entitäten
+- Home-Assistant-Log auf `emby`, `EMBi`, `ConfigEntryNotReady` und `ConfigEntryAuthFailed`
+- Host, Port und HTTPS
+- normalen EMBi-Verbindungsschlüssel
+- Erreichbarkeit von `/System/Info` und `/Devices`
+- ob eine zweite Custom Component dieselbe Domain `emby` verwendet
 
-## Gewählte Geräte werden trotzdem nicht angezeigt
+## Wartungsspeicher nicht verfügbar
+
+Symptome:
+
+- Persistent Notification „EMBi-Wartung angehalten“
+- Automatik nicht geplant
+- `maintenance_storage_available: false` in Diagnostics
+
+Vorgehen:
+
+1. keine Wartungsaktion auslösen
+2. Home-Assistant-Dateisystem und freien Speicher prüfen
+3. Logs auf Storage-Korruption oder Write-Fehler prüfen
+4. Backupzustand prüfen
+5. nicht manuell in `.storage` editieren
+6. bei Bedarf auf `v0.3.0-rc3` und Backup zurückrollen
+
+## `registry_pending` nach Neustart
+
+Das ist ein bewusst fail-safe behandelter Zustand. EMBi führt keine verspätete Registry-Änderung aus. Der Bericht wird als `interrupted` markiert. Serverergebnisse bleiben im Bericht erhalten; die Registry-Nachbereitung muss später mit einem neuen kontrollierten Testobjekt erneut geprüft werden.
+
+## `queued` größer als `removed`
+
+Das ist nicht automatisch ein Fehler. Mögliche Gründe:
+
+- Entity nie vorhanden: `missing`
+- aktiver State: protected
+- verbleibende gleiche Historie: protected
+- falscher Config Entry oder Plattform: protected
+- Unique ID verändert oder mehrdeutig: protected
+
+Nur ein tatsächlicher `registry.async_remove()` erhöht `removed`.
+
+## Automatik läuft nach 120 Sekunden nicht
 
 Prüfen:
 
-- Modus „Nur ausgewählte Geräte“ aktiv?
-- Gerät gleichzeitig ignoriert? Ignorieren hat Vorrang.
-- Client meldet sich mit einer anderen App-Variante?
-- Optionsmigration von einer 0.2-Version abgeschlossen?
+- Master-Schalter und Automatik wurden final per Apply gespeichert
+- Store ist verfügbar
+- Config Entry ist `loaded`
+- `next_run_at` liegt nicht noch in der Zukunft
+- kein manueller oder anderer automatischer Lauf hält den gemeinsamen Lock
+- die Automatik wurde während der Grace Period nicht wieder deaktiviert
 
-EMBi 0.3 verwendet `ReportedDeviceId.AppName`; alte numerische `Id`-Werte werden beim Setup migriert, sofern der historische Eintrag noch auf dem Server vorhanden ist.
+## Termin verschiebt sich bei Reload oder Neustart
 
-## Gelöschtes Emby-Gerät erscheint wieder
+Ein gültiger Zukunftstermin darf sich nicht verschieben. Diagnosedaten und „Letzter Bereinigungslauf“ vergleichen. Bei Abweichung keine Wartungsaktion auslösen und Logs sichern.
 
-Das ist möglich, wenn der Client erneut verwendet wird. Emby registriert ihn dann wieder. Zusätzliches Ignorieren in EMBi verhindert die erneute Home-Assistant-Entity-Erzeugung.
+## Custom 364 erscheint
 
-## Serverbereinigung wird nicht angezeigt
+Das ist korrekt. Stable migriert 364 nicht automatisch auf 365. Die bewusste Auswahl von 365 erfolgt erst im Live-Test über den Options Flow.
 
-Die Funktion ist standardmäßig deaktiviert. Unter **Optionale Serverbereinigung einrichten** aktivieren.
+## Optionen scheinbar nicht gespeichert
 
-## Bereinigungsschlüssel wird akzeptiert, Löschung schlägt fehl
+Unterseiten ändern nur den Entwurf. Am Ende **Änderungen übernehmen** bestätigen. **Änderungen verwerfen** oder Schließen über X schreibt nichts.
 
-Die Verbindungsprüfung belegt nur, dass der Schlüssel `/System/Info` lesen kann. Der Schlüssel kann trotzdem unzureichende Rechte für `DELETE /Devices` besitzen.
+## Wartungsmenüs fehlen
 
-## Auswahlfelder sind zu hell oder weiß
+Bei ungespeicherten Entwurfsänderungen sind kritische Aktionen absichtlich gesperrt. Entwurf zuerst übernehmen oder verwerfen. Die manuelle Serverbereinigung ist außerdem nur sichtbar, wenn der Master-Schalter bereits angewendet ist.
 
-EMBi verwendet native Home-Assistant-Selektoren. Deren Farben stammen aus dem aktiven Frontend-Theme. Die Korrektur muss global im Theme erfolgen; integrationsspezifisches CSS im Config Flow wäre fragil und wird bewusst nicht eingesetzt.
+## Media-Player fehlen oder haben andere IDs
 
-## Entität nach Ignorieren noch in der Registry
+Sofort stoppen und vergleichen:
 
-Filterung und Registry sind getrennt. Ignorieren verhindert die aktive Anlage bzw. macht die Entität nicht verfügbar. Die Registry-Bereinigung kann den bereits ignorierten Eintrag anschließend kontrolliert entfernen.
+- erwartete Anzahl 29
+- Config-Entry-Zuordnung
+- Entity-ID
+- Unique ID
+- individueller Name
+- Disabled-/Restored-/Orphan-Status
+
+Keine Registry-Nachbereitung starten. Bei Identitätsabweichung Rollback auf rc3 vorbereiten.
+
+## HACS bietet Stable nicht an
+
+Vor der öffentlichen Veröffentlichung ist das korrekt. Das unveröffentlichte Testpaket ist ein Actions-Artefakt und kein HACS-Release. Stable erscheint erst nach Merge nach `main`, Tag `v0.3.0` und GitHub Stable Release.

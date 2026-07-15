@@ -8,7 +8,7 @@ from custom_components.emby.api import EmbyApiError, EmbyDeviceRecord
 from custom_components.emby.cleanup import (
     async_delete_device_records,
     plan_device_cleanup,
-    removable_player_keys,
+    plan_registry_followup,
 )
 
 
@@ -23,12 +23,13 @@ class FakeDeleteClient:
             raise EmbyApiError("delete denied")
 
 
-def _record(
+def record(
     record_id: str,
     *,
     client_id: str | None = None,
     app_name: str = "Emby App",
     activity: datetime | None = None,
+    raw_activity: str | None = None,
 ) -> EmbyDeviceRecord:
     return EmbyDeviceRecord.from_api(
         {
@@ -36,108 +37,62 @@ def _record(
             "ReportedDeviceId": client_id or f"client-{record_id}",
             "Name": f"Device {record_id}",
             "AppName": app_name,
-            "DateLastActivity": activity.isoformat().replace("+00:00", "Z") if activity else None,
+            "DateLastActivity": raw_activity
+            if raw_activity is not None
+            else activity.isoformat().replace("+00:00", "Z")
+            if activity
+            else None,
         }
     )
 
 
 @pytest.mark.asyncio
-async def test_batch_cleanup_keeps_processing_after_failure() -> None:
+async def test_batch_cleanup_continues_after_individual_failure_and_has_no_cap() -> None:
+    records = [record(str(index)) for index in range(250)]
     client = FakeDeleteClient({"2"})
-    records = [_record("1"), _record("2"), _record("3")]
-
     result = await async_delete_device_records(client, records)
-
-    assert client.calls == ["1", "2", "3"]
-    assert [record.record_id for record in result.succeeded] == ["1", "3"]
-    assert [record.record_id for record in result.failed] == ["2"]
-
-
-@pytest.mark.asyncio
-async def test_batch_cleanup_can_return_all_successful() -> None:
-    client = FakeDeleteClient()
-    records = [_record("1"), _record("2")]
-
-    result = await async_delete_device_records(client, records)
-
-    assert result.failed == ()
-    assert [record.record_id for record in result.succeeded] == ["1", "2"]
-
-
-@pytest.mark.asyncio
-async def test_batch_cleanup_has_no_per_run_deletion_cap() -> None:
-    client = FakeDeleteClient()
-    records = [_record(str(index)) for index in range(250)]
-
-    result = await async_delete_device_records(client, records)
-
     assert len(client.calls) == 250
-    assert len(result.succeeded) == 250
-    assert result.failed == ()
+    assert [item.record_id for item in result.failed] == ["2"]
+    assert len(result.succeeded) == 249
 
 
-def test_age_plan_uses_default_style_cutoff_and_skips_active_or_unknown() -> None:
+def test_age_contract_exact_cutoff_is_protected_and_older_is_candidate() -> None:
     now = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
-    expired = _record("old", activity=now - timedelta(days=366))
-    recent = _record("recent", activity=now - timedelta(days=364))
-    active = _record("active", activity=now - timedelta(days=500))
-    unknown = _record("unknown")
-
+    exact = record("exact", activity=now - timedelta(days=365))
+    older = record("older", activity=now - timedelta(days=365, microseconds=1))
+    active = record("active", activity=now - timedelta(days=500))
+    unknown = record("unknown")
+    invalid = record("invalid", raw_activity="not-a-date")
     plan = plan_device_cleanup(
-        [expired, recent, active, unknown],
+        [exact, older, active, unknown, invalid],
         now=now,
         age_days=365,
         active_player_keys=[active.player_key],
     )
-
-    assert plan.candidates == (expired,)
-    assert plan.skipped_recent == (recent,)
+    assert plan.candidates == (older,)
+    assert plan.skipped_recent == (exact,)
     assert plan.skipped_active == (active,)
-    assert plan.skipped_without_activity == (unknown,)
+    assert plan.skipped_without_activity == (unknown, invalid)
 
 
-def test_age_plan_does_not_limit_number_of_candidates() -> None:
+def test_custom_364_and_large_uncapped_plan() -> None:
     now = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
     records = [
-        _record(str(index), activity=now - timedelta(days=800 + index)) for index in range(300)
+        record(str(index), activity=now - timedelta(days=365 + index)) for index in range(300)
     ]
-
-    plan = plan_device_cleanup(records, now=now, age_days=365)
-
+    plan = plan_device_cleanup(records, now=now, age_days=364)
     assert len(plan.candidates) == 300
 
 
-def test_registry_key_is_removed_only_after_last_server_record_disappears() -> None:
-    old = _record(
-        "old",
-        client_id="client-1",
-        app_name="Emby Windows",
-        activity=datetime(2024, 1, 1, tzinfo=UTC),
+def test_registry_followup_separates_active_remaining_and_eligible() -> None:
+    eligible = record("1", client_id="one", app_name="App")
+    active = record("2", client_id="two", app_name="App")
+    remaining = record("3", client_id="three", app_name="App")
+    plan = plan_registry_followup(
+        [eligible, active, remaining],
+        [record("4", client_id="three", app_name="App")],
+        active_player_keys=[active.player_key],
     )
-    duplicate = _record(
-        "new",
-        client_id="client-1",
-        app_name="Emby Windows",
-        activity=datetime(2026, 1, 1, tzinfo=UTC),
-    )
-
-    assert removable_player_keys([old], [duplicate]) == ()
-    assert removable_player_keys([old, duplicate], []) == (old.player_key,)
-
-
-def test_active_player_key_is_never_queued_for_registry_removal() -> None:
-    record = _record(
-        "old",
-        client_id="client-1",
-        app_name="Emby Windows",
-        activity=datetime(2024, 1, 1, tzinfo=UTC),
-    )
-
-    assert (
-        removable_player_keys(
-            [record],
-            [],
-            active_player_keys=[record.player_key],
-        )
-        == ()
-    )
+    assert plan.eligible_keys == (eligible.player_key,)
+    assert plan.protected_active_keys == (active.player_key,)
+    assert plan.protected_remaining_history_keys == (remaining.player_key,)

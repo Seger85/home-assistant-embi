@@ -1,49 +1,105 @@
 # Entwicklung
 
-## Branches
+## Unterstützte Umgebung
 
-- `main`: freigegebene Versionen
-- `develop`: integrierter Entwicklungsstand
-- `feature/*`: einzelne Funktionen
-- `fix/*`: Fehlerkorrekturen
+- Python 3.13 und 3.14
+- Home Assistant 2026.7.2 als aktuelle Live-Basis
+- Ruff
+- Pytest
+- HACS Validation
+- Hassfest
 
-## Lokale Qualitätsprüfung
+## Lokale Prüfung
 
 ```bash
-python -m compileall -q custom_components/emby
+python -m pip install --upgrade pip -r requirements_test.txt
 python -m json.tool custom_components/emby/manifest.json >/dev/null
 python -m json.tool custom_components/emby/strings.json >/dev/null
 python -m json.tool custom_components/emby/translations/de.json >/dev/null
 python -m json.tool custom_components/emby/translations/en.json >/dev/null
+python -m compileall -q custom_components/emby scripts tests
 ruff check .
 ruff format --check .
 pytest -q
+python scripts/validate_stable_contract.py
+python scripts/secret_scan.py
 ```
 
-Die reinen Unit-Tests laden `api.py`, `const.py` und `helpers.py` ohne vollständige Home-Assistant-Testumgebung. Config-Flow- und Plattformtests gehören langfristig zusätzlich in eine vollständige Home-Assistant-Pytest-Umgebung.
+Releasegleichen Paketbau prüfen:
 
-## Releaseprozess
+```bash
+rm -rf dist
+python scripts/build_package.py \
+  --output-dir dist \
+  --expected-version 0.3.0 \
+  --commit "$(git rev-parse HEAD)"
+(cd dist && sha256sum --check embi.zip.sha256)
+test "$(cat dist/BUILD_COMMIT)" = "$(git rev-parse HEAD)"
+```
 
-1. Versionsnummer in `const.py` und `manifest.json` angleichen.
-2. Übersetzungsplatzhalter prüfen.
-3. Changelog aktualisieren.
-4. CI vollständig grün.
-5. Testinstallation auf nicht-produktivem Home Assistant.
-6. technische Prüfung und visuelle QA.
-7. Pull Request nach `main`.
-8. Tag `vX.Y.Z`.
-9. HACS-Update auf einer zweiten Instanz testen.
-10. erst danach produktive Installation aktualisieren.
+## Architekturregeln
 
-## Tests für destruktive Pfade
+- keine neue Plattform ohne neuen freigegebenen Scope
+- keine Wartungsentity
+- bestehende Unique-ID-Logik nicht verändern
+- `Id` nur für exakte Serverhistorie und den zugehörigen `/Devices`-Aufruf
+- Registry nur über exakte `ReportedDeviceId.AppName`-Identität
+- keine zusätzlichen Cleanup-Anmeldedaten
+- keine automatische Ignore-Regel nach Serverbereinigung
+- keine direkten `.storage`-Änderungen
+- Schedulertermine absolut und persistent
+- manuell und automatisch teilen einen Lock
+- Store-Fehler fail-closed
 
-Mindestens abzudecken:
+## Testanforderungen
 
-- keine Auswahl
-- Bestätigungsschalter aus
-- falscher Bestätigungstext
-- ein erfolgreicher Eintrag
-- ein fehlgeschlagener Eintrag
-- gemischter Teilerfolg
-- Ignorierliste nur um erfolgreiche Client-IDs erweitern
-- API-Key in Diagnostics redigiert
+Änderungen an Maintenance-Code benötigen Tests für:
+
+- Persistenz und Schema
+- Store-Lese- und Schreibfehler
+- Scheduler, Catch-up, Reload und Neustart
+- Lock und doppelte Callbacks
+- Kandidaten-Cutoff, aktive und undatierte Datensätze
+- Teilerfolg und kein Batchlimit
+- Registry-Queue, Match, tatsächliche Entfernung, Missing und Schutzfälle
+- exakte Identitäten ohne Präfix- oder Teilstring-Match
+- Options Draft, Apply, Discard und Dirty-Sperre
+- Migration und unveränderte Custom-Werte
+- Logging, Notifications und Datenschutz
+- Stable-, HACS- und Paketvertrag
+
+## Übersetzungen
+
+`strings.json` ist die englische Quelle und muss byteinhaltlich mit `translations/en.json` übereinstimmen. Die deutsche Datei muss dieselbe rekursive Schlüsselstruktur besitzen. Private IDs oder Live-Systemwerte gehören nie in Übersetzungen oder Dokumentation.
+
+## Paketvertrag
+
+`scripts/build_package.py` ist der gemeinsame Builder für Quality, Test package und Release. Das ZIP enthält ausschließlich Dateien aus `custom_components/emby` direkt im ZIP-Root.
+
+Erforderlich:
+
+- `__init__.py`
+- `manifest.json`
+- `strings.json`
+- `translations/de.json`
+- `translations/en.json`
+
+Unzulässig:
+
+- Tests
+- Dokumentation
+- `.github`
+- Repositorymetadaten
+- `__pycache__`, `.pyc`, `.pyo`
+- private Daten
+
+## Scope Freeze 0.3.0
+
+Nicht in 0.3.0 ergänzen:
+
+- Report-only-Modus
+- Bibliothekssensoren
+- Medien- und Benutzerstatistiken
+- neue Plattformen
+- Premium-Code
+- zusätzliche Produktvisionen
