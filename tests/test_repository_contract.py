@@ -132,3 +132,13 @@ def test_release_assets_are_zip_and_checksum_only() -> None:
     assert "cmp dist/embi.zip verify-release/embi.zip" in workflow
     assert "origin/main" in workflow
     assert "origin/develop" in workflow
+
+
+def test_test_package_is_bound_to_exact_source_commit() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "test-artifact.yml").read_text()
+
+    assert "github.event.pull_request.head.sha || github.sha" in workflow
+    assert "ref: ${{ env.BUILD_COMMIT_SHA }}" in workflow
+    assert '--commit "${BUILD_COMMIT_SHA}"' in workflow
+    assert 'test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"' in workflow
+    assert "embi-test-${{ env.BUILD_COMMIT_SHA }}" in workflow
