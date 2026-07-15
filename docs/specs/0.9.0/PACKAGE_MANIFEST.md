@@ -20,4 +20,4 @@
 | `docs/specs/0.9.0/13-documentation-and-community.md` | 1564 | `25e3690e60675b81eeed8cdb2d1c23974f528cdc74dc41c070f8c041b110e98d` |
 | `docs/specs/0.9.0/README.md` | 911 | `da5a626b439e8ac9e6528b679cd3bbd3798ecf8fc273be2bcece4be9fa94b018` |
 | `docs/specs/0.9.0/requirements.yaml` | 16032 | `facbf784a9b1dadbd4ec622e865fddc2a702ab1269ff5cc37585ae38404b11cc` |
-| `scripts/validate_spec_contract.py` | 2142 | `1d8e50a8f690a5a4dd13d3675eee1a31d9ebb7e60fa602916422202aa40e01f5` |
+| `scripts/validate_spec_contract.py` | 2411 | `c655894eef13143b03b287d6df122cd5616fae4be5fbeb23ccfaabe92b12c867` |
