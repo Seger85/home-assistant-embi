@@ -104,13 +104,9 @@ class CleanupRunReport:
                 raise ValueError(f"maintenance report field {key} must be text or null")
         for key in integer_fields & values.keys():
             if values[key] is not None and (
-                not isinstance(values[key], int)
-                or isinstance(values[key], bool)
-                or values[key] < 0
+                not isinstance(values[key], int) or isinstance(values[key], bool) or values[key] < 0
             ):
-                raise ValueError(
-                    f"maintenance report field {key} must be a non-negative integer"
-                )
+                raise ValueError(f"maintenance report field {key} must be a non-negative integer")
         if values.get("status", RUN_STATUS_IDLE) not in RUN_STATUSES:
             raise ValueError("maintenance report status is invalid")
         if values.get("mode") is not None and values["mode"] not in RUN_MODES:
