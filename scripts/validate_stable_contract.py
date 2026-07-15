@@ -47,6 +47,8 @@ def main() -> None:
     require(match is not None, "const.py VERSION must be a literal")
     require(manifest.get("version") == EXPECTED_VERSION, "Manifest is not stable 0.3.0")
     require(match.group(1) == EXPECTED_VERSION, "const.py is not stable 0.3.0")
+    require(manifest.get("requirements") == ["pyEmby==1.10"], "pyEmby pin differs")
+    require(manifest.get("loggers") == ["pyemby"], "pyEmby logger contract differs")
     require(strings == english, "English translation source differs")
     require(key_paths(strings) == key_paths(german), "German translation structure differs")
     require(hacs.get("zip_release") is True, "HACS ZIP contract missing")
@@ -81,9 +83,12 @@ def main() -> None:
             f"{name} needs shared builder",
         )
         require("embi.zip.sha256" in workflow, f"{name} needs checksum validation")
-        require("BUILD_COMMIT" in workflow, f"{name} needs commit binding")
+
+    quality = workflows["Quality"]
+    require("BUILD_COMMIT" in quality, "Quality needs commit binding")
 
     test_package = workflows["Test package"]
+    require("BUILD_COMMIT" in test_package, "Test package needs commit binding")
     require(
         "softprops/action-gh-release" not in test_package,
         "Test package must stay private",
@@ -96,6 +101,13 @@ def main() -> None:
     require("prerelease:" in release, "Prerelease flag missing")
     require("make_latest:" in release, "Latest flag missing")
     require("gh release download" in release, "Asset revalidation missing")
+    require(
+        "cmp dist/embi.zip verify-release/embi.zip" in release, "Published ZIP comparison missing"
+    )
+    publish_block = release.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[0]
+    require("dist/embi.zip" in publish_block, "Release ZIP asset missing")
+    require("dist/embi.zip.sha256" in publish_block, "Release checksum asset missing")
+    require("BUILD_COMMIT" not in publish_block, "BUILD_COMMIT must not be a release asset")
 
     print("Stable 0.3.0 repository contract passed")
 
