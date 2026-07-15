@@ -37,6 +37,7 @@ jobs:
           rm -rf dist
           python scripts/build_package.py --output-dir dist --expected-version 0.3.0 --commit "$GITHUB_SHA"
           (cd dist && sha256sum --check embi.zip.sha256)
+          rm -rf dist
 
       - name: Commit completed stable implementation
         shell: bash
