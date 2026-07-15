@@ -4,7 +4,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.emby.entry_lifecycle import async_migrate_entry, async_unload_entry
+from custom_components.emby.entry_lifecycle import (
+    async_migrate_entry,
+    async_unload_entry,
+)
 from custom_components.emby.models import EmbiRuntimeData
 
 
