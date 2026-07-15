@@ -22,9 +22,7 @@ def test_normal_options_pages_are_draft_only_and_have_one_apply_write() -> None:
     registry = source("options_registry.py")
     maintenance = source("maintenance_flow.py")
 
-    assert "async_update_entry" not in "\n".join(
-        (options_flow, clients, registry, maintenance)
-    )
+    assert "async_update_entry" not in "\n".join((options_flow, clients, registry, maintenance))
     assert options_flow.count("self.async_create_entry(") == 1
     assert "self._draft_options" in clients
     assert "self._draft_options" in maintenance
@@ -35,15 +33,11 @@ def test_normal_options_pages_are_draft_only_and_have_one_apply_write() -> None:
 def test_apply_no_change_discard_and_close_contract() -> None:
     options_flow = source("options_flow.py")
     apply_block = function_block(options_flow, "async_step_apply", "async_step_discard")
-    discard_block = function_block(
-        options_flow, "async_step_discard", "async_step_about"
-    )
+    discard_block = function_block(options_flow, "async_step_discard", "async_step_about")
 
     assert "if updated == self._original_options" in apply_block
     assert 'reason="no_changes"' in apply_block
-    assert apply_block.index('reason="no_changes"') < apply_block.index(
-        "self.async_create_entry("
-    )
+    assert apply_block.index('reason="no_changes"') < apply_block.index("self.async_create_entry(")
     assert "self._draft.discard()" in discard_block
     assert "async_reload" not in options_flow
     assert "__del__" not in options_flow
