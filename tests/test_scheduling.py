@@ -13,18 +13,18 @@ from custom_components.emby.scheduling import (
 def test_future_persisted_time_survives_reload_and_restart() -> None:
     now = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
     future = now + timedelta(hours=10)
-    resolved, catchup = resolve_scheduled_run(now=now, stored_next_run=utc_iso(future))
-    assert resolved == future
-    assert catchup is False
+    decision = resolve_scheduled_run(now=now, persisted_next_run=utc_iso(future))
+    assert decision.run_at == future
+    assert decision.catch_up is False
 
 
 def test_missing_invalid_and_overdue_times_get_one_grace_period() -> None:
     now = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
     expected = now + timedelta(seconds=120)
     for stored in (None, "invalid", utc_iso(now - timedelta(seconds=1))):
-        resolved, catchup = resolve_scheduled_run(now=now, stored_next_run=stored)
-        assert resolved == expected
-        assert catchup is True
+        decision = resolve_scheduled_run(now=now, persisted_next_run=stored)
+        assert decision.run_at == expected
+        assert decision.catch_up is True
 
 
 def test_next_regular_time_is_24_hours_after_completion() -> None:
