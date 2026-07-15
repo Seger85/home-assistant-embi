@@ -12,6 +12,7 @@ class FakeConfigEntries:
     def __init__(self) -> None:
         self.updated: list[dict] = []
         self.unload_result = True
+        self.runtime_seen_during_unload = None
 
     def async_update_entry(self, entry, **kwargs) -> None:
         self.updated.append(kwargs)
@@ -19,6 +20,7 @@ class FakeConfigEntries:
             setattr(entry, key, value)
 
     async def async_unload_platforms(self, entry, platforms):
+        self.runtime_seen_during_unload = entry.runtime_data.unloading
         return self.unload_result
 
 
@@ -48,7 +50,7 @@ async def test_config_entry_version_migration_is_idempotent() -> None:
 
 
 @pytest.mark.asyncio
-async def test_unload_cancels_scheduler_and_stops_pyemby_once() -> None:
+async def test_unload_marks_runtime_and_cancels_scheduler() -> None:
     hass = FakeHass()
     cancelled = 0
 
@@ -63,6 +65,8 @@ async def test_unload_cancels_scheduler_and_stops_pyemby_once() -> None:
     entry = SimpleNamespace(runtime_data=runtime)
 
     assert await async_unload_entry(hass, entry) is True
+    assert hass.config_entries.runtime_seen_during_unload is True
+    assert runtime.unloading is True
     assert cancelled == 1
     assert runtime.cancel_auto_cleanup is None
     assert runtime.auto_cleanup_scheduled is False
@@ -70,7 +74,7 @@ async def test_unload_cancels_scheduler_and_stops_pyemby_once() -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_platform_unload_keeps_runtime_running() -> None:
+async def test_failed_platform_unload_restores_running_runtime() -> None:
     hass = FakeHass()
     hass.config_entries.unload_result = False
     pyemby = FakePyEmby()
@@ -79,5 +83,7 @@ async def test_failed_platform_unload_keeps_runtime_running() -> None:
     entry = SimpleNamespace(runtime_data=runtime)
 
     assert await async_unload_entry(hass, entry) is False
+    assert hass.config_entries.runtime_seen_during_unload is True
+    assert runtime.unloading is False
     assert runtime.cancel_auto_cleanup is not None
     assert pyemby.stop_calls == 0
