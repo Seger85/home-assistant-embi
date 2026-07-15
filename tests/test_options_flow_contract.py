@@ -35,7 +35,7 @@ def test_apply_no_change_discard_and_close_contract() -> None:
     apply_block = function_block(options_flow, "async_step_apply", "async_step_discard")
     discard_block = function_block(options_flow, "async_step_discard", "async_step_about")
 
-    assert "if updated == self._original_options" in apply_block
+    assert "if updated == original_normalized" in apply_block
     assert 'reason="no_changes"' in apply_block
     assert apply_block.index('reason="no_changes"') < apply_block.index("self.async_create_entry(")
     assert "self._draft.discard()" in discard_block
