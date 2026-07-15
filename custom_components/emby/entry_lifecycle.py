@@ -9,11 +9,14 @@ from .models import EmbiRuntimeData
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload an EMBi config entry."""
+    runtime: EmbiRuntimeData = entry.runtime_data
+    runtime.unloading = True
+
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if not unloaded:
+        runtime.unloading = False
         return False
 
-    runtime: EmbiRuntimeData = entry.runtime_data
     if runtime.cancel_auto_cleanup is not None:
         runtime.cancel_auto_cleanup()
         runtime.cancel_auto_cleanup = None

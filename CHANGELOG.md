@@ -4,17 +4,9 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 ## [Unreleased]
 
-### Offene Gates vor der öffentlichen 0.3.0
+Keine unveröffentlichten Änderungen.
 
-- kontrollierte Home-Assistant-Liveabnahme des unveröffentlichten Develop-Testartefakts
-- Verifikation der 29-Media-Player-Baseline einschließlich Entity-IDs, Unique IDs und Namen
-- Prüfung des migrierten Custom-Werts 364 und bewusste Live-Entscheidung zu 365
-- Options-Flow-QA auf iPhone, iPad und Desktop
-- tatsächlicher Registry-Nachbereitungstest mit sicherem Testobjekt
-- Rollbackprüfung auf `v0.3.0-rc3`
-- Promotion-PR `develop` → `main` erst nach Gerrys Live-Freigabe mergen
-
-## [0.3.0] – Stable vorbereitet, noch nicht veröffentlicht
+## [0.3.0] – 2026-07-15
 
 ### Added
 
@@ -31,6 +23,8 @@ Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das P
 
 ### Changed
 
+- die automatische Schedulerregistrierung ist bereits während `async_setup_entry()` zulässig und verlangt noch keinen vorzeitig gesetzten `LOADED`-Status
+- unmittelbar vor der automatischen Ausführung werden `LOADED`, aktueller Runtime-Bezug, Store, Cleanup-Schalter, Unload-Status, Lock und Fälligkeit erneut geprüft
 - Erfolg, keine Kandidaten und erwartete Schutzfälle werden als INFO protokolliert
 - Teilerfolg und unterbrochene Nachbereitung werden als WARNING protokolliert
 - vollständige technische Fehler werden als ERROR protokolliert

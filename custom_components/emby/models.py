@@ -179,3 +179,4 @@ class EmbiRuntimeData:
     maintenance_storage_available: bool = True
     auto_cleanup_scheduled: bool = False
     cancel_auto_cleanup: Callable[[], None] | None = None
+    unloading: bool = False
