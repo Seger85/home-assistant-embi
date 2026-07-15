@@ -1,11 +1,7 @@
 name: Source snapshot
 
 on:
-  push:
-    branches:
-      - feature/stable-0.3.0
-    paths:
-      - ".github/workflows/source-snapshot.yml"
+  pull_request:
 
 permissions:
   contents: read
