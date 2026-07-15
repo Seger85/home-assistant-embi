@@ -1,0 +1,30 @@
+name: Format diagnostic
+
+on:
+  push:
+    branches:
+      - fix/scheduler-setup-registration
+    paths:
+      - .github/workflows/format-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -q --upgrade pip -r requirements_test.txt
+      - name: Capture formatter diff
+        run: |
+          ruff format --diff . > ruff-format.diff || true
+          test -s ruff-format.diff
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruff-format-diagnostic-${{ github.sha }}
+          path: ruff-format.diff
+          retention-days: 1
