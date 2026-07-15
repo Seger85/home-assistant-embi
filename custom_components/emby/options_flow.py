@@ -143,7 +143,10 @@ class EmbyOptionsFlow(
                     errors["base"] = "cannot_connect"
                 else:
                     updated, _ = migrate_stable_options(dict(self._draft_options), devices)
-                    if updated == self._original_options:
+                    original_normalized, _ = migrate_stable_options(
+                        dict(self._original_options), devices
+                    )
+                    if updated == original_normalized:
                         return self.async_abort(reason="no_changes")
                     original_auto = bool(
                         self._original_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
