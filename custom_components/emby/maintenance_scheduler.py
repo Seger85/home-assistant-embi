@@ -42,9 +42,7 @@ def _registration_enabled(entry: ConfigEntry, runtime: EmbiRuntimeData) -> bool:
 
 def _execution_enabled(entry: ConfigEntry, runtime: EmbiRuntimeData) -> bool:
     """Return whether the current callback may execute destructive work now."""
-    return bool(
-        entry.state is ConfigEntryState.LOADED and _registration_enabled(entry, runtime)
-    )
+    return bool(entry.state is ConfigEntryState.LOADED and _registration_enabled(entry, runtime))
 
 
 async def _async_refresh_persistent_state(
@@ -71,9 +69,7 @@ async def _async_refresh_persistent_state(
         return False
     if loaded is None and entry.options.get(CONF_MAINTENANCE_STORE_INITIALIZED, False):
         runtime.maintenance_storage_available = False
-        _LOGGER.error(
-            "EMBi expected persistent maintenance state but refresh returned no data"
-        )
+        _LOGGER.error("EMBi expected persistent maintenance state but refresh returned no data")
         persistent_notification.async_create(
             hass,
             "Der bereits initialisierte EMBi-Wartungsspeicher ist nicht verfügbar. "
@@ -87,9 +83,7 @@ async def _async_refresh_persistent_state(
     return True
 
 
-async def async_schedule_automatic_cleanup(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:
+async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Schedule exactly one persistent absolute automatic cleanup callback."""
     runtime: EmbiRuntimeData = entry.runtime_data
     if runtime.cancel_auto_cleanup is not None:
@@ -156,8 +150,6 @@ async def async_schedule_automatic_cleanup(
     runtime.auto_cleanup_scheduled = True
 
 
-async def async_setup_automatic_cleanup(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:
+async def async_setup_automatic_cleanup(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Restore or create the persistent absolute automatic cleanup schedule."""
     await async_schedule_automatic_cleanup(hass, entry)
