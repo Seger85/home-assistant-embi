@@ -194,7 +194,6 @@ jobs:
           files: |
             dist/embi.zip
             dist/embi.zip.sha256
-            dist/BUILD_COMMIT
           fail_on_unmatched_files: true
           generate_release_notes: true
           prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
@@ -214,7 +213,7 @@ jobs:
           jq -e --arg tag "${RELEASE_TAG}" '.tagName == $tag' <<<"${release_json}" >/dev/null
           jq -e '.assets | any(.name == "embi.zip")' <<<"${release_json}" >/dev/null
           jq -e '.assets | any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
-          jq -e '.assets | any(.name == "BUILD_COMMIT")' <<<"${release_json}" >/dev/null
+          jq -e '.assets | length == 2' <<<"${release_json}" >/dev/null
 
           actual_prerelease="$(jq -r '.isPrerelease' <<<"${release_json}")"
           if [[ "${actual_prerelease}" != "${EXPECTED_PRERELEASE}" ]]; then
@@ -227,10 +226,10 @@ jobs:
           gh release download "${RELEASE_TAG}" \
             --dir verify-release \
             --pattern embi.zip \
-            --pattern embi.zip.sha256 \
-            --pattern BUILD_COMMIT
+            --pattern embi.zip.sha256
           (cd verify-release && sha256sum --check embi.zip.sha256)
-          test "$(cat verify-release/BUILD_COMMIT)" = "${GITHUB_SHA}"
+          cmp dist/embi.zip verify-release/embi.zip
+          cmp dist/embi.zip.sha256 verify-release/embi.zip.sha256
 
           python - <<'PY'
           import json
