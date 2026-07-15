@@ -5,7 +5,7 @@ on:
     branches:
       - feature/stable-0.3.0
     paths:
-      - .stable-update.tar.xz.b64
+      - .stable-update.ready
 
 permissions:
   contents: write
@@ -24,9 +24,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 --decode .stable-update.tar.xz.b64 > /tmp/stable-update.tar.xz
+          cat .stable-update.part* | base64 --decode > /tmp/stable-update.tar.xz
           tar -xJf /tmp/stable-update.tar.xz -C .
-          rm -f .stable-update.tar.xz.b64 .github/workflows/apply-stable-update.yml
+          rm -f .stable-update.part* .stable-update.ready .github/workflows/apply-stable-update.yml
           python -m pip install -q --upgrade pip -r requirements_test.txt
           python -m compileall -q custom_components/emby scripts tests
           ruff check .
