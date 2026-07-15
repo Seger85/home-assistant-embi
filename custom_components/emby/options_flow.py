@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
@@ -151,7 +152,7 @@ class EmbyOptionsFlow(
                     if updated_auto and not updated.get(CONF_SERVER_CLEANUP_ENABLED, False):
                         errors["base"] = "auto_requires_cleanup"
                     if not errors and original_auto != updated_auto:
-                        state = self._runtime.maintenance_state
+                        state = deepcopy(self._runtime.maintenance_state)
                         if updated_auto:
                             state.initial_run_completed = False
                         state.report.next_run_at = None
@@ -159,6 +160,8 @@ class EmbyOptionsFlow(
                             await self._runtime.maintenance_store.async_save(state)
                         except Exception:
                             errors["base"] = "storage_failed"
+                        else:
+                            self._runtime.maintenance_state = state
                     if not errors:
                         return self.async_create_entry(title="", data=updated)
         return self.async_show_form(
@@ -177,6 +180,9 @@ class EmbyOptionsFlow(
                 errors["base"] = "confirmation_required"
             else:
                 self._draft.discard()
+                self._pending_auto_settings = None
+                self._pending_cleanup_records = {}
+                self._pending_remove_ha_entities = False
                 return await self.async_step_init()
         return self.async_show_form(
             step_id="discard",
