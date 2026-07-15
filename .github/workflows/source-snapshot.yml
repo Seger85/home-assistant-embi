@@ -1,0 +1,27 @@
+name: Source snapshot
+
+on:
+  push:
+    branches:
+      - feature/stable-0.3.0
+    paths:
+      - ".github/workflows/source-snapshot.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Upload repository snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-${{ github.sha }}
+          path: |
+            .
+            !.git/**
+            !dist/**
+          include-hidden-files: true
+          retention-days: 1
