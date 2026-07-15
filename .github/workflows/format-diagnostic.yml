@@ -1,9 +1,7 @@
 name: Format diagnostic
 
 on:
-  push:
-    branches:
-      - fix/scheduler-setup-registration
+  pull_request:
     paths:
       - .github/workflows/format-diagnostic.yml
 
