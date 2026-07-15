@@ -1,156 +1,125 @@
 # Repository- und Release-Governance
 
-## Zielbild
-
-EMBi verwendet einen nachvollziehbaren Entwicklungs- und Releasefluss ohne direkte Veröffentlichung ungeprüfter Änderungen.
-
-```text
-Feature-/Fix-Branch
-→ Pull Request nach develop
-→ Quality, HACS und Hassfest
-→ Review und Merge nach develop
-→ bei Release Candidate: ausdrücklich freigegebener release/v...-Branch von develop
-→ automatischer versionsgleicher Git-Tag und GitHub-Prerelease
-→ Home-Assistant-Livetest
-→ Draft-Release-PR develop nach main
-→ ausdrückliche Freigabe und Merge nach main
-→ bei stabilem Release: ausdrücklich freigegebener release/v...-Branch von main
-→ automatischer versionsgleicher Git-Tag und stabiler GitHub-Release
-```
-
 ## Branchrollen
 
 ### `main`
 
-- öffentlich veröffentlichter Repository-Stand
-- Ziel ausschließlich für kontrollierte Release-PRs aus `develop`
-- keine direkten Feature-, Fix- oder Dependabot-Commits
-- keine Force-Pushes und keine Branch-Löschung
+- öffentlich veröffentlichte Linie
+- Änderungen nur über kontrollierten Promotion-PR aus `develop`
+- kein direkter Feature-, Fix- oder Dependabot-Merge
+- kein Force-Push und keine History-Umschreibung
+- Stable-Tag nur auf einem Commit, der in `main` enthalten ist
 
 ### `develop`
 
-- gemeinsamer Integrationsbranch
-- Ziel für Feature-, Fix-, Dokumentations-, CI- und Dependabot-PRs
-- Ausgangspunkt für Release Candidates und Release-PRs nach `main`
+- integrierte Entwicklungs- und Pre-Live-Linie
+- Ziel normaler Feature-, Fix-, Dokumentations- und Dependabot-PRs
+- Quelle des unveröffentlichten Testartefakts
+- Prerelease-Tag nur auf einem Commit, der in `develop` enthalten ist
 
 ### Arbeitsbranches
 
 - von `develop` erstellen
-- nach Zweck benennen, zum Beispiel `feat/...`, `fix/...`, `docs/...` oder `chore/...`
-- nach erfolgreichem Merge entfernen
+- bestehende Implementierungsbranches weiterverwenden
+- keine konkurrierende Stable-Implementierung
+- kein Rebase oder Force-Push zur kosmetischen Historienbereinigung
 
-### Release-Anforderungsbranches
+## Pull-Request-Fluss 0.3.0
 
-- Format `release/vMAJOR.MINOR.PATCH` oder `release/vMAJOR.MINOR.PATCH-PRERELEASE`
-- erst nach ausdrücklicher Releasefreigabe erstellen
-- Release Candidates müssen exakt auf einem freigegebenen Commit aus `develop` basieren
-- stabile Releases müssen exakt auf einem freigegebenen Commit aus `main` basieren
-- lösen Tag-, Paket- und Release-Erstellung automatisch aus
-- werden nach erfolgreicher Veröffentlichung automatisch entfernt
+```text
+feature/stable-0.3.0
+→ Draft-PR #18 nach develop
+→ vollständige CI auf exaktem Head
+→ Ready for review
+→ Squash-Merge nach develop
+→ vollständige CI auf Develop-Merge-Commit
+→ unveröffentlichtes Test package auf exakt diesem Commit
+→ Draft-Promotion-PR develop nach main
+→ Home-Assistant-Liveabnahme
+→ ausdrückliche Gerry-Freigabe
+→ Promotion-Merge nach main
+→ Tag und Stable Release
+```
 
-## Pull-Request-Regeln
+Der Draft-Promotion-PR ist eine technische Sperre. Grüne CI allein erlaubt keinen Merge nach `main` und keine Veröffentlichung.
 
-- Änderungen nach `develop` benötigen einen Pull Request und erfolgreiche CI.
-- Release-PRs von `develop` nach `main` bleiben bis zur ausdrücklichen Freigabe als Draft geöffnet.
-- Ein Draft-Status ist eine technische Sperre und keine bloße Kennzeichnung.
-- Vor dem Merge eines Release-PRs müssen Manifestversion, Changelog, Roadmap, Projektstatus und Home-Assistant-Livetest konsistent sein.
-- Ein stabiler Release darf nicht allein aufgrund grüner CI veröffentlicht werden.
+## Pflichtchecks
 
-## Dependabot
+- `Quality (Python 3.13)`
+- `Quality (Python 3.14)`
+- `HACS validation`
+- `Hassfest`
+- `Test package`
 
-Dependabot zielt für GitHub-Actions- und Python-Abhängigkeiten auf `develop`. Dependabot-PRs werden nicht automatisch gemergt. Major-Updates benötigen eine inhaltliche Prüfung der Release Notes und eine vollständige CI-Runde.
+Quality umfasst JSON, YAML, Compileall, Ruff, Ruff-Format, vollständigen Pytest-Lauf, Stable-Vertrag, Übersetzungssynchronität, Secret-/Privacy-Scan, releasegleichen Paketbau, SHA-256 und `BUILD_COMMIT`.
+
+## Testpaket
+
+Der Workflow `Test package` erzeugt ausschließlich ein unveröffentlichtes Actions-Artefakt:
+
+- `embi.zip`
+- `embi.zip.sha256`
+- `BUILD_COMMIT`
+
+Das Artefakt erzeugt keinen Tag, kein Release und kein `latest`. Installationsdateien liegen direkt im ZIP-Root. Tests, Dokumentation, `.github` und Repositorymetadaten sind ausgeschlossen.
 
 ## Releasevertrag
 
-Der veröffentlichte Release wird immer durch einen Git-Tag im Format identifiziert:
+Der Release-Workflow verwendet denselben Paketbuilder wie Quality und Test package.
+
+Zulässige Versionen:
 
 ```text
 vMAJOR.MINOR.PATCH
 vMAJOR.MINOR.PATCH-PRERELEASE
 ```
 
-Beispiele:
+Prüfungen:
 
-```text
-v0.3.0
-v0.3.0-rc2
+- Tag und Manifestversion exakt gleich
+- interne Version exakt gleich
+- Stable-Commit in `main`
+- Prerelease-Commit in `develop`
+- vollständige Tests, HACS und Hassfest
+- SHA-256 und `BUILD_COMMIT`
+- Assets nach Veröffentlichung erneut herunterladen und prüfen
+- RC ist `prerelease: true` und niemals `latest`
+- Stable ist `prerelease: false` und `latest`
+
+Ein `release/v...`-Branch darf nur nach ausdrücklicher Releasefreigabe erzeugt werden. Für 0.3.0 ist er in der Pre-Live-Runde ausdrücklich gesperrt.
+
+## HACS
+
+`hacs.json` verlangt:
+
+```json
+{
+  "zip_release": true,
+  "filename": "embi.zip"
+}
 ```
 
-Der Tag kann auf zwei kontrollierten Wegen entstehen:
+Ein Commit oder Testartefakt ist keine HACS-Version. HACS Stable wird erst durch den veröffentlichten Stable Release verfügbar.
 
-1. Ein extern erzeugter versionsgleicher Git-Tag löst den Workflow direkt aus.
-2. Ein ausdrücklich freigegebener Branch `release/v...` löst denselben Workflow aus; der Workflow erzeugt den versionsgleichen Tag selbst und entfernt den Release-Branch anschließend.
+## Tags und Releases
 
-Der Release-Workflow prüft vor der Veröffentlichung:
+- vorhandene Tags und Releases sind unveränderlich
+- kein Verschieben, Ersetzen oder Neuerstellen bestehender rc-Tags
+- kein öffentliches rc4 im Stable-Abschluss
+- Stable `v0.3.0` erst nach Live-Abnahme
 
-- Tag- beziehungsweise Release-Branch-Format
-- exakte Übereinstimmung von Releaseversion und `manifest.json`-Version
-- Prerelease-Commits liegen in der Historie von `develop`
-- stabile Release-Commits liegen in der Historie von `main`
-- der Ziel-Tag existiert bei einer Release-Branch-Anforderung noch nicht
-- JSON-Validierung
-- Python-Kompilierung
-- Ruff Lint und Format
-- Unit-Tests
-- HACS-Validierung
-- Hassfest
-- Inhalt und Manifestversion des Release-Archivs
+## Rulesets
 
-Erst danach werden der versionsgleiche Git-Tag, `embi.zip`, `embi.zip.sha256` und der GitHub-Release erzeugt.
+Für `main` und `develop`:
 
-Tags mit einem Prerelease-Suffix werden automatisch als GitHub-Prerelease veröffentlicht und niemals als `latest` markiert. Tags ohne Prerelease-Suffix werden als stabile Releases veröffentlicht und als `latest` markiert.
-
-Nach der Veröffentlichung kontrolliert der Workflow zusätzlich:
-
-- Tagname
-- Tagziel-Commit
-- Prerelease-Status
-- `latest`-Status
-- Vorhandensein von `embi.zip`
-- Vorhandensein von `embi.zip.sha256`
-
-## HACS und Vorabversionen
-
-Während ausschließlich ein Prerelease verfügbar ist, muss in HACS die Anzeige von Beta-/Vorabversionen aktiviert bleiben. Ein neuer Commit auf `main` ist keine neue EMBi-Version, solange die Manifestversion unverändert bleibt und kein neuer Release veröffentlicht wurde.
-
-## Empfohlene GitHub-Rulesets
-
-Die folgenden Einstellungen müssen einmalig in GitHub unter den Repository-Regeln gesetzt werden, da sie nicht über den derzeitigen Connector verwaltet werden können.
-
-### `main`
-
-- Änderungen nur über Pull Requests
-- Force-Pushes blockieren
+- Pull Requests erzwingen
+- Force-Push blockieren
 - Branch-Löschung blockieren
-- offene Review-Konversationen vor Merge auflösen
-- folgende Statuschecks verpflichtend machen:
-  - `Quality (Python 3.13)`
-  - `Quality (Python 3.14)`
-  - `HACS validation`
-  - `Hassfest`
+- offene Review-Konversationen auflösen
+- Pflichtchecks erzwingen
 - kein Auto-Merge
-- Bypass für Repository-Administratoren nach Möglichkeit deaktivieren
+- Administrator-Bypass soweit möglich deaktivieren
 
-### `develop`
+## Historische Integrität
 
-- Änderungen über Pull Requests bevorzugen
-- Force-Pushes blockieren
-- Branch-Löschung blockieren
-- dieselben vier Statuschecks verpflichtend machen
-
-## Umgang mit versehentlichen Merges
-
-Öffentlich sichtbare Historie wird nicht nachträglich umgeschrieben, solange kein Geheimnis oder sicherheitskritischer Inhalt veröffentlicht wurde.
-
-Bei einem versehentlichen, aber inhaltlich sicheren Merge:
-
-1. Ist-Zustand und Commitfolge dokumentieren.
-2. Keine Tags verschieben.
-3. Keine öffentlichen Branches per Force-Push zurücksetzen.
-4. `develop` regulär mit `main` synchronisieren.
-5. Governance und Branch-Regeln korrigieren.
-6. Erst danach den normalen PR- und Releasefluss fortsetzen.
-
-## Aktueller historischer Hinweis
-
-PR #1 wurde trotz dokumentierter Draft-Sperre am 14. Juli 2026 gemergt. Anschließend wurden mehrere Dependabot-PRs nach `main` übernommen. Da die Änderungen keine Secrets enthielten und der EMBi-0.3.0-rc1-Livetest erfolgreich war, wurde die öffentliche Historie bewusst nicht zurückgesetzt. `develop` wurde regulär mit `main` synchronisiert und zukünftige Dependabot-PRs wurden auf `develop` umgestellt.
+Bereits öffentliche sichere Historie wird nicht umgeschrieben. Bei einem versehentlichen, aber nicht geheimnisbehafteten Merge werden Zustand und Folgen dokumentiert und anschließend regulär über Pull Requests korrigiert. Secrets oder private Diagnosedaten erfordern dagegen sofortige Sicherheitsmaßnahmen und gegebenenfalls Credential-Rotation.
