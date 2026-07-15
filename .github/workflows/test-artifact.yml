@@ -1,0 +1,53 @@
+name: Test package
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BUILD_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  package:
+    name: Build unpublished test package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact source commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.BUILD_COMMIT_SHA }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Validate stable contract
+        run: python scripts/validate_stable_contract.py
+
+      - name: Build release-equivalent integration archive
+        run: |
+          rm -rf dist
+          python scripts/build_package.py \
+            --output-dir dist \
+            --expected-version 0.3.0 \
+            --commit "${BUILD_COMMIT_SHA}"
+          (cd dist && sha256sum --check embi.zip.sha256)
+          test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"
+
+      - name: Upload unpublished integration package
+        uses: actions/upload-artifact@v4
+        with:
+          name: embi-test-${{ env.BUILD_COMMIT_SHA }}
+          path: |
+            dist/embi.zip
+            dist/embi.zip.sha256
+            dist/BUILD_COMMIT
+          if-no-files-found: error
+          retention-days: 14

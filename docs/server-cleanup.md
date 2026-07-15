@@ -1,42 +1,47 @@
-# Optionale Emby-Serverbereinigung
+# Serverbereinigung
 
-## Zweck
+## Zweck und Grenzen
 
-Die Funktion entfernt historische Einträge aus der Geräteübersicht des lokalen Emby-Servers. Sie löscht keine Filme, Serien, Benutzer oder Bibliotheken.
+EMBi 0.3.0 verwaltet historische Geräte-Einträge des lokalen Emby-Servers. Medien, Bibliotheken, Benutzer und Wiedergabedaten sind nicht Bestandteil dieser Funktion.
 
-## Standardzustand
+## Stable-Konfiguration
 
-Die Funktion ist ausgeschaltet und das Löschmenü ist ausgeblendet.
+- ein normaler EMBi-Verbindungsschlüssel
+- kein zusätzliches Cleanup-Zugangsfeld
+- getrennte manuelle und automatische Alterswerte
+- Presets 7, 30, 90, 180 und 365 Tage plus Custom
+- bestehende 364 Tage bleiben Custom
+- neue HA-Mitbereinigung standardmäßig aus; Bestandswerte bleiben erhalten
+- keine automatische Ignore-Regel nach einer Serveraktion
 
-## API-Schlüssel
+## Sicherheitsprüfung
 
-EMBi kann verwenden:
+Nur Einträge mit gültigem Aktivitätszeitpunkt, strikt älter als der UTC-Cutoff und ohne aktive Wiedergabe sind zulässig. Jeder Eintrag wird unmittelbar vor der Verarbeitung erneut geprüft. Einzelfehler stoppen den restlichen Lauf nicht; ein Batchlimit existiert nicht.
 
-- den normalen Verbindungsschlüssel oder
-- einen optional hinterlegten separaten Bereinigungsschlüssel
+## Automatik
 
-Der separate Schlüssel wird beim Speichern gegen `/System/Info` validiert. Ob der Schlüssel auch löschen darf, lässt sich ohne destruktiven Test nicht zuverlässig vorab beweisen; ein fehlendes Recht wird deshalb als Fehler des jeweiligen Eintrags behandelt.
+Neue Aktivierungen benötigen eine Warnseite mit Pflichtschalter, aber keinen einzutippenden Satz. Vor Apply startet kein Lauf. Ein fehlender oder überfälliger Termin erhält genau einen 120-Sekunden-Catch-up. Gültige Zukunftstermine bleiben bei Reload und Neustart bestehen. Der nächste Termin liegt 24 Stunden nach Abschluss.
 
-## Ablauf
+## Persistenz und Lock
 
-1. Funktion ausdrücklich aktivieren.
-2. Historieneinträge auswählen.
-3. Entscheiden, ob erfolgreich gelöschte Clients zusätzlich ignoriert werden.
-4. zweiten Bestätigungsdialog öffnen.
-5. Schalter aktivieren.
-6. exakten dynamischen Text eingeben.
-7. EMBi löscht jeden Eintrag einzeln.
-8. Ergebnis zeigt erfolgreiche und fehlgeschlagene Einträge.
+Manuelle und automatische Wartung teilen denselben Lock. Der private atomare Store hält `next_run_at` und den aggregierten Laufbericht. Bei einem Store-Fehler wird fail-safe angehalten.
 
-## Teilerfolg
+## Registry-Vertrag
 
-Mehrere Löschungen werden unabhängig behandelt. Ein Fehler bei einem Eintrag stoppt nicht die übrigen Löschungen.
+Die Nachbereitung verwendet ausschließlich exakte `ReportedDeviceId.AppName`-Identitäten. Domain, Plattform, Config Entry, Unique ID, Entity-State und verbleibende Serverhistorie werden erneut geprüft. Präfix-, Teilstring- und Wildcard-Matches sind ausgeschlossen. Eine verlorene same-process Queue wird nicht nach einem Neustart fortgesetzt.
 
-Nur erfolgreich gelöschte Einträge werden – sofern aktiviert – über ihre stabile `ReportedDeviceId` zur Ignorierliste hinzugefügt.
+- `queued`: vorgemerkt
+- `matched`: exakte Entity gefunden
+- `removed`: Registry-Operation tatsächlich ausgeführt
+- `missing`: keine passende Entity vorhanden
+- `protected`: bewusst blockiert
 
-## Grenzen und Rollback
+Queue und tatsächliche Registry-Operation sind getrennte Ergebnisse.
 
-- Eine serverseitige Löschung ist aus Home Assistant nicht rückgängig zu machen.
-- Ein Emby-Server-Backup ist der einzige vollständige Rollback-Weg.
-- Ein später verwendeter Client kann sich erneut registrieren.
-- Das Ignorieren in EMBi verhindert nur die erneute HA-Entity-Erzeugung, nicht die Registrierung auf Emby.
+## Referenzfall 74 → 69
+
+Fünf zulässige Serveroperationen waren erfolgreich, null schlugen fehl und 69 Datensätze blieben bestehen. Fünf Registry-Keys waren queued; null waren matched oder removed, fünf waren missing.
+
+## Live-Test
+
+Vor dem Test sind ein Home-Assistant-Backup und ein Emby-Wiederherstellungsweg Pflicht. Der Integrations-Rollback führt zu `v0.3.0-rc3`.

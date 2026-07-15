@@ -1,142 +1,125 @@
-# Emby Integration - EMBi
+# Emby Integration – EMBi
 
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-41BDF5)](https://www.home-assistant.io/)
-[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5)](https://hacs.xyz/)
-[![License](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
+> **EMBi ist die Emby-Integration für alle, die irgendwann mehr Geräte in der Liste haben als im Haus.**
+>
+> Sie übernimmt bestehende Emby-Media-Player, hält deren Identitäten stabil und bringt kontrolliert Ordnung in historische Clients und Geräte-Einträge.
+>
+> **Weniger Gerätefriedhof, mehr Kontrolle.**
 
-**EMBi** ist eine UI-basierte Weiterentwicklung der Home-Assistant-Integration `emby` für langjährig betriebene Emby-Server mit vielen historischen Clients.
+EMBi verwendet ausschließlich einen Home-Assistant-Config-Entry unter der Domain `emby`. Vorhandene pyemby-Unique-IDs werden nicht verändert. Dadurch können Entity-IDs, individuelle Namen, Dashboards, Automationen, HomeKit- und Siri-Zuordnungen bei einem kontrollierten Upgrade erhalten bleiben.
 
-Die Integration erhält die bekannten Media-Player-Entity-IDs, ergänzt eine kontrollierte Geräteauswahl und stellt bewusst abgesicherte Wartungsfunktionen für Home Assistant und – optional – den lokalen Emby-Server bereit.
+## Status 0.3.0
 
-> Projektstatus: **0.3.0-rc1 Release Candidate**. Der produktive Ausgangsstand 0.2.0 ist separat als Baseline versioniert. Vor produktiven Updates immer ein Home-Assistant-Backup erstellen.
+`0.3.0` ist als Stable-Code vorbereitet, aber noch nicht öffentlich veröffentlicht. Vor Tag und Release stehen die kontrollierte Home-Assistant-Liveabnahme, die visuelle Prüfung und die ausdrückliche Freigabe des Promotion-PRs.
 
-## Warum EMBi?
+Die dokumentierte Live-Baseline für die Abnahme umfasst **29 EMBi-Media-Player** und keine zusätzliche Wartungsentity.
 
-Emby-Server behalten häufig historische Geräte- und App-Einträge: ersetzte Fernseher, alte Mobilgeräte, Browser-Sitzungen, mehrfach registrierte Apps oder administrative API-Clients. Die normale Emby-Integration kann daraus dauerhaft viele Media-Player erzeugen.
+## Funktionen
 
-EMBi setzt an der Quelle der Entity-Erzeugung an:
-
-- vollständige Einrichtung über Config Flow und Options Flow
-- stabile Übernahme vorhandener Media-Player-Entity-IDs
-- Anzeige aller, nur aktiver oder gezielt ausgewählter Clients
-- Ignorierliste mit Vorrang vor allen anderen Regeln
-- sichere Sammelaktionen für Geräteauswahl und Ignorierliste
-- kontrollierte Bereinigung geeigneter Entity-Registry-Altlasten
-- optionale, standardmäßig ausgeschaltete Bereinigung historischer Emby-Geräte
-- separater zweiter Bestätigungsschritt vor serverseitigen Löschungen
-- Teilerfolgsauswertung bei mehreren Löschungen
+- Config Flow und Reconfigure Flow
+- Media-Player-Modi: alle, nur aktive Wiedergaben oder nur ausgewählte Geräte
+- getrennte app-spezifische und geräteweite Ignorierregeln
+- sichtbare Aufbewahrung nicht eindeutig migrierbarer Altregeln
+- zusammenhängender Options-Flow-Entwurf mit **Apply** und **Discard**
+- manuelle und automatische altersbasierte Serverbereinigung
+- getrennte manuelle und automatische Alterswerte
+- Presets 7, 30, 90, 180 und 365 Tage plus benutzerdefinierte Werte
+- persistenter absoluter Scheduler mit `next_run_at`
+- persistenter, identitätsfreier Laufbericht
+- getrennte Registry-Ergebnisse: queued, matched, removed, missing und protected
 - Deutsch und Englisch
-- datenschutzbewusste Diagnosedaten
-- HACS-kompatible Repository-Struktur
+- HACS-Releaseasset `embi.zip`
 
-## Zentrale Sicherheitsentscheidung
+EMBi legt keine Wartungsentity an. Die einzige Plattform bleibt `media_player`.
 
-Emby liefert für einen historischen Geräte-Eintrag zwei unterschiedliche IDs:
+## Identitätsvertrag
 
-- `Id`: serverseitiger Historieneintrag; ausschließlich für `DELETE /Devices`
-- `ReportedDeviceId`: tatsächliche Client-Identität; Grundlage der pyemby- und Home-Assistant-Unique-ID
+| Emby-Feld | Verwendung |
+|---|---|
+| `Id` | exakter Historieneintrag und Parameter für `DELETE /Devices` |
+| `ReportedDeviceId` | exakte geräteweite Ignorierregel |
+| `ReportedDeviceId.AppName` | pyemby-Key, bestehende HA-Unique-ID und exakte Registry-Nachbereitung |
 
-EMBi 0.3 trennt diese IDs konsequent. Dadurch funktioniert die Geräteauswahl stabil, ohne bestehende Entity-IDs zu verändern.
+`Id` wird niemals als Home-Assistant-Unique-ID verwendet. Präfix-, Teilstring- und Wildcard-Matches sind für Registry-Entfernungen unzulässig.
 
-## Installation
+## Upgrade von v0.3.0-rc3
 
-### HACS Custom Repository
+Die idempotente Migration erhält:
 
-1. In HACS **Benutzerdefinierte Repositories** öffnen.
-2. `Seger85/home-assistant-embi` als Kategorie **Integration** hinzufügen.
-3. **Emby Integration - EMBi** installieren.
-4. Home Assistant neu starten.
-5. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** nach EMBi suchen.
+- Config-Entry-ID
+- Entity-IDs und Unique IDs
+- individuelle Entity-Namen
+- aktive Serverbereinigung und aktive Automatik
+- den abgeschlossenen rc3-Erstlauf
+- vorhandene HA-Mitbereinigung, auch wenn sie `true` ist
+- vorhandene benutzerdefinierte Alterswerte
 
-### Manuell
+Entfernt werden nur obsolete rc3-Werte:
 
-Den Ordner `custom_components/emby` nach `/config/custom_components/emby` kopieren und Home Assistant neu starten.
+- separater Cleanup-API-Schlüssel
+- Aktivierungsphrase der Automatik
+- automatische Ignore-Option nach Serverlöschung
+- alte gemischte Ignore-Hilfswerte
 
-Da EMBi die eingebaute Domain `emby` ersetzt, darf nicht gleichzeitig eine andere Custom Component mit derselben Domain installiert sein.
+Ein gespeicherter Wert von **364 Tagen bleibt 364** und wird als benutzerdefinierter Wert dargestellt. Die bewusste spätere Umstellung auf 365 gehört in den Live-Test und ist keine globale Migration.
 
-## Migration von der Core-/YAML-Integration
+## Options Flow
 
-Die sichere Reihenfolge ist:
+Normale Unterseiten ändern nur den Entwurf. Sie schreiben keine Optionen und laden EMBi nicht neu.
 
-1. vollständiges Home-Assistant-Backup erstellen
-2. EMBi installieren und neu starten
-3. UI-Config-Entry mit demselben Emby-Server anlegen
-4. vorhandene Entity-IDs und Wiedergabestatus prüfen
-5. ausschließlich den alten YAML-Block `media_player: - platform: emby` entfernen
-6. Konfiguration validieren und neu starten
-7. prüfen, dass keine Duplicate-Unique-ID- oder Legacy-YAML-Meldungen mehr erscheinen
+- **Änderungen übernehmen** validiert und speichert genau einmal; Home Assistant lädt den Config Entry höchstens einmal neu.
+- **Änderungen verwerfen** verwirft den vollständigen Entwurf ohne Write und ohne Reload.
+- Schließen über **X** schreibt nichts.
+- Destruktive Aktionen sind bei ungespeicherten Änderungen gesperrt.
+- Die Automatik startet erst nach dem finalen Apply.
 
-Separat konfigurierte REST-Sensoren und Templates werden dadurch nicht entfernt. Details stehen in [docs/migration-from-core.md](docs/migration-from-core.md).
+## Scheduler und Catch-up
 
-## Gerätefilter
+Bei einer neuen Aktivierung oder einem überfälligen beziehungsweise fehlenden Termin wird genau ein Catch-up nach **120 Sekunden** geplant. Ein gespeicherter Zukunftstermin bleibt über Reload und Neustart unverändert. Nach Abschluss eines automatischen Laufversuchs wird der nächste Termin auf **24 Stunden nach Abschluss** gesetzt.
 
-### Alle Geräte anzeigen
+Manuelle und automatische Bereinigung teilen sich denselben Lock. Ein paralleler zweiter Lauf wird nicht gestartet.
 
-Kompatibles Standardverhalten. Jeder von pyemby gemeldete Client kann als Media-Player angelegt werden.
+## Server- und Registry-Sicherheit
 
-### Nur aktive Wiedergaben
+- aktive Player sind geschützt
+- Datensätze ohne gültigen Aktivitätszeitpunkt sind geschützt
+- Kandidaten müssen strikt älter als der UTC-Cutoff sein
+- es gibt kein Batchlimit; Einzelfehler stoppen den restlichen Lauf nicht
+- Serverbereinigung verwendet ausschließlich den normalen EMBi-Verbindungsschlüssel
+- nach einer Serverlöschung wird keine Ignore-Regel automatisch erzeugt
+- HA-Mitbereinigung ist bei neuen Aktivierungen standardmäßig `false`; bestehende Werte bleiben erhalten
+- ein Registry-Key kann zunächst nur `queued` sein
+- `removed` wird ausschließlich gezählt, wenn `registry.async_remove()` tatsächlich ausgeführt wurde
+- bei unklarem Zustand, Store-Fehler, Neustart oder mehrdeutiger Revalidierung wird fail-safe nicht entfernt
 
-Ein Client wird nur während `playing` oder `paused` angeboten. Im Leerlauf wird seine Entität nicht als verfügbar geführt.
+Der korrigierte Referenzfall 74 → 69 ist abgebildet: fünf erfolgreiche Serverlöschungen, null Serverfehler, fünf Registry-Keys queued, null Matches, null tatsächliche Registry-Removals und fünf missing.
 
-### Nur ausgewählte Geräte
+## Logging und Datenschutz
 
-Nur die unter **Anzuzeigende Geräte** ausgewählten stabilen Client-/App-Kombinationen werden angelegt.
+- Erfolg, keine Kandidaten und erwartete Schutzfälle: `INFO`
+- Teilerfolg oder unterbrochene Nachbereitung: `WARNING`
+- vollständiger technischer Fehler: `ERROR`
+- Persistent Notification nur bei Warning oder Error
 
-### Ignorierte Geräte
+Diagnostics, Store, Laufbericht und Notifications enthalten keine vollständigen Record-IDs, ReportedDeviceIds, Player-Keys, Benutzernamen oder API-Schlüssel.
 
-Die Ignorierliste hat immer Vorrang. Eine rohe `ReportedDeviceId` ignoriert alle App-Varianten desselben Clients.
+## Installation des unveröffentlichten Testpakets
 
-## Wartungsfunktionen
+Das finale Testpaket wird als privates GitHub-Actions-Artefakt erzeugt und ist **kein Release**. Nach vollständigem Home-Assistant- und Emby-Backup wird der Inhalt von `embi.zip` nach `/config/custom_components/emby` installiert oder über den vereinbarten kontrollierten Testweg eingespielt. Vorherige Dateien des Komponentenordners müssen vollständig ersetzt werden.
 
-### Home-Assistant-Einträge bereinigen
+Öffentliche HACS-Stable-Installation ist erst nach Promotion nach `main`, Tag `v0.3.0` und Stable Release möglich.
 
-EMBi bietet nur vorselektierte Kandidaten an:
+## Qualität
 
-- alte YAML-Einträge
-- reine Registry-Einträge ohne aktiven State
-- bereits durch EMBi ignorierte Entitäten
+CI prüft Python 3.13 und 3.14, JSON, YAML, Compileall, Ruff, Ruff-Format, Pytest, Stable-Vertrag, Übersetzungssynchronität, Secret-/Privacy-Scan, HACS Validation, Hassfest, releasegleichen Paketbau, SHA-256 und `BUILD_COMMIT`.
 
-Normale aktive Media-Player werden bewusst nicht angeboten.
+Weitere Details stehen in `docs/`.
 
-### Geräte auf dem Emby-Server löschen
+## Credits
 
-Diese Funktion ist standardmäßig deaktiviert und muss zuerst ausdrücklich eingeschaltet werden. Optional kann ein separater API-Schlüssel hinterlegt werden; ohne separaten Schlüssel wird der normale Verbindungsschlüssel verwendet.
+- Projekt: Seger
+- Basis: Home Assistant Emby und pyemby
 
-Vor jeder Löschung sind erforderlich:
+## Lizenz
 
-- konkrete Mehrfachauswahl
-- separater Bestätigungsschritt
-- aktivierter Bestätigungsschalter
-- exakter Text `LÖSCHEN <Anzahl>` bzw. `DELETE <count>`
-
-Eine erneute Nutzung des Clients kann ihn später wieder auf dem Emby-Server registrieren.
-
-## Dokumentation
-
-- [Architektur](docs/architecture.md)
-- [Konfiguration und Gerätefilter](docs/configuration.md)
-- [Migration](docs/migration-from-core.md)
-- [Serverbereinigung](docs/server-cleanup.md)
-- [Sicherheit](docs/security.md)
-- [Fehleranalyse](docs/troubleshooting.md)
-- [Entwicklung](docs/development.md)
-- [Visuelle Qualitätssicherung](docs/ui-qa.md)
-- [Release-Checkliste](docs/release-checklist.md)
-- [Roadmap](ROADMAP.md)
-
-## Bekannte Einschränkungen
-
-- Die Darstellung nativer Home-Assistant-Selektoren wird durch das aktive Frontend-Theme bestimmt. EMBi injiziert bewusst kein fragiles Config-Flow-CSS.
-- „Alle auswählen“ wird über kontrollierte Sammelaktionen umgesetzt, da der native Mehrfachselektor keine verlässliche universelle Alles-auswählen-Schaltfläche bereitstellt.
-- Die serverseitige Löschberechtigung ist von den Rechten des verwendeten Emby-API-Schlüssels abhängig.
-- Ein gelöschter Client kann sich bei späterer Nutzung erneut registrieren.
-
-## Herkunft und Lizenz
-
-EMBi basiert auf der Home-Assistant-Core-Integration `emby` und `pyemby`. Das Projekt steht unter der Apache License 2.0. Siehe [LICENSE](LICENSE) und [NOTICE.md](NOTICE.md).
-
----
-
-## English summary
-
-EMBi is a Config-Flow-based enhancement of Home Assistant's Emby integration. It preserves existing media-player identities, adds stable client filtering, guarded entity-registry cleanup, and an optional two-step cleanup of historical records on the local Emby server. Full English UI translations are included.
+Apache License 2.0. Siehe `LICENSE` und `NOTICE.md`.

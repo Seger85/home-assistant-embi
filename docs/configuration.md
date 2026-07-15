@@ -1,63 +1,91 @@
-# Konfiguration und Gerätefilter
+# Konfiguration
 
 ## Verbindung
 
-Pflichtfelder:
+EMBi benötigt genau einen Config Entry mit:
 
-- Anzeigename
-- Host/IP ohne Protokollpräfix
+- Name
+- Host oder IP-Adresse
 - Port
-- HTTPS-Schalter
-- API-Schlüssel
+- HTTPS an/aus
+- normalem Emby-Verbindungsschlüssel
 
-Empfohlene Standardports:
+Es gibt keine zusätzlichen Cleanup-Anmeldedaten. Derselbe gespeicherte Verbindungsschlüssel wird für Wiedergabe, Geräteabfrage und ausdrücklich bestätigte Wartungsaktionen verwendet. Der gespeicherte Wert wird im Reconfigure-Flow nie als Standardwert an das Frontend zurückgegeben.
 
-- HTTP: 8096
-- HTTPS: 8920
+## Media-Player-Modus
 
-Der API-Schlüssel wird in den Config-Entry-Daten gespeichert und in Diagnostics redigiert.
+- **Alle Geräte anzeigen**: kompatibles Standardverhalten
+- **Nur aktive Wiedergaben**: nur `playing` oder `paused`
+- **Nur ausgewählte Geräte**: exakte `ReportedDeviceId.AppName`-Allowlist
 
-## Gerätemodus
+## Ignorierregeln
 
-### Alle Geräte anzeigen
+- **Ignorierte App-Varianten**: exakte App-/Client-Identität
+- **Ignorierte Geräte**: exakte `ReportedDeviceId`, wirkt auf alle App-Varianten
+- **Nicht auflösbare Altregeln**: bleiben sichtbar erhalten, bis sie bewusst entfernt werden
 
-Kompatibler Standard. Alle von pyemby gelieferten Geräte dürfen Entitäten erzeugen, sofern sie nicht ignoriert sind.
+Ignorieren hat Vorrang vor Allowlist und Modus. Es gibt keine Präfix- oder Teilstring-Auswertung.
 
-### Nur aktive Wiedergaben
+## Options-Entwurf
 
-Zulässig sind die Zustände:
+Eine Options-Sitzung kann mehrere Unterseiten umfassen. Änderungen bleiben im Entwurf, bis **Änderungen übernehmen** bestätigt wird.
 
-- `playing`
-- `paused`
+- Unterseiten schreiben nicht.
+- Sammelaktionen ändern nur den Entwurf.
+- Apply speichert genau einmal.
+- Bei unverändertem Entwurf erfolgt kein Write und kein Reload.
+- Discard verwirft den Entwurf vollständig.
+- Schließen über X schreibt nichts.
+- Kritische Wartungsaktionen sind bei Dirty Draft gesperrt.
 
-Leerlaufende oder ausgeschaltete Clients werden nicht als verfügbar geführt. Dieser Modus eignet sich für temporäre Statusanzeigen, nicht für eine dauerhaft vollständige Geräteübersicht.
+## Serverbereinigung
 
-### Nur ausgewählte Geräte
+Der Master-Schalter ist bei neuen Installationen aus. Wird er im Entwurf ausgeschaltet, wird auch die Automatik im Entwurf ausgeschaltet.
 
-Die Liste **Anzuzeigende Geräte** speichert eine konkrete Kombination aus gemeldeter Client-ID und App-Name. Dadurch können zwei Apps auf demselben Gerät getrennt behandelt werden.
+Manuelle und automatische Alterswerte sind getrennt. Verfügbar sind:
 
-Beispiel:
+- 7 Tage
+- 30 Tage
+- 90 Tage
+- 180 Tage
+- 365 Tage
+- Benutzerdefiniert
 
-```text
-client-123.AndroidTv
-client-123.Emby for Android
-```
+Der numerische Tageswert ist die Quelle der Wahrheit. Ein vorhandener Wert 364 bleibt 364 und erscheint als Custom. Es findet keine globale Umwandlung auf 365 statt.
 
-## Ignorierliste
+## Automatische Bereinigung
 
-Die Ignorierliste hat immer Vorrang. Sie speichert standardmäßig die rohe gemeldete Client-ID. Dadurch werden auch mehrere App-Varianten desselben Geräts ausgeschlossen.
+- bei neuen Aktivierungen aus
+- Warnseite mit Pflichtschalter
+- keine Texteingabe und keine Aktivierungsphrase
+- Start erst nach finalem Apply
+- erster beziehungsweise Catch-up-Lauf nach 120 Sekunden
+- anschließend 24 Stunden nach Abschluss
+- kein Batchlimit
 
-## Sammelaktionen
+## HA-Mitbereinigung
 
-Native Mehrfachselektoren bieten nicht in jeder Home-Assistant-Version eine verlässliche „Alle auswählen“-Schaltfläche. EMBi stellt deshalb explizite Sammelaktionen bereit:
+Die Option für passende HA-Media-Player ist bei neuen Aktivierungen standardmäßig `false`. Vorhandene Werte werden bei der Migration nicht verändert. Gerrys bestehender Wert `true` bleibt deshalb erhalten.
 
-- alle aktuellen Geräte als anzuzeigende Geräte auswählen
-- Auswahl anzuzeigender Geräte leeren
-- alle aktuellen Geräte ignorieren
-- Ignorierliste leeren
+Eine tatsächliche Registry-Entfernung kann individuelle Namen, Entity-IDs, Dashboards, Automationen, HomeKit und Siri betreffen. Sie wird ausschließlich nach dem vollständigen Sicherheitsvertrag ausgeführt.
 
-Jede Aktion hat einen eigenen Bestätigungsdialog. Die besonders weitreichende Aktion „alle ignorieren“ weist ausdrücklich auf die Folgen hin.
+## Migration von rc3
 
-## Verhalten bei fehlenden Geräten
+Erhalten werden:
 
-Bereits konfigurierte IDs bleiben im Selektor sichtbar, auch wenn sie vom Server momentan nicht gemeldet werden. Sie erhalten den Hinweis „nicht aktuell vom Server gemeldet“.
+- Config Entry
+- Entity-IDs und Unique IDs
+- individuelle Namen
+- Master-Schalter und Automatik
+- abgeschlossener rc3-Erstlauf
+- manuelle und automatische Alterswerte
+- HA-Mitbereinigung
+- gültige Auswahl- und Ignore-Werte
+
+Entfernt werden:
+
+- zusätzliches Cleanup-Zugangsfeld
+- bisheriger Aktivierungstext
+- automatische Ignore-Option nach Serverbereinigung
+- obsoleter rc3-Erstlauf-Hilfswert nach Übertragung in den Store
+- gemischte Legacy-Ignore-Liste nach sicherer Klassifizierung

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
@@ -12,6 +14,42 @@ class EmbyApiError(Exception):
 
 class EmbyAuthError(EmbyApiError):
     """Authentication failed."""
+
+
+def _parse_emby_datetime(value: str | None) -> datetime | None:
+    """Parse Emby ISO timestamps, including seven-digit fractional seconds."""
+    if not value:
+        return None
+
+    normalized = str(value).strip()
+    if not normalized:
+        return None
+
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+
+    match = re.fullmatch(
+        r"(?P<prefix>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})"
+        r"(?:\.(?P<fraction>\d+))?"
+        r"(?P<offset>[+-]\d{2}:\d{2})?",
+        normalized,
+    )
+    if match:
+        fraction = match.group("fraction")
+        offset = match.group("offset") or "+00:00"
+        normalized = match.group("prefix")
+        if fraction:
+            normalized = f"{normalized}.{fraction[:6]}"
+        normalized = f"{normalized}{offset}"
+
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +92,11 @@ class EmbyDeviceRecord:
         return self.reported_device_id
 
     @property
+    def last_activity_datetime(self) -> datetime | None:
+        """Return the normalized UTC timestamp used by age-based cleanup."""
+        return _parse_emby_datetime(self.last_activity_date)
+
+    @property
     def label(self) -> str:
         """Return a user-facing selector label."""
         details = [self.name]
@@ -63,18 +106,37 @@ class EmbyDeviceRecord:
             details.append(self.last_user_name)
         return " · ".join(details)
 
-    def as_diagnostics(self) -> dict[str, Any]:
-        """Return a diagnostics-ready representation."""
-        return {
-            "record_id": self.record_id,
-            "reported_device_id": self.reported_device_id,
-            "player_key": self.player_key,
-            "name": self.name,
-            "app_name": self.app_name,
-            "app_version": self.app_version,
-            "last_user_name": self.last_user_name,
-            "last_activity_date": self.last_activity_date,
-        }
+    @property
+    def short_record_id(self) -> str:
+        """Return a compact server-record identifier for destructive-action labels."""
+        if len(self.record_id) <= 8:
+            return self.record_id
+        return f"{self.record_id[:4]}…{self.record_id[-4:]}"
+
+    @property
+    def activity_label(self) -> str | None:
+        """Return a compact, stable display value for the last activity timestamp."""
+        parsed = self.last_activity_datetime
+        if parsed is not None:
+            return parsed.strftime("%Y-%m-%d %H:%M UTC")
+        if self.last_activity_date:
+            return str(self.last_activity_date).strip()
+        return None
+
+    @property
+    def server_cleanup_label(self) -> str:
+        """Return an unambiguous label for one server-side history record."""
+        details = [self.name]
+        app = self.app_name or "Unknown app"
+        if self.app_version:
+            app = f"{app} {self.app_version}"
+        details.append(app)
+        if self.last_user_name:
+            details.append(self.last_user_name)
+        if self.activity_label:
+            details.append(self.activity_label)
+        details.append(f"ID {self.short_record_id}")
+        return " · ".join(details)
 
 
 class EmbyApiClient:

@@ -19,9 +19,10 @@ from .const import (
     CLIENT_MODE_ALL,
     CONF_ALLOWED_DEVICE_IDS,
     CONF_CLIENT_MODE,
-    CONF_IGNORED_DEVICE_IDS,
+    CONF_IGNORED_PLAYER_KEYS,
+    CONF_IGNORED_REPORTED_DEVICE_IDS,
 )
-from .helpers import should_expose_device
+from .helpers import reported_device_id_for_player_key, should_expose_device
 from .models import EmbiRuntimeData
 
 MEDIA_TYPE_TRAILER = "trailer"
@@ -58,10 +59,12 @@ async def async_setup_entry(
         device = emby.devices[device_id]
         return should_expose_device(
             device_id=device_id,
+            reported_device_id=reported_device_id_for_player_key(runtime.devices, device_id),
             state=getattr(device, "state", None),
             mode=entry.options.get(CONF_CLIENT_MODE, CLIENT_MODE_ALL),
             allowed_ids=entry.options.get(CONF_ALLOWED_DEVICE_IDS, []),
-            ignored_ids=entry.options.get(CONF_IGNORED_DEVICE_IDS, []),
+            ignored_player_keys=entry.options.get(CONF_IGNORED_PLAYER_KEYS, []),
+            ignored_reported_device_ids=entry.options.get(CONF_IGNORED_REPORTED_DEVICE_IDS, []),
         )
 
     @callback

@@ -1,44 +1,79 @@
-# Sicherheitsarchitektur
+# Sicherheit
 
 ## Grundprinzipien
 
-- lokale Kommunikation
-- keine direkte `.storage`-Manipulation
-- Least Privilege, soweit Emby dies zulässt
-- destruktive Funktionen standardmäßig aus
-- konkrete Auswahl statt pauschaler Löschaktion
-- zweistufige Bestätigung
-- Teilerfolge transparent melden
-- sensible Werte in Diagnostics redigieren
+- lokale Kommunikation zum konfigurierten Emby-Server
+- offizieller Home-Assistant-Config-Entry und offizieller `Store`
+- keine direkten Änderungen an `.storage`
+- keine versteckten Wartungsentities
+- kritische Wartungsaktionen nur nach expliziter Aktivierung und Bestätigung
+- fail-closed bei unklarem Zustand
 
-## Redigierte Felder
+## Zugangsdaten
 
-- primärer `api_key`
-- optionaler `server_cleanup_api_key`
-- serverseitige Geräte-Historien-ID
-- gemeldete Client-ID
-- daraus gebildeter Player-Key
-- Gerätename
-- letzter Benutzername
+EMBi speichert genau den normalen Verbindungsschlüssel im Config Entry. Es gibt kein zweites Cleanup-Feld. Der Wert wird:
 
-App-Name, App-Version und letzter Aktivitätszeitpunkt bleiben für die technische Diagnose sichtbar.
+- nicht als Passwortfeld-Default an das Frontend zurückgegeben
+- in Diagnostics redigiert
+- nicht im Laufbericht oder Store gespeichert
+- nicht in Logs oder Notifications ausgegeben
 
-## API-Schlüsselrotation
+## Persistenter Store
 
-Nach einer vermuteten Offenlegung:
+Der Maintenance-Store ist:
 
-1. betroffenen Schlüssel auf dem Emby-Server widerrufen
-2. neuen Schlüssel erzeugen
-3. EMBi über „Verbindung bearbeiten“ bzw. „Serverbereinigung einrichten“ aktualisieren
-4. Diagnostics und Logs auf Authentifizierungsfehler prüfen
-5. alte Backups und Skripte auf Klartextschlüssel untersuchen
+- privat
+- atomar geschrieben
+- versioniert
+- pro Config Entry getrennt
+- frei von Record-IDs, ReportedDeviceIds, Player-Keys, Benutzernamen und Zugangsdaten
 
-## Repository-Hygiene
+Ein erwarteter, aber fehlender oder beschädigter Store stoppt automatische Wartungsläufe. Ein neuer leerer Store wird nur bei eindeutiger Erstinitialisierung angelegt.
 
-Verboten im Repository:
+## Serveraktionen
 
-- echte API-Schlüssel
-- Home-Assistant-Long-Lived-Access-Tokens
-- echte interne IPs in Test-Fixtures, soweit nicht ausdrücklich anonymisiert
-- vollständige private Diagnostics
-- `.storage`, Datenbanken oder Backups
+- Master-Schalter standardmäßig aus
+- Automatik standardmäßig aus
+- Warnseite und Pflichtbestätigung
+- manuelle Aktion zusätzlich mit dynamischem Bestätigungstext
+- aktive und undatierte Datensätze geschützt
+- frische Revalidierung vor jedem Lauf
+- kein automatisches Erzeugen einer Ignore-Regel
+
+## Registry-Schutz
+
+Registry-Änderungen erfordern exakte Gleichheit. Unzulässig sind:
+
+- Wildcards
+- Präfix-Matches
+- Teilstring-Matches
+- ungeprüfte Entity-IDs
+- Wiederaufnahme nach Neustart
+- Änderung bei vorhandenem State
+- Änderung bei verbleibender gleicher Serverhistorie
+
+HA-Mitbereinigung ist bei neuen Aktivierungen aus. Bestehende Werte bleiben bewusst erhalten, um Migrationen nicht stillschweigend zu verändern.
+
+## Datenschutz
+
+Diagnostics und Laufberichte enthalten nur:
+
+- Integrationsversion
+- aggregierte Geräteanzahl
+- Schedulerstatus
+- Zeitpunkte
+- Statuscodes
+- aggregierte Server- und Registry-Zähler
+
+Private Identitäten werden weder gekürzt noch gehasht persistiert; sie werden vollständig weggelassen.
+
+## Backup und Rollback
+
+Vor jedem Live-Test erforderlich:
+
+- vollständiges Home-Assistant-Backup
+- belastbarer Emby-Backup- oder Wiederherstellungsweg
+- dokumentierter Ausgangsstand der 29 Media-Player
+- verfügbare Installationsquelle von `v0.3.0-rc3`
+
+Der Rollback der Integration stellt keine zuvor veränderten Emby-Historieneinträge wieder her. Dafür ist der separate Emby-Wiederherstellungsweg erforderlich.

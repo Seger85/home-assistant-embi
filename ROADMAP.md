@@ -1,56 +1,67 @@
 # EMBi Roadmap
 
-## 0.2.0 – produktive Baseline
+## 0.3.0 – Stable
 
-Status: abgeschlossen und versioniert.
+Status: Implementierung und Repositoryvertrag abgeschlossen; öffentliche Veröffentlichung gesperrt, bis die Live-Gates erfüllt und der Draft-Promotion-PR ausdrücklich freigegeben ist.
 
-- Config Entry und Options Flow
-- Übernahme der vorhandenen 28 Media-Player
-- Erhalt der Entity-IDs
-- kontrollierte Migration weg vom Legacy-YAML-Pfad
+Enthalten:
 
-## 0.3.0-rc1 – Identität, Sicherheit und Repository
+- persistenter Maintenance-Store und persistenter Laufbericht
+- absoluter Scheduler mit 120-Sekunden-Catch-up und 24 Stunden nach Abschluss
+- gemeinsamer Lock und Wiederholschutz
+- getrennte Registry-Zähler queued, matched, removed, missing und protected
+- fail-safe Verhalten bei Store-, API- und Revalidierungsfehlern
+- Options-Flow-Entwurf mit Apply und Discard
+- höchstens ein Reload nach Apply
+- ein normaler EMBi-Verbindungsschlüssel, kein zweites Cleanup-Feld
+- keine Aktivierungsphrase
+- manuelle und automatische Alterswerte mit Presets und Custom
+- getrennte App- und Geräte-Ignorierregeln
+- sichtbare unresolved Altwerte
+- keine automatische Ignore-Regel nach Serverbereinigung
+- HA-Mitbereinigung für neue Aktivierungen standardmäßig aus
+- Diagnostics-Redaktion
+- keine Wartungsentity
+- HACS-ZIP-Vertrag `embi.zip`
 
-Status: Code, Dokumentation und GitHub-CI einschließlich offizieller HACS- und Hassfest-Validierung sind vorbereitet und erfolgreich; vor Produktivfreigabe fehlen die HACS-Installation und die Home-Assistant-Laufzeittests.
+Live-Gates:
 
-- korrekte Trennung von Emby-`Id` und `ReportedDeviceId`
-- automatische Optionsmigration
-- Legacy-YAML-Code vollständig entfernt
-- verständlichere deutsche und englische UI
-- sichere Sammelauswahl
-- abgesicherte Registry-Bereinigung
-- optionale Serverbereinigung mit zweiter Bestätigung
-- Teilerfolg bei mehreren Löschungen
-- redigierte Diagnostics
-- HACS-Struktur, Tests und GitHub Actions
+- vollständiges Home-Assistant- und Emby-Backup
+- Upgradepfad `v0.3.0-rc3` → unveröffentlichtes `0.3.0`-Testpaket
+- 29 Media-Player, Entity-IDs, Unique IDs und individuelle Namen unverändert
+- migrierter Wert 364 bleibt zunächst Custom
+- bewusste spätere Auswahl von 365 prüfen
+- Catch-up, `next_run_at`, Reload und Neustart prüfen
+- Apply, unveränderter Apply, Discard und Schließen über X prüfen
+- tatsächliche sichere Registry-Nachbereitung verifizieren
+- iPhone-, iPad- und Desktop-QA
+- Rollback auf `v0.3.0-rc3`
+- keine neuen Repairs, Fehler oder unbeabsichtigten Änderungen
 
-## 0.3.0 – stabile Freigabe
+## Nach 0.3.0
 
-Freigabekriterien:
+Die folgenden Themen bleiben ausdrücklich außerhalb des Stable-Scope und werden erst nach der Veröffentlichung neu priorisiert:
 
-- GitHub Actions vollständig erfolgreich
-- Installation über das öffentliche HACS-Custom-Repository erfolgreich
-- Upgrade 0.2.0 → 0.3.0 auf Testinstanz erfolgreich
-- bestehende Entity-IDs unverändert
-- Optionsmigration geprüft
-- alle Optionsmenüs funktional geprüft
-- Screenshot-QA auf iPhone, iPad und Desktop
-- keine neuen EMBi-Warnungen oder Fehler
-- temporäre HACS-Metadatenausnahmen geprüft und soweit möglich entfernt
+- Report-only-Modus
+- Bibliothekssensoren
+- zuletzt hinzugefügte Medien
+- Benutzerstatistiken
+- Wiedergabezeitstatistiken
+- neue Plattformen
+- Premium-Code
+- weitere Produktvisionen
 
-## 0.4.0 – vertiefte Testabdeckung
+## 0.4.x – Wartung und Testvertiefung
 
 - vollständige Home-Assistant-Testumgebung für Config Flow und Options Flow
-- Tests der Entity Registry mit Mock Registry
-- Tests für Reload/Unload und pyemby-Callbacks
-- Tests für Reauth-/Auth-Fehler
-- strukturierter Audit-Log-Eintrag für Wartungsaktionen ohne sensible IDs
+- breitere Runtime-Kompatibilitätsmatrix
+- weitere Fehler- und Recovery-Szenarien
+- strukturierte, identitätsfreie Audit-Historie nur nach neuer Scope-Freigabe
 
-## 1.0.0 – Veröffentlichungsreife
+## 1.0.0 – Langfristige Veröffentlichungsreife
 
-- dokumentierte Kompatibilitätsmatrix
 - externe Beta-Tests
-- vollständige HACS- und Hassfest-Konformität
+- dokumentierte Kompatibilitätsmatrix
 - Datenschutz- und Sicherheitsreview
-- stabiler Migrationspfad über mindestens zwei Vorversionen
+- stabiler Migrationspfad über mehrere Vorversionen
 - klare Abgrenzung zum minimalen Home-Assistant-Core-Vorschlag
