@@ -6,7 +6,14 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from .api import EmbyApiClient, EmbyDeviceRecord
-from .const import FOLLOW_UP_IDLE, MAINTENANCE_STORE_VERSION, RUN_STATUS_IDLE
+from .const import (
+    FOLLOW_UP_IDLE,
+    FOLLOW_UP_STATUSES,
+    MAINTENANCE_STORE_VERSION,
+    RUN_MODES,
+    RUN_STATUS_IDLE,
+    RUN_STATUSES,
+)
 
 
 @dataclass(slots=True)
@@ -100,6 +107,12 @@ class CleanupRunReport:
                 not isinstance(values[key], int) or isinstance(values[key], bool) or values[key] < 0
             ):
                 raise ValueError(f"maintenance report field {key} must be a non-negative integer")
+        if values.get("status", RUN_STATUS_IDLE) not in RUN_STATUSES:
+            raise ValueError("maintenance report status is invalid")
+        if values.get("mode") is not None and values["mode"] not in RUN_MODES:
+            raise ValueError("maintenance report mode is invalid")
+        if values.get("follow_up_status", FOLLOW_UP_IDLE) not in FOLLOW_UP_STATUSES:
+            raise ValueError("maintenance report follow-up status is invalid")
         if "result_counts_complete" in values and not isinstance(
             values["result_counts_complete"], bool
         ):
