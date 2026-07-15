@@ -31,12 +31,8 @@ def main() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
-    english = json.loads(
-        (COMPONENT / "translations" / "en.json").read_text(encoding="utf-8")
-    )
-    german = json.loads(
-        (COMPONENT / "translations" / "de.json").read_text(encoding="utf-8")
-    )
+    english = json.loads((COMPONENT / "translations" / "en.json").read_text(encoding="utf-8"))
+    german = json.loads((COMPONENT / "translations" / "de.json").read_text(encoding="utf-8"))
     hacs = json.loads((ROOT / "hacs.json").read_text(encoding="utf-8"))
     workflows = {
         name: (ROOT / ".github" / "workflows" / path).read_text(encoding="utf-8")
@@ -52,9 +48,7 @@ def main() -> None:
     require(manifest.get("version") == EXPECTED_VERSION, "Manifest is not stable 0.3.0")
     require(match.group(1) == EXPECTED_VERSION, "const.py is not stable 0.3.0")
     require(strings == english, "English translation source differs")
-    require(
-        key_paths(strings) == key_paths(german), "German translation structure differs"
-    )
+    require(key_paths(strings) == key_paths(german), "German translation structure differs")
     require(hacs.get("zip_release") is True, "HACS ZIP contract missing")
     require(hacs.get("filename") == "embi.zip", "HACS filename differs")
     require(
@@ -75,9 +69,7 @@ def main() -> None:
         require(obsolete not in component_text, f"Obsolete symbol remains: {obsolete}")
 
     require('PLATFORMS = ["media_player"]' in constants, "Only media_player is allowed")
-    require(
-        "Store(" in (COMPONENT / "maintenance_store.py").read_text(), "Store missing"
-    )
+    require("Store(" in (COMPONENT / "maintenance_store.py").read_text(), "Store missing")
     require(
         "OptionsDraft.from_options" in (COMPONENT / "options_flow.py").read_text(),
         "Draft missing",
