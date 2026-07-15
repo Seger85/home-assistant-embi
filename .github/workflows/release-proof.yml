@@ -1,0 +1,146 @@
+name: Stable release proof
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/release-proof.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: v0.3.0
+      EXPECTED_COMMIT: 0ebf273f0bd41f6c8f878042ac0fc4160d07e978
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify release metadata and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
+          jq -e '.draft == false and .prerelease == false' <<<"${release_json}" >/dev/null
+          jq -e --arg tag "${RELEASE_TAG}" '.tag_name == $tag' <<<"${release_json}" >/dev/null
+          jq -e '.assets | length == 2' <<<"${release_json}" >/dev/null
+          jq -e '.assets | any(.name == "embi.zip")' <<<"${release_json}" >/dev/null
+          jq -e '.assets | any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)" = "${RELEASE_TAG}"
+
+          git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          test "$(git rev-list -n 1 "${RELEASE_TAG}")" = "${EXPECTED_COMMIT}"
+
+          rm -rf verify-release
+          mkdir verify-release
+          gh release download "${RELEASE_TAG}" \
+            --dir verify-release \
+            --pattern embi.zip \
+            --pattern embi.zip.sha256
+          (cd verify-release && sha256sum --check embi.zip.sha256)
+
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import zipfile
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          tag = os.environ["RELEASE_TAG"]
+          release = json.loads(
+              subprocess.check_output(
+                  ["gh", "api", f"repos/{repository}/releases/tags/{tag}"],
+                  text=True,
+              )
+          )
+          latest = subprocess.check_output(
+              ["gh", "api", f"repos/{repository}/releases/latest", "--jq", ".tag_name"],
+              text=True,
+          ).strip()
+          tag_commit = subprocess.check_output(
+              ["git", "rev-list", "-n", "1", tag], text=True
+          ).strip()
+
+          archive_path = Path("verify-release/embi.zip")
+          checksum_path = Path("verify-release/embi.zip.sha256")
+          archive_sha = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+          declared_sha = checksum_path.read_text(encoding="utf-8").split()[0]
+          if archive_sha != declared_sha:
+              raise RuntimeError("Release checksum mismatch")
+
+          with zipfile.ZipFile(archive_path) as archive:
+              names = sorted(archive.namelist())
+              manifest = json.loads(archive.read("manifest.json"))
+              const_source = archive.read("const.py").decode("utf-8")
+          version_match = re.search(
+              r'^VERSION\s*=\s*["\']([^"\']+)["\']', const_source, re.M
+          )
+          internal_version = version_match.group(1) if version_match else None
+          hacs = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
+
+          if manifest.get("version") != "0.3.0" or internal_version != "0.3.0":
+              raise RuntimeError("Version contract mismatch")
+          if not (
+              hacs.get("zip_release") is True
+              and hacs.get("filename") == "embi.zip"
+              and hacs.get("hide_default_branch") is True
+          ):
+              raise RuntimeError("HACS contract mismatch")
+          forbidden = ("tests/", "docs/", ".github/", "custom_components/")
+          if any(name.startswith(forbidden) for name in names):
+              raise RuntimeError("Repository-only paths found in release ZIP")
+
+          report = {
+              "success": True,
+              "release_id": release["id"],
+              "tag": release["tag_name"],
+              "release_name": release["name"],
+              "draft": release["draft"],
+              "prerelease": release["prerelease"],
+              "published_at": release["published_at"],
+              "latest_tag": latest,
+              "tag_commit": tag_commit,
+              "expected_commit": os.environ["EXPECTED_COMMIT"],
+              "assets": [
+                  {
+                      "name": asset["name"],
+                      "size": asset["size"],
+                      "digest": asset.get("digest"),
+                  }
+                  for asset in release["assets"]
+              ],
+              "embi_zip_sha256": archive_sha,
+              "declared_sha256": declared_sha,
+              "manifest_version": manifest["version"],
+              "internal_version": internal_version,
+              "install_file_count": len(names),
+              "hacs": {
+                  "zip_release": hacs["zip_release"],
+                  "filename": hacs["filename"],
+                  "hide_default_branch": hacs["hide_default_branch"],
+              },
+          }
+          Path("release-proof.json").write_text(
+              json.dumps(report, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: embi-v0.3.0-release-proof
+          path: release-proof.json
+          retention-days: 14
+
+      - name: Delete temporary audit branch
+        if: ${{ success() }}
+        run: git push origin --delete audit/v0.3.0-release-proof
