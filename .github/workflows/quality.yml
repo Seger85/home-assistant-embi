@@ -71,6 +71,8 @@ jobs:
         run: ruff format --check .
       - name: Unit tests
         run: pytest -q
+      - name: Validate specification contract
+        run: python scripts/validate_spec_contract.py
       - name: Validate stable contract
         run: python scripts/validate_stable_contract.py
       - name: Secret and privacy scan
@@ -78,6 +80,6 @@ jobs:
       - name: Build and verify release-equivalent asset
         run: |
           rm -rf dist
-          python scripts/build_package.py --output-dir dist --expected-version 0.3.0 --commit "${GITHUB_SHA}"
+          python scripts/build_package.py --output-dir dist --expected-version 0.9.0 --commit "${GITHUB_SHA}"
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
