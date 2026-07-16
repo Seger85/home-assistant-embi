@@ -28,11 +28,7 @@ def test_player_action_result_distinguishes_success_partial_and_failure() -> Non
         "remove",
         2,
         (PlayerActionItem("media_player.one", "player-one", "One", "removed"),),
-        (
-            PlayerActionItem(
-                "media_player.two", "player-two", "Two", "protected", "paused"
-            ),
-        ),
+        (PlayerActionItem("media_player.two", "player-two", "Two", "protected", "paused"),),
         (),
     )
     failure = PlayerActionResult(
@@ -70,9 +66,7 @@ def test_persistent_action_summary_contains_only_aggregate_fields() -> None:
     assert "user_name" not in serialized
 
 
-def test_removal_orders_hidden_rule_before_registry_remove_and_verifies_reload() -> (
-    None
-):
+def test_removal_orders_hidden_rule_before_registry_remove_and_verifies_reload() -> None:
     remove_source = source("player_remove.py")
 
     hidden_position = remove_source.index("options[CONF_HIDDEN_EXACT_PLAYERS]")
@@ -110,6 +104,4 @@ def test_playing_and_paused_are_rechecked_by_the_destructive_path() -> None:
     context_source = source("player_context.py")
 
     assert "context.playback in ACTIVE_PLAYBACK_STATES" in remove_source
-    assert (
-        "ACTIVE_PLAYBACK_STATES = {PLAYBACK_PLAYING, PLAYBACK_PAUSED}" in context_source
-    )
+    assert "ACTIVE_PLAYBACK_STATES = {PLAYBACK_PLAYING, PLAYBACK_PAUSED}" in context_source
