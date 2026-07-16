@@ -1,0 +1,61 @@
+name: EMBi 0.9 dead module cleanup
+
+on:
+  push:
+    branches:
+      - feature/embi-0.9.0
+    paths:
+      - .github/workflows/embi-09-remove-dead-modules.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/embi-0.9.0
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Verify no imports and remove superseded modules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+
+          component = Path("custom_components/emby")
+          obsolete = {"options_clients", "options_registry", "maintenance_flow"}
+          references = []
+          for path in component.glob("*.py"):
+              if path.stem in obsolete:
+                  continue
+              tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.ImportFrom):
+                      module = (node.module or "").split(".")[-1]
+                      if module in obsolete:
+                          references.append(f"{path}:{module}")
+                  elif isinstance(node, ast.Import):
+                      for alias in node.names:
+                          module = alias.name.split(".")[-1]
+                          if module in obsolete:
+                              references.append(f"{path}:{module}")
+          if references:
+              raise SystemExit("Superseded modules are still imported: " + ", ".join(references))
+          for module in obsolete:
+              path = component / f"{module}.py"
+              if path.exists():
+                  path.unlink()
+          PY
+          rm .github/workflows/embi-09-remove-dead-modules.yml
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "refactor: remove superseded 0.3 options modules"
+          git push origin HEAD:feature/embi-0.9.0
