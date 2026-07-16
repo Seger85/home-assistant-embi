@@ -1,0 +1,38 @@
+name: EMBi 0.9 style correction
+
+on:
+  push:
+    branches:
+      - feature/embi-0.9.0
+    paths:
+      - .github/workflows/embi-09-style-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/embi-0.9.0
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -q --upgrade pip -r requirements_test.txt
+      - name: Apply repository style rules
+        run: |
+          ruff check --fix .
+          ruff format .
+      - name: Commit corrections
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "style: apply automated 0.9 formatting"
+          git push origin HEAD:feature/embi-0.9.0
