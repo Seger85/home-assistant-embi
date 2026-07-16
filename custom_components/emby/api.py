@@ -52,6 +52,61 @@ def _parse_emby_datetime(value: str | None) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
+def _optional_bool(*values: Any) -> bool | None:
+    """Return the first explicit boolean-like value without guessing missing metadata."""
+    for value in values:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, int) and value in (0, 1):
+            return bool(value)
+        if isinstance(value, str):
+            normalized = value.strip().casefold()
+            if normalized in {"true", "yes", "1"}:
+                return True
+            if normalized in {"false", "no", "0"}:
+                return False
+    return None
+
+
+def _user_names(data: dict[str, Any]) -> tuple[str, ...]:
+    """Extract explicitly named users from the device record."""
+    names: set[str] = set()
+    for key in ("LastUserName", "UserName"):
+        value = data.get(key)
+        if value and str(value).strip():
+            names.add(str(value).strip())
+
+    for key in ("UserNames", "Users"):
+        raw = data.get(key)
+        if not isinstance(raw, list):
+            continue
+        for item in raw:
+            if isinstance(item, dict):
+                value = item.get("Name") or item.get("UserName")
+            else:
+                value = item
+            if value and str(value).strip():
+                names.add(str(value).strip())
+    return tuple(sorted(names, key=str.casefold))
+
+
+def _capabilities(data: dict[str, Any]) -> tuple[str, ...]:
+    """Normalize explicit client capabilities without using product-name guesses."""
+    values: set[str] = set()
+    raw = data.get("Capabilities") or data.get("ClientCapabilities")
+    if isinstance(raw, list):
+        values.update(str(item).strip().casefold() for item in raw if str(item).strip())
+    elif isinstance(raw, dict):
+        values.update(
+            str(key).strip().casefold()
+            for key, enabled in raw.items()
+            if enabled and str(key).strip()
+        )
+    elif isinstance(raw, str):
+        values.update(part.strip().casefold() for part in raw.split(",") if part.strip())
+    return tuple(sorted(values))
+
+
 @dataclass(frozen=True, slots=True)
 class EmbyDeviceRecord:
     """A device-history record returned by the local Emby server."""
@@ -63,6 +118,12 @@ class EmbyDeviceRecord:
     app_version: str | None = None
     last_user_name: str | None = None
     last_activity_date: str | None = None
+    user_names: tuple[str, ...] = ()
+    client_type: str | None = None
+    capabilities: tuple[str, ...] = ()
+    supports_playback: bool | None = None
+    api_only: bool | None = None
+    playback_observed: bool = False
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> EmbyDeviceRecord:
@@ -74,14 +135,46 @@ class EmbyDeviceRecord:
         """
         record_id = str(data.get("Id") or "")
         reported_device_id = str(data.get("ReportedDeviceId") or record_id)
+        capabilities = _capabilities(data)
+        supports_playback = _optional_bool(
+            data.get("SupportsPlayback"),
+            data.get("SupportsMediaControl"),
+            data.get("CanPlayMedia"),
+        )
+        if supports_playback is None and capabilities:
+            playback_capabilities = {
+                "playback",
+                "play_media",
+                "media_control",
+                "remote_control",
+                "supports_playback",
+            }
+            if playback_capabilities & set(capabilities):
+                supports_playback = True
+
+        api_only = _optional_bool(data.get("IsApiOnly"), data.get("ApiOnly"))
+        client_type = data.get("ClientType") or data.get("ConnectionType")
+        playback_observed = bool(
+            data.get("LastPlaybackDate")
+            or data.get("NowPlayingItem")
+            or data.get("HasPlaybackSession")
+        )
+        users = _user_names(data)
+        last_user = data.get("LastUserName") or data.get("UserName")
         return cls(
             record_id=record_id,
             reported_device_id=reported_device_id,
             name=str(data.get("Name") or data.get("ReportedDeviceName") or "Unknown"),
             app_name=data.get("AppName"),
             app_version=data.get("AppVersion"),
-            last_user_name=data.get("LastUserName"),
+            last_user_name=str(last_user).strip() if last_user else None,
             last_activity_date=data.get("DateLastActivity") or data.get("LastActivityDate"),
+            user_names=users,
+            client_type=str(client_type).strip() if client_type else None,
+            capabilities=capabilities,
+            supports_playback=supports_playback,
+            api_only=api_only,
+            playback_observed=playback_observed,
         )
 
     @property
@@ -98,7 +191,7 @@ class EmbyDeviceRecord:
 
     @property
     def label(self) -> str:
-        """Return a user-facing selector label."""
+        """Return a user-facing selector label without exposing an internal identifier."""
         details = [self.name]
         if self.app_name:
             details.append(self.app_name)
@@ -108,7 +201,7 @@ class EmbyDeviceRecord:
 
     @property
     def short_record_id(self) -> str:
-        """Return a compact server-record identifier for destructive-action labels."""
+        """Return a compact identifier for diagnostics only."""
         if len(self.record_id) <= 8:
             return self.record_id
         return f"{self.record_id[:4]}…{self.record_id[-4:]}"
@@ -125,7 +218,7 @@ class EmbyDeviceRecord:
 
     @property
     def server_cleanup_label(self) -> str:
-        """Return an unambiguous label for one server-side history record."""
+        """Return a friendly label for one exact server-history record."""
         details = [self.name]
         app = self.app_name or "Unknown app"
         if self.app_version:
@@ -135,7 +228,6 @@ class EmbyDeviceRecord:
             details.append(self.last_user_name)
         if self.activity_label:
             details.append(self.activity_label)
-        details.append(f"ID {self.short_record_id}")
         return " · ".join(details)
 
 
