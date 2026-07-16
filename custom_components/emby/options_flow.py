@@ -186,7 +186,9 @@ class EmbyOptionsFlow(
             enabled += 1
 
         await self.hass.config_entries.async_reload(self._entry.entry_id)
-        current_entry = self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+        current_entry = (
+            self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+        )
         registry = er.async_get(self.hass)
         restored = sum(
             any(

@@ -66,6 +66,11 @@ class FakeHass:
         self.config_entries = FakeConfigEntries()
         self.data = {}
         self.states = SimpleNamespace(get=lambda _entity_id: None)
+        self.registry = SimpleNamespace(
+            entities={},
+            async_get=lambda _entity_id: None,
+            async_update_entity=lambda _entity_id, **_kwargs: None,
+        )
 
     async def async_block_till_done(self) -> None:
         return None

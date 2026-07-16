@@ -81,9 +81,7 @@ def test_upgrade_preserves_exact_cleanup_values_and_automatic_state() -> None:
 
 def test_active_only_and_allowlist_keep_effective_visibility() -> None:
     item = record(record_id="legacy-record")
-    active, _ = migrate_options_090(
-        {CONF_CLIENT_MODE: CLIENT_MODE_ACTIVE_ONLY}, [item]
-    )
+    active, _ = migrate_options_090({CONF_CLIENT_MODE: CLIENT_MODE_ACTIVE_ONLY}, [item])
     allowlist, _ = migrate_options_090(
         {
             CONF_CLIENT_MODE: CLIENT_MODE_ALLOWLIST,

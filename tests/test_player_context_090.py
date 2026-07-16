@@ -61,7 +61,8 @@ def entity(
         platform="emby",
         config_entry_id="entry",
         unique_id=unique_id,
-        entity_id=entity_id or f"media_player.{unique_id.casefold().replace(' ', '_').replace('.', '_')}",
+        entity_id=entity_id
+        or f"media_player.{unique_id.casefold().replace(' ', '_').replace('.', '_')}",
         name=name,
         original_name="Emby player",
         disabled_by="user" if disabled else None,
@@ -175,12 +176,8 @@ def test_disabled_valid_entity_is_not_orphaned() -> None:
 
 
 def test_playing_and_paused_are_both_protected_from_removal() -> None:
-    playing_record = record(
-        record_id="1", reported_id="one", app="TV", supports_playback=True
-    )
-    paused_record = record(
-        record_id="2", reported_id="two", app="Mobile", supports_playback=True
-    )
+    playing_record = record(record_id="1", reported_id="one", app="TV", supports_playback=True)
+    paused_record = record(record_id="2", reported_id="two", app="Mobile", supports_playback=True)
     first = entity(playing_record.player_key, entity_id="media_player.playing")
     second = entity(paused_record.player_key, entity_id="media_player.paused")
 
