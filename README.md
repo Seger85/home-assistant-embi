@@ -1,125 +1,176 @@
-# Emby Integration – EMBi
+# EMBi – Emby in Home Assistant, ohne Gerätefriedhof
 
-> **EMBi ist die Emby-Integration für alle, die irgendwann mehr Geräte in der Liste haben als im Haus.**
->
-> Sie übernimmt bestehende Emby-Media-Player, hält deren Identitäten stabil und bringt kontrolliert Ordnung in historische Clients und Geräte-Einträge.
->
-> **Weniger Gerätefriedhof, mehr Kontrolle.**
+**EMBi ist die Emby-Integration für alle, die irgendwann mehr Geräte in der Liste haben als im Haus.**
 
-EMBi verwendet ausschließlich einen Home-Assistant-Config-Entry unter der Domain `emby`. Vorhandene pyemby-Unique-IDs werden nicht verändert. Dadurch können Entity-IDs, individuelle Namen, Dashboards, Automationen, HomeKit- und Siri-Zuordnungen bei einem kontrollierten Upgrade erhalten bleiben.
+Sie verbindet deinen lokalen Emby-Server mit Home Assistant, übernimmt vorhandene Media-Player und gibt dir eine verständliche Oberfläche für Benutzer, gemeinsam genutzte Geräte, alte Clients und technische Zugriffe.
 
-## Status 0.3.0
+Kurz gesagt:
 
-`0.3.0` ist als Stable-Code vorbereitet, aber noch nicht öffentlich veröffentlicht. Vor Tag und Release stehen die kontrollierte Home-Assistant-Liveabnahme, die visuelle Prüfung und die ausdrückliche Freigabe des Promotion-PRs.
+**weniger Gerätechaos, mehr Kontrolle – mit Sicherheitsprüfungen vor jeder Löschung.**
 
-Die dokumentierte Live-Baseline für die Abnahme umfasst **29 EMBi-Media-Player** und keine zusätzliche Wartungsentity.
+## Was EMBi anders macht
 
-## Funktionen
+Die normale Emby-Gerätehistorie wächst mit der Zeit. Alte Fernseher, Browser-Sitzungen, Mobilgeräte, doppelte App-Varianten und API-Anwendungen bleiben häufig lange sichtbar. EMBi trennt diese Informationen sauber:
 
-- Config Flow und Reconfigure Flow
-- Media-Player-Modi: alle, nur aktive Wiedergaben oder nur ausgewählte Geräte
-- getrennte app-spezifische und geräteweite Ignorierregeln
-- sichtbare Aufbewahrung nicht eindeutig migrierbarer Altregeln
-- zusammenhängender Options-Flow-Entwurf mit **Apply** und **Discard**
-- manuelle und automatische altersbasierte Serverbereinigung
-- getrennte manuelle und automatische Alterswerte
-- Presets 7, 30, 90, 180 und 365 Tage plus benutzerdefinierte Werte
-- persistenter absoluter Scheduler mit `next_run_at`
-- persistenter, identitätsfreier Laufbericht
-- getrennte Registry-Ergebnisse: queued, matched, removed, missing und protected
-- Deutsch und Englisch
-- HACS-Releaseasset `embi.zip`
+- **Emby-Server-Gerätehistorie** – historische Datensätze auf dem Emby-Server
+- **Home-Assistant-Player** – tatsächlich verwaltete `media_player`-Entities
+- **Sichtbarkeitsregeln** – welche Player EMBi aktuell in Home Assistant bereitstellt
 
-EMBi legt keine Wartungsentity an. Die einzige Plattform bleibt `media_player`.
+Dadurch ist jederzeit klar, ob du nur einen Player ausblendest, eine Home-Assistant-Entity entfernst oder einen historischen Servereintrag löschst.
 
-## Identitätsvertrag
+## Geräte & Player
 
-| Emby-Feld | Verwendung |
-|---|---|
-| `Id` | exakter Historieneintrag und Parameter für `DELETE /Devices` |
-| `ReportedDeviceId` | exakte geräteweite Ignorierregel |
-| `ReportedDeviceId.AppName` | pyemby-Key, bestehende HA-Unique-ID und exakte Registry-Nachbereitung |
+Der Bereich **Geräte & Player** zeigt verständliche Informationen statt interner Emby-IDs:
 
-`Id` wird niemals als Home-Assistant-Unique-ID verwendet. Präfix-, Teilstring- und Wildcard-Matches sind für Registry-Entfernungen unzulässig.
+- App und Gerät
+- zugeordnete Emby-Benutzer
+- Home-Assistant-Anzeigename
+- vollständige Entity-ID
+- aktueller Status
 
-## Upgrade von v0.3.0-rc3
+### Nach Benutzern gruppiert
 
-Die idempotente Migration erhält:
+Bekannte Emby-Benutzer stehen zuerst. Beispiel:
+
+- **Alex**
+  - Emby TV · Wohnzimmer
+  - Emby Mobile · Smartphone
+- **Sam**
+  - Emby Web · Notebook
+
+### Gemeinsam genutzte Geräte
+
+Ein Gerät mit mehreren bekannten Benutzern erscheint unter **Gemeinsam genutzt**. EMBi nennt dabei alle bekannten Benutzer, zum Beispiel:
+
+> Emby TV · Wohnzimmer · Alex, Sam
+
+### Ohne Benutzerzuordnung
+
+Wiedergabegeräte ohne verlässliche Benutzerinformation bleiben sichtbar unter **Ohne Benutzerzuordnung**. EMBi erfindet keine Zuordnung.
+
+### Technische Zugriffe und unklare Clients
+
+EMBi erkennt technische Zugriffe nur anhand eindeutiger Metadaten oder nachvollziehbaren Verhaltens – nicht allein anhand eines Produktnamens.
+
+- bestätigte API- oder Integrationszugriffe: **Technische Zugriffe**
+- nicht sicher einzuordnende Clients: **Unklare Clients**
+
+Unklare Clients werden nicht automatisch als technische Zugriffe behandelt.
+
+## Sichtbarkeit steuern
+
+Du kannst festlegen:
+
+- ob Player dauerhaft oder nur während Wiedergabe/Pause angezeigt werden
+- ob neue Player automatisch erscheinen
+- ob technische Zugriffe als Home-Assistant-Player sichtbar sind
+- welche einzelnen App-Varianten verborgen bleiben
+- welche Geräte mit allen App-Varianten verborgen bleiben
+- ob alle ausschließlich einem Benutzer zugeordneten Player sichtbar sind
+
+Normale Änderungen werden zunächst nur als Entwurf gesammelt. Unter **Änderungen prüfen** siehst du verständliche Vorher-/Nachher-Angaben. Erst **Änderungen übernehmen** speichert den Entwurf und lädt die Integration höchstens einmal neu.
+
+## Bereinigung
+
+Der gemeinsame Bereich **Bereinigung** enthält zwei bewusst getrennte Aufgaben.
+
+### Alte Emby-Server-Einträge
+
+Die manuelle oder automatische Serverbereinigung arbeitet mit einer exakten Altersgrenze. Werte wie `364` oder `365` Tage bleiben unverändert erhalten.
+
+Vor einer Löschung prüft EMBi unter anderem:
+
+- der Eintrag ist strikt älter als die gewählte Grenze
+- es liegt ein gültiger Aktivitätszeitpunkt vor
+- der zugehörige Player spielt nicht und ist nicht pausiert
+- die Auswahl wurde unmittelbar vor der Aktion erneut validiert
+
+Eine Serverlöschung verändert nicht automatisch deine Sichtbarkeitsregeln.
+
+### Home-Assistant-Player entfernen
+
+Nicht spielende EMBi-Player können unabhängig von der Serverhistorie aus Home Assistant entfernt werden.
+
+EMBi führt dafür eine kontrollierte Transaktion aus:
+
+1. aktuelle Emby- und Home-Assistant-Daten neu laden
+2. `playing` und `paused` blockieren
+3. exakte Sichtbarkeitsregel speichern
+4. Integration neu laden
+5. nur die eindeutig zugehörige Registry-Entity entfernen
+6. erneut laden und prüfen, dass sie nicht zurückkehrt
+
+Ein deaktivierter, aber weiterhin gültiger Home-Assistant-Player ist **kein verwaister Eintrag** und wird entsprechend behandelt.
+
+## Player wiederherstellen
+
+Ein zuvor verborgener oder entfernter Player kann unter **Geräte & Player** wieder eingeblendet werden.
+
+Beispiel:
+
+1. Emby TV · Schlafzimmer wurde aus Home Assistant entfernt.
+2. Der historische Emby-Datensatz blieb erhalten.
+3. Du aktivierst den Player wieder im Entwurf.
+4. EMBi lädt die Integration neu und prüft die resultierende Entity.
+
+Bei einer neu angelegten Entity können Home Assistant, Dashboards, Automationen, HomeKit oder Siri eine erneute Zuordnung benötigen. EMBi zeigt deshalb bei destruktiven Aktionen genau eine abschließende Warnung.
+
+## Installation über HACS
+
+1. HACS öffnen.
+2. EMBi als benutzerdefiniertes Integrations-Repository hinzufügen.
+3. Die aktuelle stabile Version installieren.
+4. Home Assistant neu starten.
+5. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Emby Integration - EMBi** öffnen.
+6. Host, Port, HTTPS-Einstellung und Emby-API-Schlüssel eintragen.
+
+Das Releasepaket heißt `embi.zip`. Der veröffentlichte SHA-256-Wert steht im Asset `embi.zip.sha256`.
+
+## Upgrade von 0.3.0
+
+Die Migration auf 0.9.0 ist idempotent und erhält insbesondere:
 
 - Config-Entry-ID
 - Entity-IDs und Unique IDs
-- individuelle Entity-Namen
-- aktive Serverbereinigung und aktive Automatik
-- den abgeschlossenen rc3-Erstlauf
-- vorhandene HA-Mitbereinigung, auch wenn sie `true` ist
-- vorhandene benutzerdefinierte Alterswerte
+- individuelle Namen
+- Aliase, Areas und Labels
+- deaktivierten Zustand gültiger Entities
+- bestehende Sichtbarkeitsentscheidungen
+- automatische Bereinigung ein oder aus
+- exakte Alterswerte wie `364` und `365`
+- bestehenden Scheduler- und Laufstatus
 
-Entfernt werden nur obsolete rc3-Werte:
+Nicht eindeutig auflösbare ältere Regeln werden nicht still gelöscht. Sie erscheinen in einem eigenen Abschnitt **Ältere Regeln**.
 
-- separater Cleanup-API-Schlüssel
-- Aktivierungsphrase der Automatik
-- automatische Ignore-Option nach Serverlöschung
-- alte gemischte Ignore-Hilfswerte
+Vor dem Upgrade empfiehlt sich ein vollständiges Home-Assistant-Backup. Direkte Änderungen an `.storage`-Dateien sind weder erforderlich noch unterstützt.
 
-Ein gespeicherter Wert von **364 Tagen bleibt 364** und wird als benutzerdefinierter Wert dargestellt. Die bewusste spätere Umstellung auf 365 gehört in den Live-Test und ist keine globale Migration.
+## Datenschutz und Diagnosen
 
-## Options Flow
+EMBi arbeitet lokal mit deinem Emby-Server. Diagnosedaten enthalten aggregierte Zähler und kategorisierte Statusinformationen, aber keine API-Schlüssel, vollständigen Geräte-IDs, Player-Keys oder Benutzernamen.
 
-Normale Unterseiten ändern nur den Entwurf. Sie schreiben keine Optionen und laden EMBi nicht neu.
+## Sicherheit
 
-- **Änderungen übernehmen** validiert und speichert genau einmal; Home Assistant lädt den Config Entry höchstens einmal neu.
-- **Änderungen verwerfen** verwirft den vollständigen Entwurf ohne Write und ohne Reload.
-- Schließen über **X** schreibt nichts.
-- Destruktive Aktionen sind bei ungespeicherten Änderungen gesperrt.
-- Die Automatik startet erst nach dem finalen Apply.
+- ausschließlich unterstützte Home-Assistant-APIs
+- keine direkte `.storage`-Bearbeitung
+- exakte Registry-Zuordnung nach Domain, Plattform, Config Entry und Unique ID
+- erneute Prüfung unmittelbar vor destruktiven Aktionen
+- ein gemeinsamer Lock gegen parallele manuelle und automatische Läufe
+- keine automatische Wiederholung unsicherer DELETE-Aufrufe
+- genau eine abschließende Bestätigung pro destruktiver Aktion
 
-## Scheduler und Catch-up
+## Dokumentation
 
-Bei einer neuen Aktivierung oder einem überfälligen beziehungsweise fehlenden Termin wird genau ein Catch-up nach **120 Sekunden** geplant. Ein gespeicherter Zukunftstermin bleibt über Reload und Neustart unverändert. Nach Abschluss eines automatischen Laufversuchs wird der nächste Termin auf **24 Stunden nach Abschluss** gesetzt.
-
-Manuelle und automatische Bereinigung teilen sich denselben Lock. Ein paralleler zweiter Lauf wird nicht gestartet.
-
-## Server- und Registry-Sicherheit
-
-- aktive Player sind geschützt
-- Datensätze ohne gültigen Aktivitätszeitpunkt sind geschützt
-- Kandidaten müssen strikt älter als der UTC-Cutoff sein
-- es gibt kein Batchlimit; Einzelfehler stoppen den restlichen Lauf nicht
-- Serverbereinigung verwendet ausschließlich den normalen EMBi-Verbindungsschlüssel
-- nach einer Serverlöschung wird keine Ignore-Regel automatisch erzeugt
-- HA-Mitbereinigung ist bei neuen Aktivierungen standardmäßig `false`; bestehende Werte bleiben erhalten
-- ein Registry-Key kann zunächst nur `queued` sein
-- `removed` wird ausschließlich gezählt, wenn `registry.async_remove()` tatsächlich ausgeführt wurde
-- bei unklarem Zustand, Store-Fehler, Neustart oder mehrdeutiger Revalidierung wird fail-safe nicht entfernt
-
-Der korrigierte Referenzfall 74 → 69 ist abgebildet: fünf erfolgreiche Serverlöschungen, null Serverfehler, fünf Registry-Keys queued, null Matches, null tatsächliche Registry-Removals und fünf missing.
-
-## Logging und Datenschutz
-
-- Erfolg, keine Kandidaten und erwartete Schutzfälle: `INFO`
-- Teilerfolg oder unterbrochene Nachbereitung: `WARNING`
-- vollständiger technischer Fehler: `ERROR`
-- Persistent Notification nur bei Warning oder Error
-
-Diagnostics, Store, Laufbericht und Notifications enthalten keine vollständigen Record-IDs, ReportedDeviceIds, Player-Keys, Benutzernamen oder API-Schlüssel.
-
-## Installation des unveröffentlichten Testpakets
-
-Das finale Testpaket wird als privates GitHub-Actions-Artefakt erzeugt und ist **kein Release**. Nach vollständigem Home-Assistant- und Emby-Backup wird der Inhalt von `embi.zip` nach `/config/custom_components/emby` installiert oder über den vereinbarten kontrollierten Testweg eingespielt. Vorherige Dateien des Komponentenordners müssen vollständig ersetzt werden.
-
-Öffentliche HACS-Stable-Installation ist erst nach Promotion nach `main`, Tag `v0.3.0` und Stable Release möglich.
-
-## Qualität
-
-CI prüft Python 3.13 und 3.14, JSON, YAML, Compileall, Ruff, Ruff-Format, Pytest, Stable-Vertrag, Übersetzungssynchronität, Secret-/Privacy-Scan, HACS Validation, Hassfest, releasegleichen Paketbau, SHA-256 und `BUILD_COMMIT`.
-
-Weitere Details stehen in `docs/`.
+- [Konfiguration](docs/configuration.md)
+- [Bereinigung](docs/server-cleanup.md)
+- [Architektur](docs/architecture.md)
+- [Sicherheit](docs/security.md)
+- [Fehlerbehebung](docs/troubleshooting.md)
+- [UI-Qualitätssicherung](docs/ui-qa.md)
+- [Roadmap](ROADMAP.md)
 
 ## Credits
 
-- Projekt: Seger
-- Basis: Home Assistant Emby und pyemby
+- **Projekt:** Seger
+- **Basis:** Home Assistant Emby und pyemby
 
-## Lizenz
-
-Apache License 2.0. Siehe `LICENSE` und `NOTICE.md`.
+Lizenz: Apache-2.0
