@@ -41,8 +41,9 @@ def test_cleanup_uses_only_main_connection_key_and_diagnostics_redact_it() -> No
     options_flow = (COMPONENT / "options_flow.py").read_text()
     runtime_setup = (COMPONENT / "entry_setup.py").read_text()
 
-    assert "CONF_API_KEY" in diagnostics
-    assert "async_redact_data(dict(entry.data), {CONF_API_KEY})" in diagnostics
+    assert "from homeassistant.const import CONF_API_KEY, CONF_HOST" in diagnostics
+    assert '"title": "<redacted>"' in diagnostics
+    assert "async_redact_data(dict(entry.data), {CONF_API_KEY, CONF_HOST})" in diagnostics
     assert "CONF_SERVER_CLEANUP_API_KEY" not in diagnostics
     assert "server_cleanup_api_key" not in cleanup_flow
     assert "await self._devices()" in cleanup_flow
