@@ -1,112 +1,117 @@
-# Release-Checkliste 0.3.0
+# Release-Checkliste 0.9.0
 
 ## Code und Metadaten
 
-- [x] `const.py` und `manifest.json` tragen `0.3.0`
+- [x] `const.py` und `manifest.json` tragen `0.9.0`
+- [x] Config-Entry-Schema 4.0 und Optionsschema 2
 - [x] Plattform ausschließlich `media_player`
 - [x] bestehende Unique-ID-Logik unverändert
 - [x] `strings.json` und `translations/en.json` identisch
 - [x] deutsche Übersetzung strukturell synchron
 - [x] `hacs.json`: `zip_release: true`, `filename: embi.zip`
 - [x] keine zusätzlichen Cleanup-Anmeldedaten
-- [x] keine Aktivierungsphrase
-- [x] keine automatische Ignore-Regel nach Serverbereinigung
-- [x] keine Wartungsentity
-- [x] Dokumentation auf Stable-Vertrag aktualisiert
+- [x] keine direkte `.storage`-Bearbeitung
+- [x] Serverhistorie und HA-Player-Entfernung getrennt
+- [x] keine öffentliche Vorabversion angelegt
 - [x] bestehende Tags und Releases unverändert
 
-## Automatische Tests
+## Automatische Tests auf dem finalen Feature-Commit
 
-- [ ] Quality Python 3.13 auf finalem PR-Head grün
-- [ ] Quality Python 3.14 auf finalem PR-Head grün
+- [ ] Quality Python 3.13 grün
+- [ ] Quality Python 3.14 grün
 - [ ] JSON und YAML grün
 - [ ] Compileall grün
 - [ ] Ruff und Ruff-Format grün
 - [ ] vollständiger Pytest-Lauf grün
-- [ ] Stable-Vertrag grün
+- [ ] Specification Contract grün
+- [ ] Stable Contract grün
 - [ ] Secret-/Privacy-Scan grün
 - [ ] Übersetzungssynchronität grün
 - [ ] HACS Validation grün
 - [ ] Hassfest grün
-- [ ] releasegleicher Paketbau grün
+- [ ] privater releasegleicher Paketbau grün
 - [ ] SHA-256 grün
-- [ ] `BUILD_COMMIT` grün
+- [ ] `BUILD_COMMIT` entspricht dem finalen Feature-Commit
 
-## Persistenz und Scheduler
+## Frozen-Contract-Nachweise
 
-- [x] leerer Store, Load, Save und Schema getestet
-- [x] beschädigter, fehlender und nicht lesbarer Store fail-safe getestet
-- [x] Write-Fehler vor und nach der Serverphase getestet
-- [x] keine privaten Identitäten im Store getestet
-- [x] Erstaktivierung nach 120 Sekunden getestet
-- [x] Deaktivierung in Grace Period getestet
-- [x] Zukunftstermin über Reload/Neustart erhalten
-- [x] überfälliger Termin erhält einmaligen Catch-up
-- [x] 24 Stunden nach Abschluss getestet
-- [x] Lock und doppelter Callback geschützt
+- [x] bekannte Benutzer, Shared, Unassigned, Technical und Unknown modelliert
+- [x] technische Klassifizierung nicht nur anhand eines Produktnamens
+- [x] disabled-valid Entity ist kein Orphan
+- [x] `playing` und `paused` bei Sichtbarkeit und Removal geschützt
+- [x] exakte Hidden-Rule vor Registry-Entfernung gespeichert
+- [x] Removal-Erfolg erst nach Reload- und Registry-/State-Verifikation
+- [x] Restore nach Reload anhand exakter Ownership verifiziert
+- [x] exakte Werte `364` und `365` migrationsstabil
+- [x] Automatikstellung und Schedulerzustand migrationsstabil
+- [x] normale Änderungen als Draft mit semantischem Review
+- [x] Apply schreibt Optionen einmal und lädt höchstens einmal neu
+- [x] Discard und X ohne Write oder Reload
+- [x] Diagnostics redigieren API-Schlüssel und Serververbindungsdaten
+- [x] jede Requirement-ID in der Akzeptanzmatrix nachvollziehbar
 
-## Cleanup und Registry
+## Finales privates Artefakt
 
-- [x] 74 → 69 mit fünf Erfolgen und null Serverfehlern getestet
-- [x] aktive und undatierte Datensätze geschützt
-- [x] Einzelfehler stoppt restlichen Lauf nicht
-- [x] kein Batchlimit
-- [x] keine automatische Ignorierung
-- [x] queued, matched, removed, missing und protected getrennt
-- [x] wrong entry, platform, unique ID und State geschützt
-- [x] kein Präfix-, Wildcard- oder Teilstring-Match
-- [x] Neustart bei `registry_pending` führt nicht zu Removal
+- [ ] exakten finalen Feature-Commit erfassen
+- [ ] `Test package` auf exakt diesem Commit erfolgreich
+- [ ] Artefaktname `embi-test-<vollständiger SHA>`
+- [ ] Artefakt-ID erfassen
+- [ ] Actions-Artefakt herunterladen und öffnen
+- [ ] äußere Dateien: `embi.zip`, `embi.zip.sha256`, `BUILD_COMMIT`
+- [ ] inneres Installations-ZIP öffnet erfolgreich
+- [ ] Manifestversion exakt `0.9.0`
+- [ ] erwartete Home-Assistant-/HACS-Struktur direkt im ZIP-Root
+- [ ] keine Tests, Docs, `.github`, Caches oder Repositorymetadaten im Installations-ZIP
+- [ ] SHA-256 des exakten `embi.zip` geprüft und dokumentiert
+- [ ] `BUILD_COMMIT` entspricht dem vollständigen finalen Feature-SHA
+- [ ] PR #29 mit finaler Evidenz aktualisiert
+- [ ] PR #29 bleibt Draft, offen und ungemergt
 
-## Options Flow und Migration
+## Private Home-Assistant-Abnahme
 
-- [x] Draft und Discard als Pure Unit getestet
-- [x] Apply-/Dirty-/Reload-Vertrag im Repositoryvertrag geprüft
-- [x] Presets 7, 30, 90, 180 und 365 getestet
-- [x] Custom 364 und weitere Custom-Werte getestet
-- [x] keine 364-zu-365-Migration
-- [x] getrennte App- und Geräte-Ignorierregeln getestet
-- [x] unresolved Altwerte bleiben erhalten
-- [x] rc3-Werte und HA-Mitbereinigung bleiben erhalten
-- [x] obsolete rc3-Felder werden entfernt
+Verifizierte Ausgangsbasis:
 
-## Merge und Artefakt
+- EMBi `0.3.0`
+- Config Entry geladen
+- 69 Emby-Server-Historieneinträge
+- 30 aktivierte und geladene EMBi-Media-Player
+- kein Registry-Orphan
+- automatische Bereinigung deaktiviert
+- manuelle und automatische Schwelle jeweils 365 Tage
 
-- [ ] PR #18 aus Draft nehmen
-- [ ] PR #18 per Squash nach `develop` mergen
-- [ ] exakten Squash-Merge-Commit erfassen
-- [ ] CI auf Develop-Merge-Commit grün
-- [ ] `Test package` auf exaktem Develop-Merge-Commit erfolgreich
-- [ ] Artefakt-ID und Name erfassen
-- [ ] ZIP herunterladen und entpacken
-- [ ] Manifest und interne Version `0.3.0`
-- [ ] deutsche und englische Übersetzung vorhanden
-- [ ] keine Tests, Docs oder `.github` im Installations-ZIP
-- [ ] SHA-256 geprüft
-- [ ] `BUILD_COMMIT` entspricht Develop-Merge-Commit
-- [ ] Draft-Promotion-PR `develop` → `main` erstellt und gesperrt
+Abnahmepunkte:
 
-## Live-Abnahme
-
-- [ ] Home-Assistant-Backup
-- [ ] Emby-Backup oder belastbarer Wiederherstellungsweg
-- [ ] unveröffentlichtes Testpaket installiert
-- [ ] Config Entry geladen
-- [ ] 29 Media-Player
-- [ ] Entity-IDs, Unique IDs und Namen unverändert
-- [ ] aktive Wiedergabe und Push-Updates
-- [ ] 364 zunächst als Custom erhalten
-- [ ] bewusste Auswahl 365 geprüft
-- [ ] Catch-up und `next_run_at`
-- [ ] Reload und Neustart
-- [ ] Apply, unveränderter Apply, Discard und X
-- [ ] iPhone, iPad und Desktop
-- [ ] tatsächliche sichere Registry-Nachbereitung
-- [ ] keine Repairs oder neuen Fehler
-- [ ] Rollback auf `v0.3.0-rc3`
+- [ ] vollständiges Home-Assistant-Backup
+- [ ] belastbarer Emby-Wiederherstellungsweg
+- [ ] finales privates Testpaket installiert
+- [ ] Manifest und Runtime melden `0.9.0`
+- [ ] Config Entry bleibt geladen
+- [ ] 69 Historieneinträge und 30 Media-Player, sofern keine reale Clientänderung unmittelbar vor dem Test dokumentiert wurde
+- [ ] Entity-IDs und Unique IDs unverändert
+- [ ] individuelle Namen, Aliase, Areas, Labels und disabled state unverändert
+- [ ] Benutzer-, Shared-, Unassigned-, Technical- und Unknown-Gruppen korrekt
+- [ ] keine internen IDs als primäre UI-Labels
+- [ ] Automatik weiterhin aus; Schwellen weiterhin 365/365
+- [ ] Apply, unveränderter Apply, Discard, Back und X geprüft
+- [ ] semantisches Review geprüft
+- [ ] iPhone-, iPad- und Desktop-QA
+- [ ] `playing` und `paused` als geschützt nachgewiesen
+- [ ] einen sicher idle Player separat aus Home Assistant entfernt
+- [ ] exakte Hidden-Rule vor Removal nachgewiesen
+- [ ] Player kehrt nach zusätzlichem Reload nicht zurück
+- [ ] Emby-Serverhistorie bei HA-Player-Removal unverändert
+- [ ] denselben Player wiederhergestellt und resultierende Entity verifiziert
+- [ ] Serverhistorien-Aktion separat und mit eigener finaler Bestätigung geprüft
+- [ ] Scheduler, `next_run_at`, Reload und Neustart geprüft
+- [ ] keine neuen Repairs, Orphans oder Laufzeitfehler
+- [ ] Rollback auf `v0.3.0` oder vollständige Backup-Wiederherstellung demonstriert
 
 ## Veröffentlichungssperre
 
-- [ ] Promotion-PR erst nach Gerry-Freigabe mergen
-- [ ] erst danach Tag `v0.3.0`
-- [ ] erst danach Stable Release und `latest`
-- [ ] erst danach öffentliche HACS-Stable-Version
+Bis zur dokumentierten privaten Abnahme:
+
+- [ ] PR #29 nicht nach `develop` mergen
+- [ ] `develop` nicht nach `main` promoten
+- [ ] keinen Tag `v0.9.0` erstellen
+- [ ] keinen Draft-, Pre- oder Stable-Release erstellen
+- [ ] keine öffentliche HACS-Version 0.9.0 veröffentlichen
