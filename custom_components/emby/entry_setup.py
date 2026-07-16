@@ -24,14 +24,14 @@ from .const import (
     RUN_STATUS_SERVER_COMPLETED,
 )
 from .entry_lifecycle import async_update_listener
-from .helpers import legacy_initial_run_completed, migrate_stable_options
 from .maintenance import (
     async_apply_pending_registry_cleanup,
     async_setup_automatic_cleanup,
     cleanup_lock,
 )
 from .maintenance_store import EmbiMaintenanceStore, resolve_store_load
-from .models import EmbiRuntimeData, MaintenanceState
+from .models import EmbiRuntimeData, MaintenanceState, MigrationSummary
+from .options_model import legacy_initial_run_completed, migrate_options_090
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def _notification_id(entry: ConfigEntry) -> str:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up EMBi from a config entry."""
+    """Set up EMBi from a config entry and migrate options non-destructively."""
     client = EmbyApiClient(
         session=async_get_clientsession(hass),
         host=entry.data[CONF_HOST],
@@ -57,8 +57,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except EmbyApiError as err:
         raise ConfigEntryNotReady(str(err)) from err
 
-    rc3_initial_run_completed = legacy_initial_run_completed(dict(entry.options))
-    migrated_options, _ = migrate_stable_options(dict(entry.options), devices)
+    original_options = dict(entry.options)
+    rc3_initial_run_completed = legacy_initial_run_completed(original_options)
+    migrated_options, options_changed = migrate_options_090(original_options, devices)
     store_expected = bool(migrated_options.get(CONF_MAINTENANCE_STORE_INITIALIZED, False))
 
     store = EmbiMaintenanceStore.create(hass, entry.entry_id)
@@ -112,7 +113,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         elif not store_expected:
             migrated_options[CONF_MAINTENANCE_STORE_INITIALIZED] = True
 
-    if migrated_options != dict(entry.options):
+    if storage_available and options_changed:
+        maintenance_state.migration = MigrationSummary(
+            status="completed",
+            from_schema=original_options.get("options_schema_version"),
+            to_schema=int(migrated_options["options_schema_version"]),
+            completed_at=dt_util.utcnow().isoformat(),
+            changed=True,
+            unresolved_rules=len(migrated_options.get("unresolved_legacy_rules", [])),
+        )
+        try:
+            await store.async_save(maintenance_state)
+        except Exception:
+            storage_available = False
+            _LOGGER.exception("EMBi failed to persist the 0.9 migration result")
+            persistent_notification.async_create(
+                hass,
+                "EMBi konnte die Migration nicht sicher speichern. Die Integration wurde "
+                "nicht mit stillen Standardwerten fortgesetzt.",
+                title="EMBi-Migration angehalten",
+                notification_id=_notification_id(entry),
+            )
+            raise ConfigEntryNotReady("EMBi migration storage failed") from None
+        _LOGGER.info("EMBi option migration to schema 2 completed")
+
+    if migrated_options != original_options:
         hass.config_entries.async_update_entry(entry, options=migrated_options)
 
     runtime = EmbiRuntimeData(
