@@ -2,16 +2,56 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.3.0"
+VERSION = "0.9.0"
 PLATFORMS = ["media_player"]
 
-CONF_CLIENT_MODE = "client_mode"
+CONFIG_ENTRY_VERSION = 4
+CONFIG_ENTRY_MINOR_VERSION = 0
+OPTIONS_SCHEMA_VERSION = 2
+CONF_OPTIONS_SCHEMA_VERSION = "options_schema_version"
+
+# Canonical 0.9 player-visibility model.
+CONF_GLOBAL_PLAYER_MODE = "global_player_mode"
+PLAYER_MODE_PERSISTENT = "persistent"
+PLAYER_MODE_ACTIVE_ONLY = "active_only"
+PLAYER_MODES = {PLAYER_MODE_PERSISTENT, PLAYER_MODE_ACTIVE_ONLY}
+CONF_AUTO_SHOW_NEW_PLAYERS = "auto_show_new_players"
+CONF_TECHNICAL_ACCESS_VISIBILITY = "technical_access_visibility"
+CONF_HIDDEN_EXACT_PLAYERS = "hidden_exact_players"
+CONF_HIDDEN_WHOLE_DEVICES = "hidden_whole_devices"
+CONF_USER_MASTER_VISIBILITY = "user_master_visibility"
+CONF_UNRESOLVED_LEGACY_RULES = "unresolved_legacy_rules"
+
+# Existing allow-list data remains useful when new players must not appear automatically.
 CONF_ALLOWED_DEVICE_IDS = "allowed_device_ids"
+
+# Legacy 0.3 keys are read only by the idempotent migration.
+CONF_CLIENT_MODE = "client_mode"
 CONF_IGNORED_PLAYER_KEYS = "ignored_player_keys"
 CONF_IGNORED_REPORTED_DEVICE_IDS = "ignored_reported_device_ids"
 CONF_UNRESOLVED_IGNORED_IDS = "unresolved_ignored_ids"
-CONF_MAINTENANCE_STORE_INITIALIZED = "maintenance_store_initialized"
+CLIENT_MODE_ALL = "all"
+CLIENT_MODE_ACTIVE_ONLY = "active_only"
+CLIENT_MODE_ALLOWLIST = "allowlist"
+CLIENT_MODES = [CLIENT_MODE_ALL, CLIENT_MODE_ACTIVE_ONLY, CLIENT_MODE_ALLOWLIST]
 
+# Native Options Flow fields which are intentionally not persisted as duplicate state.
+CONF_ONLY_DURING_PLAYBACK = "only_during_playback"
+CONF_SEARCH_QUERY = "search_query"
+CONF_SELECTED_GROUP = "selected_group"
+CONF_VISIBLE_PLAYER_KEYS = "visible_player_keys"
+CONF_ENABLE_ENTITY_IDS = "enable_entity_ids"
+CONF_BACK_TO_ROOT = "back_to_root"
+CONF_BACK_TO_DEVICES = "back_to_devices"
+CONF_BACK_TO_CLEANUP = "back_to_cleanup"
+CONF_CLEANUP_ACTION = "cleanup_action"
+CLEANUP_ACTION_MANUAL_CHECK = "manual_check"
+CLEANUP_ACTION_MANAGE_HA_PLAYERS = "manage_ha_players"
+CONF_SELECTED_HA_ENTITY_IDS = "selected_ha_entity_ids"
+CONF_CONFIRM_HA_REMOVAL = "confirm_ha_removal"
+CONF_CONFIRM_SERVER_DELETION = "confirm_server_deletion"
+
+CONF_MAINTENANCE_STORE_INITIALIZED = "maintenance_store_initialized"
 CONF_CLEANUP_ENTITY_IDS = "cleanup_entity_ids"
 CONF_CONFIRM_CLEANUP = "confirm_cleanup"
 CONF_CONFIRM_BULK = "confirm_bulk"
@@ -46,15 +86,11 @@ AGE_PRESETS = {
     AGE_PRESET_365: 365,
 }
 
-CLIENT_MODE_ALL = "all"
-CLIENT_MODE_ACTIVE_ONLY = "active_only"
-CLIENT_MODE_ALLOWLIST = "allowlist"
-CLIENT_MODES = [CLIENT_MODE_ALL, CLIENT_MODE_ACTIVE_ONLY, CLIENT_MODE_ALLOWLIST]
-
 DEFAULT_PORT = 8096
 DEFAULT_SSL_PORT = 8920
 DEFAULT_SSL = False
-
+DEFAULT_AUTO_SHOW_NEW_PLAYERS = True
+DEFAULT_TECHNICAL_ACCESS_VISIBILITY = False
 DEFAULT_SERVER_CLEANUP_AGE_DAYS = 365
 DEFAULT_REMOVE_HA_ENTITIES = False
 MIN_SERVER_CLEANUP_AGE_DAYS = 1
@@ -98,6 +134,6 @@ FOLLOW_UP_STATUSES = {
     FOLLOW_UP_SKIPPED,
 }
 
-MAINTENANCE_STORE_VERSION = 1
+MAINTENANCE_STORE_VERSION = 2
 MAINTENANCE_STORE_KEY_PREFIX = f"{DOMAIN}.maintenance"
 MAINTENANCE_NOTIFICATION_ID_PREFIX = f"{DOMAIN}_maintenance"
