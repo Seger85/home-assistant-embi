@@ -1,1 +1,177 @@
-{"title":"Emby Integration - EMBi","config":{"flow_title":"{name}","step":{"user":{"title":"Emby-Server verbinden","description":"Verbinde Home Assistant mit deinem lokalen Emby-Server. Der API-Schlüssel wird in Home Assistant gespeichert und in Diagnosen unkenntlich gemacht.","data":{"name":"Name","host":"Host/IP-Adresse","port":"Port","ssl":"HTTPS verwenden","api_key":"API-Schlüssel"},"data_description":{"name":"Anzeigename der Integration; empfohlen: EMBi","host":"Lokale IP-Adresse oder Hostname ohne http:// beziehungsweise https://","port":"Standard: 8096 für HTTP oder 8920 für HTTPS","ssl":"Nur aktivieren, wenn der lokale Emby-Endpunkt HTTPS verwendet","api_key":"Emby-API-Schlüssel für Wiedergabe, Geräteerkennung und ausdrücklich bestätigte Wartungsaktionen"}},"reconfigure":{"title":"Verbindung bearbeiten","description":"Ändere Serveradresse, Port, HTTPS-Einstellung oder API-Schlüssel. Der gespeicherte Schlüssel wird nie angezeigt. Lasse das Feld leer, um ihn beizubehalten. Nach dem Speichern wird EMBi neu geladen.","data":{"name":"Name","host":"Host/IP-Adresse","port":"Port","ssl":"HTTPS verwenden","api_key":"API-Schlüssel"},"data_description":{"name":"Anzeigename der Integration","host":"Lokale IP-Adresse oder Hostname ohne Protokollpräfix","port":"Port des lokalen Emby-Endpunkts","ssl":"Nur aktivieren, wenn der Endpunkt HTTPS verwendet","api_key":"Nur einen Ersatzschlüssel eingeben, wenn er geändert werden soll. Leer lassen, um den gespeicherten Schlüssel zu behalten."}}},"error":{"cannot_connect":"Verbindung zum Emby-Server fehlgeschlagen.","invalid_auth":"Der API-Schlüssel wurde abgelehnt."},"abort":{"already_configured":"Dieser Emby-Server ist bereits eingerichtet.","reconfigure_successful":"Die Verbindung wurde aktualisiert.","unique_id_mismatch":"Die neue Verbindung gehört zu einem anderen Emby-Server."}},"options":{"step":{"init":{"title":"EMBi verwalten","description":"Bearbeite mehrere Seiten in einer Sitzung. Normale Einstellungen bleiben bis zum finalen Übernehmen ein ungespeicherter Entwurf. Destruktive Aktionen sind bei offenem Entwurf ausgeblendet.\n\n{draft_summary}","menu_options":{"clients":"Media-Player und Geräte","clients_bulk":"Geräteauswahl gesammelt bearbeiten","server_cleanup_settings":"Serverbereinigung","server_auto_cleanup_settings":"Automatische Serverbereinigung","ha_cleanup":"Home-Assistant-Einträge bereinigen","server_cleanup":"Manuelle Serverbereinigung ausführen","cleanup_report":"Letzter Bereinigungslauf","about":"Über EMBi","apply":"Änderungen übernehmen","discard":"Änderungen verwerfen"}},"clients":{"title":"Media-Player und Geräte","description":"App-spezifische Regeln betreffen nur eine ReportedDeviceId.AppName-Identität. Geräteweite Regeln betreffen alle aktuellen und zukünftigen App-Varianten der exakten ReportedDeviceId. Nicht auflösbare Altregeln bleiben erhalten, bis du sie bewusst entfernst.","data":{"client_mode":"Gerätemodus","allowed_device_ids":"Anzuzeigende Geräte","ignored_player_keys":"Ignorierte App-Varianten","ignored_reported_device_ids":"Ignorierte Geräte","unresolved_ignored_ids":"Nicht auflösbare Altregeln"},"data_description":{"client_mode":"Nur aktive Wiedergaben zeigt Clients ausschließlich während Wiedergabe oder Pause.","allowed_device_ids":"Exakte Client-/App-Identitäten für den Modus Nur ausgewählte Geräte.","ignored_player_keys":"Blockiert nur die ausgewählte App-Variante.","ignored_reported_device_ids":"Blockiert alle App-Varianten des exakten Geräts.","unresolved_ignored_ids":"Werte, die bei der Migration nicht sicher klassifiziert werden konnten. Nur abwählen, wenn die alte Regel bewusst entfernt werden soll."}},"clients_bulk":{"title":"Geräteauswahl gesammelt bearbeiten","description":"Sammelaktionen ändern nur den aktuellen Entwurf und laden EMBi nicht neu.","menu_options":{"clients_allow_all":"Alle aktuellen App-Varianten auswählen","clients_allow_none":"Auswahl anzuzeigender Geräte leeren","clients_ignore_apps_all":"Alle aktuellen App-Varianten ignorieren","clients_ignore_apps_none":"App-spezifische Regeln leeren","clients_ignore_devices_all":"Alle aktuellen Geräte ignorieren","clients_ignore_devices_none":"Geräteweite Regeln leeren"}},"clients_allow_all":{"title":"Alle aktuellen App-Varianten auswählen","description":"Fügt alle {count} eindeutigen Client-/App-Identitäten zum Entwurf hinzu und wechselt zu Nur ausgewählte Geräte.","data":{"confirm_bulk":"Ich bestätige diese Entwurfsänderung"}},"clients_allow_none":{"title":"Auswahl anzuzeigender Geräte leeren","description":"Leert die Auswahl im Entwurf, ohne den Modus zu ändern.","data":{"confirm_bulk":"Ich bestätige diese Entwurfsänderung"}},"clients_ignore_apps_all":{"title":"Alle aktuellen App-Varianten ignorieren","description":"Fügt alle {count} eindeutigen Client-/App-Identitäten zu den app-spezifischen Entwurfsregeln hinzu.","data":{"confirm_bulk":"Ich verstehe und bestätige diese Entwurfsänderung"}},"clients_ignore_apps_none":{"title":"App-spezifische Regeln leeren","description":"Leert nur die app-spezifischen Entwurfsregeln.","data":{"confirm_bulk":"Ich bestätige diese Entwurfsänderung"}},"clients_ignore_devices_all":{"title":"Alle aktuellen Geräte ignorieren","description":"Fügt alle {count} eindeutigen rohen Client-Identitäten zu den geräteweiten Entwurfsregeln hinzu. Nach dem Übernehmen sind alle App-Varianten betroffen.","data":{"confirm_bulk":"Ich verstehe und bestätige diese Entwurfsänderung"}},"clients_ignore_devices_none":{"title":"Geräteweite Regeln leeren","description":"Leert nur die geräteweiten Entwurfsregeln.","data":{"confirm_bulk":"Ich bestätige diese Entwurfsänderung"}},"server_cleanup_settings":{"title":"Serverbereinigung","description":"Aktiviere oder deaktiviere die Wartung und wähle die getrennte manuelle Altersgrenze. Die Bereinigung verwendet ausschließlich den normalen EMBi-Verbindungsschlüssel. Diese Seite ändert nur den Entwurf.","data":{"age_preset":"Alter für manuelle Bereinigung","custom_age_days":"Benutzerdefiniertes Alter in Tagen","server_cleanup_enabled":"Serverbereinigung aktivieren"},"data_description":{"age_preset":"Der numerische Tageswert bleibt die gespeicherte Quelle der Wahrheit.","custom_age_days":"Nur bei Benutzerdefiniert. Bestehende Werte wie 364 bleiben unverändert.","server_cleanup_enabled":"Das Ausschalten deaktiviert im Entwurf auch die Automatik."}},"server_auto_cleanup_settings":{"title":"Automatische Serverbereinigung","description":"Konfiguriere den Automatik-Entwurf. Neue Aktivierungen starten 120 Sekunden nach dem finalen Übernehmen. Weitere Läufe verwenden einen persistenten absoluten Termin und folgen 24 Stunden nach Abschluss des vorherigen Versuchs.","data":{"age_preset":"Alter für automatische Bereinigung","custom_age_days":"Benutzerdefiniertes Alter in Tagen","server_auto_cleanup_enabled":"Automatische Serverbereinigung aktivieren","server_auto_cleanup_remove_ha_entities":"Passende Home-Assistant-Media-Player ebenfalls entfernen"},"data_description":{"age_preset":"Der numerische Tageswert bleibt die gespeicherte Quelle der Wahrheit.","custom_age_days":"Nur bei Benutzerdefiniert.","server_auto_cleanup_enabled":"Vor dem finalen Übernehmen startet kein Lauf.","server_auto_cleanup_remove_ha_entities":"Neue Aktivierungen sind standardmäßig aus. Gespeicherte Bestandswerte bleiben erhalten. Ein Registry-Remove kann individuellen Namen, Entity-ID, Dashboardreferenzen, Automationen, HomeKit- oder Siri-Zuordnungen verlieren."}},"server_auto_cleanup_confirm":{"title":"Automatische Bereinigung wirklich aktivieren?","description":"Der erste Lauf startet 120 Sekunden nach dem finalen Übernehmen. Danach prüft EMBi alle 24 Stunden. Alle ausreichend alten Datensätze, die die Sicherheitsprüfung bestehen, können in einem Lauf entfernt werden; es gibt keine maximale Löschzahl. Aktive Player und Datensätze ohne gültige letzte Aktivität werden geschützt.","data":{"confirm_auto_cleanup":"Ich habe die Auswirkungen verstanden und möchte die Automatik aktivieren"}},"ha_cleanup":{"title":"Home-Assistant-Einträge bereinigen","description":"Es werden nur {count} inaktive, erneut geprüfte Kandidaten angeboten. Bei ungespeicherten normalen Einstellungen ist diese Aktion gesperrt.","data":{"cleanup_entity_ids":"Zu entfernende Einträge","confirm_cleanup":"Ich bestätige die Entfernung aus der Home-Assistant-Entity-Registry"},"data_description":{"cleanup_entity_ids":"Die Kandidaten werden direkt vor dem Entfernen erneut geprüft. Ein Registry-Remove löscht keinen Emby-Serverdatensatz."}},"server_cleanup":{"title":"Manuelle Serverbereinigung ausführen","description":"{count} Datensätze sind strikt älter als {age_days} Tage und zulässig. {active_count} aktive Player und {unknown_count} Datensätze ohne gültigen Zeitstempel sind geschützt. Das Alter stammt aus den zuletzt übernommenen Einstellungen.","data":{"delete_device_record_ids":"Zu löschende Geräte-Einträge","remove_deleted_ha_entities":"Passende Home-Assistant-Media-Player ebenfalls entfernen"},"data_description":{"delete_device_record_ids":"Jeder Eintrag ist ein exakter Server-Historieneintrag.","remove_deleted_ha_entities":"Standard: aus. Registry-Entfernung erst nach Serverlöschung, frischer /Devices-Prüfung, exaktem Config-Entry-/Plattform-/Unique-ID-Abgleich und ohne Entity-State nach dem Unload."}},"server_cleanup_confirm":{"title":"Dauerhafte Serverbereinigung bestätigen","description":"Du bist dabei, {count} exakte Geräte-Einträge zu löschen. Gib genau „{phrase}“ ein und aktiviere den Bestätigungsschalter.","data":{"confirm_delete":"Ich bestätige die dauerhafte Löschung auf dem Emby-Server","confirmation_text":"Bestätigungstext"}},"cleanup_report":{"title":"Letzter Bereinigungslauf","description":"Status: {status}\nModus: {mode}\nStart: {started_at}\nAbschluss: {completed_at}\nAltersgrenze: {age_days} Tage\n\nEmby-Server\nKandidaten: {server_candidates}\nGelöscht: {server_deleted}\nFehlgeschlagen: {server_failed}\nAktive geschützt: {skipped_active}\nOhne gültige Aktivität geschützt: {skipped_without_activity}\n\nHome Assistant\nPlayer-Identitäten vorgemerkt: {registry_queued}\nRegistry-Entities gefunden: {registry_matched}\nRegistry-Entities entfernt: {registry_removed}\nRegistry-Entities nicht vorhanden: {registry_missing}\nRegistry-Identitäten geschützt: {registry_protected}\n\nLetzter Fehler: {last_error}\nNächster automatischer Lauf: {next_run_at}"},"apply":{"title":"Änderungen übernehmen","description":"Prüft und speichert den vollständigen Entwurf genau einmal. EMBi wird höchstens einmal neu geladen.\n\n{draft_summary}","data":{"confirm_apply":"Alle Entwurfsänderungen übernehmen"}},"discard":{"title":"Änderungen verwerfen","description":"Verwirft alle ungespeicherten Entwurfsänderungen. Gespeicherte Optionen bleiben unverändert und EMBi wird nicht neu geladen.","data":{"confirm_discard":"Alle ungespeicherten Änderungen verwerfen"}},"about":{"title":"Über Emby Integration - EMBi","description":"EMBi holt Emby aus der YAML-Ecke und bringt Ordnung in den Gerätefriedhof. Du entscheidest, welche Media-Player in Home Assistant auftauchen und welche historischen Gerätedatensätze wirklich weg dürfen.\n\nWeniger Gerätechaos, mehr Kontrolle – und vor dem Löschen fragt EMBi lieber einmal zu viel als einmal zu wenig.\n\nVersion {version} · Projekt: Seger · Basis: Home Assistant Emby und pyemby."}},"error":{"cannot_connect":"Verbindung zum Emby-Server fehlgeschlagen.","confirmation_required":"Aktiviere den Bestätigungsschalter.","confirmation_text_mismatch":"Der Bestätigungstext stimmt nicht überein.","selection_required":"Wähle mindestens einen Geräte-Eintrag aus.","invalid_selection":"Die Auswahl ist nicht mehr gültig oder inzwischen aktiv. Öffne den Dialog neu.","invalid_age":"Wähle ein Preset oder gib eine gültige benutzerdefinierte Tageszahl ein.","server_cleanup_disabled":"Aktiviere zuerst die Serverbereinigung im aktuellen Entwurf.","storage_failed":"Der persistente Wartungsstatus konnte nicht gespeichert werden. Es wurden keine Optionen übernommen.","auto_requires_cleanup":"Die automatische Bereinigung benötigt den Master-Schalter der Serverbereinigung."},"abort":{"server_cleanup_disabled":"Die Serverbereinigung ist in den übernommenen Optionen ausgeschaltet.","unsaved_changes":"Übernimm oder verwirf zuerst den aktuellen Entwurf, bevor du eine destruktive Aktion startest.","no_changes":"Es gibt keine Änderungen zu übernehmen.","ha_cleanup_complete":"Home-Assistant-Bereinigung abgeschlossen: {removed_count} Registry-Einträge entfernt.","server_cleanup_complete":"Serverbereinigung abgeschlossen: {server_deleted} Serverdatensätze gelöscht, {server_failed} fehlgeschlagen, {registry_queued} Player-Identitäten vorgemerkt, {registry_removed} Registry-Einträge bereits entfernt. Die finalen Details stehen unter Letzter Bereinigungslauf."}},"selector":{"client_mode":{"options":{"all":"Alle Geräte anzeigen","active_only":"Nur aktive Wiedergaben","allowlist":"Nur ausgewählte Geräte"}},"cleanup_age_preset":{"options":{"preset_7":"Älter als 1 Woche – 7 Tage","preset_30":"Älter als 1 Monat – 30 Tage","preset_90":"Älter als 3 Monate – 90 Tage","preset_180":"Älter als 6 Monate – 180 Tage","preset_365":"Älter als 1 Jahr – 365 Tage","custom":"Benutzerdefiniert"}}}}
+{
+  "title": "Emby Integration - EMBi",
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Emby-Server verbinden",
+        "description": "Verbinde Home Assistant mit deinem lokalen Emby-Server. Der API-Schlüssel wird in Home Assistant gespeichert und in Diagnosedaten redigiert.",
+        "data": {
+          "name": "Name",
+          "host": "Host/IP-Adresse",
+          "port": "Port",
+          "ssl": "HTTPS verwenden",
+          "api_key": "API-Schlüssel"
+        }
+      },
+      "reconfigure": {
+        "title": "Verbindung bearbeiten",
+        "description": "Ändere Serveradresse, Port, HTTPS-Einstellung oder API-Schlüssel. Lass das API-Schlüssel-Feld leer, um den gespeicherten Schlüssel zu behalten.",
+        "data": {
+          "name": "Name",
+          "host": "Host/IP-Adresse",
+          "port": "Port",
+          "ssl": "HTTPS verwenden",
+          "api_key": "API-Schlüssel"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Der Emby-Server konnte nicht erreicht werden.",
+      "invalid_auth": "Der API-Schlüssel wurde abgelehnt."
+    },
+    "abort": {
+      "already_configured": "Dieser Emby-Server ist bereits eingerichtet.",
+      "reconfigure_successful": "Die Verbindung wurde aktualisiert.",
+      "unique_id_mismatch": "Die neue Verbindung gehört zu einem anderen Emby-Server."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EMBi verwalten",
+        "description": "Verwalte Emby-Player in Home Assistant und bereinige bei Bedarf alte Geräteeinträge sicher.\n\n{server_history} Geräte in der Emby-Server-Gerätehistorie\n{ha_players} Player in Home Assistant\n{protected} durch aktive Wiedergabe geschützt\n{removable} aktuell aus Home Assistant entfernbar\nAutomatische Bereinigung: {automatic_cleanup}",
+        "menu_options": {
+          "devices_players": "Geräte & Player",
+          "cleanup": "Bereinigung",
+          "review_changes": "{review_count} Änderungen prüfen"
+        }
+      },
+      "devices_players": {
+        "title": "Geräte & Player",
+        "description": "Lege fest, welche Emby-Player in Home Assistant erscheinen.\n\n{ha_players} Player in Home Assistant\n{playing} spielen gerade oder sind pausiert\n{known_users} bekannte Emby-Benutzer\n\nVerfügbare Gruppen:\n{groups}",
+        "data": {
+          "only_during_playback": "Nur während der Wiedergabe anzeigen",
+          "auto_show_new_players": "Neue Player automatisch anzeigen",
+          "technical_access_visibility": "Technische Zugriffe als Home-Assistant-Player anzeigen",
+          "search_query": "Benutzer, Gerät, App oder Entity-ID suchen",
+          "selected_group": "Gruppe öffnen"
+        },
+        "data_description": {
+          "only_during_playback": "Aus: ausgewählte Player bleiben auch ohne Wiedergabe verfügbar. Ein: Player erscheinen nur während Wiedergabe oder Pause.",
+          "auto_show_new_players": "Wenn ausgeschaltet, bleiben neue Wiedergabegeräte verborgen, bis du sie hier aktivierst.",
+          "technical_access_visibility": "Technische Zugriffe sind API-Anwendungen, die keine normalen Wiedergabegeräte sind. Unklare Clients bleiben als unklar eingestuft.",
+          "search_query": "Die Suche verwendet verständliche Benutzer-, Geräte- und App-Namen sowie die vollständige Home-Assistant-Entity-ID.",
+          "selected_group": "Zuerst werden bekannte Benutzer angezeigt, danach gemeinsam genutzte Geräte, Geräte ohne Benutzerzuordnung, technische Zugriffe und unklare Clients."
+        }
+      },
+      "player_group": {
+        "title": "Geräte & Player",
+        "description": "{group}\n\n{player_rows}\n\nNach dem Speichern dieser Seite geht es zurück zu Geräte & Player. Alle Änderungen bleiben im aktuellen Entwurf.",
+        "data": {
+          "show_user_players": "Alle Player dieses Benutzers anzeigen",
+          "visible_player_keys": "In Home Assistant angezeigte Player",
+          "enable_entity_ids": "In Home Assistant aktivieren"
+        },
+        "data_description": {
+          "show_user_players": "Aus blendet Player aus, die nur diesem Benutzer zugeordnet sind. Die einzelnen Auswahlwerte bleiben erhalten.",
+          "visible_player_keys": "Laufende und pausierte Player sind geschützt. Verborgene Player können später wiederhergestellt werden.",
+          "enable_entity_ids": "Eine deaktivierte, gültige Entity ist kein verwaister Eintrag. Beim Aktivieren bleiben Identität und Metadaten erhalten."
+        }
+      },
+      "cleanup": {
+        "title": "Bereinigung",
+        "description": "Bereinige alte Emby-Server-Einträge oder entferne unerwünschte Player aus Home Assistant. Das sind getrennte Aktionen.\n\n{server_history} Geräte in der Emby-Server-Gerätehistorie\n{ha_players} Player in Home Assistant\n{historical_difference} zusätzliche historische Geräte\n{removable} Home-Assistant-Player aktuell entfernbar\n{protected} Player durch Wiedergabe geschützt\n\nLetzter Bereinigungslauf: {last_status}\nGelöscht: {last_deleted}\nGeschützt: {last_protected}\nFehler: {last_errors}\nNächster Lauf: {next_run}",
+        "data": {
+          "server_auto_cleanup_enabled": "Alte Emby-Einträge automatisch bereinigen",
+          "automatic_age_preset": "Einträge entfernen, die älter sind als",
+          "automatic_custom_age_days": "Benutzerdefiniertes Automatik-Alter in Tagen",
+          "server_auto_cleanup_remove_ha_entities": "Passende Home-Assistant-Player ebenfalls entfernen",
+          "manual_age_preset": "Altersgrenze der manuellen Prüfung",
+          "manual_custom_age_days": "Benutzerdefiniertes manuelles Alter in Tagen",
+          "cleanup_action": "Aktion"
+        },
+        "data_description": {
+          "server_auto_cleanup_enabled": "EMBi prüft regelmäßig alte Einträge und entfernt nur Datensätze, die alle Sicherheitsregeln erfüllen.",
+          "server_auto_cleanup_remove_ha_entities": "Ein passender Home-Assistant-Player wird nur entfernt, wenn kein verbleibender Emby-Eintrag ihn benötigt und er weder spielt noch pausiert ist.",
+          "manual_age_preset": "Manuelle Serverprüfungen bleiben auch bei ausgeschalteter Automatik verfügbar.",
+          "cleanup_action": "Destruktive Aktionen sind nur verfügbar, solange keine normalen Entwurfsänderungen offen sind."
+        }
+      },
+      "server_history_check": {
+        "title": "Emby-Server-Gerätehistorie prüfen",
+        "description": "{total} Einträge geprüft\n{candidates} sind älter als {age_days} Tage und sicher löschbar\n{active} sind durch aktive Wiedergabe geschützt\n{recent} erfüllen die Altersregel nicht\n{without_activity} besitzen keinen gültigen Aktivitätszeitpunkt\n\nWenn keine sicheren Kandidaten vorhanden sind, wird keine leere Auswahl angezeigt und nichts verändert.",
+        "data": {
+          "delete_device_record_ids": "Zu löschende Server-Historieneinträge"
+        }
+      },
+      "confirm_server_deletion": {
+        "title": "{count} Emby-Server-Einträge löschen?",
+        "description": "Die ausgewählten Einträge werden aus der Gerätehistorie des Emby-Servers entfernt. Benutzerkonten, Medien, Bibliotheken und Wiedergabeverlauf werden nicht gelöscht. Dies ist die einzige abschließende Bestätigung.",
+        "data": {
+          "confirm_server_deletion": "Dauerhaft löschen"
+        }
+      },
+      "manage_ha_players": {
+        "title": "Home-Assistant-Player",
+        "description": "{ha_players} Player in Home Assistant\n{removable} aktuell entfernbar\n{protected} durch Wiedergabe oder einen unklaren Zustand geschützt\n\nAlle Player:\n{all_rows}\n\nGeschützte Player:\n{protected_rows}",
+        "data": {
+          "selected_ha_entity_ids": "Aus Home Assistant zu entfernende Player"
+        },
+        "data_description": {
+          "selected_ha_entity_ids": "Ausgewählte Player werden in EMBi verborgen und aus Home Assistant entfernt. Ihre Einträge in der Emby-Server-Gerätehistorie bleiben erhalten. Unter Geräte & Player können sie später wiederhergestellt werden."
+        }
+      },
+      "confirm_ha_removal": {
+        "title": "{count} Player aus Home Assistant entfernen?",
+        "description": "Die ausgewählten Player werden in EMBi verborgen und aus Home Assistant entfernt. Sie bleiben in der Emby-Server-Gerätehistorie erhalten und können später wiederhergestellt werden. Laufende und pausierte Player werden erneut geprüft und geschützt. Dies ist die einzige abschließende Bestätigung.",
+        "data": {
+          "confirm_ha_removal": "Player entfernen"
+        }
+      },
+      "review_changes": {
+        "title": "Änderungen prüfen",
+        "description": "{count} verständliche Änderungen sind offen. Bisher wurde nichts gespeichert.\n\n{changes}",
+        "menu_options": {
+          "discard_changes": "Änderungen verwerfen",
+          "apply_changes": "Änderungen übernehmen"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Aktuelle Emby- und Home-Assistant-Daten konnten nicht sicher aktualisiert werden.",
+      "playback_protected": "Beende die Wiedergabe, bevor du diesen Player ausblendest oder entfernst.",
+      "invalid_age": "Wähle eine Vorgabe oder gib eine gültige Anzahl Tage ein.",
+      "selection_required": "Wähle mindestens einen Eintrag aus.",
+      "invalid_selection": "Das ausgewählte Ziel hat sich verändert oder ist nicht mehr sicher. Öffne die Seite erneut und versuche es noch einmal.",
+      "confirmation_required": "Verwende die abschließende Bestätigung, um fortzufahren."
+    },
+    "abort": {
+      "no_changes": "Es gibt keine ungespeicherten Änderungen.",
+      "cannot_connect": "Die Aktion konnte ohne aktuelle Daten nicht sicher abgeschlossen werden.",
+      "storage_failed": "Der persistente Wartungsstatus konnte nicht gespeichert werden. Es wurden keine Optionen übernommen.",
+      "unsaved_changes": "Übernimm oder verwirf zuerst die normalen Entwurfsänderungen, bevor du eine destruktive Aktion startest.",
+      "apply_complete": "Änderungen übernommen. Entfernt: {removed}. Wiederhergestellt: {restored}. Aktiviert: {enabled}. Geschützt: {protected}. Fehlgeschlagen: {failed}.",
+      "server_cleanup_complete": "Bereinigung der Serverhistorie abgeschlossen. Gelöscht: {server_deleted}. Fehlgeschlagen: {server_failed}.",
+      "ha_player_removal_complete": "Entfernung aus Home Assistant abgeschlossen. Angefordert: {requested}. Entfernt: {removed}. Geschützt: {protected}. Fehlgeschlagen: {failed}."
+    }
+  },
+  "selector": {
+    "cleanup_age_preset": {
+      "options": {
+        "preset_7": "1 Woche – 7 Tage",
+        "preset_30": "1 Monat – 30 Tage",
+        "preset_90": "3 Monate – 90 Tage",
+        "preset_180": "6 Monate – 180 Tage",
+        "preset_365": "1 Jahr – 365 Tage",
+        "custom": "Benutzerdefiniert"
+      }
+    },
+    "cleanup_action": {
+      "options": {
+        "manual_check": "Emby-Server-Gerätehistorie jetzt prüfen",
+        "manage_ha_players": "Home-Assistant-Player verwalten"
+      }
+    }
+  }
+}
