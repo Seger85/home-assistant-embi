@@ -250,11 +250,10 @@ def _is_visible(
         user_visibility = options.get(CONF_USER_MASTER_VISIBILITY, {})
         if isinstance(user_visibility, Mapping) and user_visibility.get(users[0]) is False:
             return False
-    if client_class == CLIENT_CLASS_TECHNICAL and not bool(
-        options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)
-    ):
-        return False
-    return True
+    return not (
+        client_class == CLIENT_CLASS_TECHNICAL
+        and not bool(options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
+    )
 
 
 def build_player_catalog(
