@@ -101,4 +101,4 @@ def test_playing_and_paused_are_rechecked_by_the_destructive_path() -> None:
     context_source = source("player_context.py")
 
     assert "context.playback in ACTIVE_PLAYBACK_STATES" in remove_source
-    assert 'ACTIVE_PLAYBACK_STATES = {PLAYBACK_PLAYING, PLAYBACK_PAUSED}' in context_source
+    assert "ACTIVE_PLAYBACK_STATES = {PLAYBACK_PLAYING, PLAYBACK_PAUSED}" in context_source
