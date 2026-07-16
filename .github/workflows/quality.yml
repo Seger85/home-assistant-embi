@@ -69,8 +69,26 @@ jobs:
         run: exit 1
       - name: Ruff format
         run: ruff format --check .
-      - name: Unit tests
-        run: pytest -q
+      - name: Capture unit-test result
+        id: pytest
+        shell: bash
+        run: |
+          set +e
+          pytest -q > pytest-report.txt 2>&1
+          status=$?
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          cat pytest-report.txt
+          exit 0
+      - name: Upload unit-test report
+        if: ${{ steps.pytest.outputs.status != '0' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report-${{ matrix.python-version }}-${{ github.sha }}
+          path: pytest-report.txt
+          retention-days: 1
+      - name: Enforce unit tests
+        if: ${{ steps.pytest.outputs.status != '0' }}
+        run: exit 1
       - name: Validate specification contract
         run: python scripts/validate_spec_contract.py
       - name: Validate stable contract
