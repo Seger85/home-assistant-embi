@@ -22,11 +22,12 @@ jobs:
         with:
           python-version: "3.13"
       - run: python -m pip install -q --upgrade pip -r requirements_test.txt
-      - name: Apply deterministic fixture and style corrections
+      - name: Apply deterministic copy, fixture and style corrections
         run: |
           sed -i 's/0\.3\.0/0.9.0/g' tests/test_package_contract.py
           python - <<'PY'
           from pathlib import Path
+          import json
 
           path = Path("tests/test_options_flow.py")
           text = path.read_text(encoding="utf-8")
@@ -41,6 +42,35 @@ jobs:
           )
           if old in text and 'self.registry = SimpleNamespace(' not in text:
               path.write_text(text.replace(old, new), encoding="utf-8")
+
+          english = {
+              "title": "Older rules",
+              "description": "{count} older rules could not be assigned safely during migration. They remain preserved and inactive until you review them. Deselect only rules you intentionally want to discard.",
+              "data": {"kept_rules": "Preserved older rules"},
+              "data_description": {
+                  "kept_rules": "These labels deliberately avoid guessing a device or app identity."
+              },
+          }
+          german = {
+              "title": "Ältere Regeln",
+              "description": "{count} ältere Regeln konnten während der Migration nicht sicher zugeordnet werden. Sie bleiben erhalten und inaktiv, bis du sie prüfst. Entferne nur Regeln, die du bewusst verwerfen möchtest.",
+              "data": {"kept_rules": "Beibehaltene ältere Regeln"},
+              "data_description": {
+                  "kept_rules": "Diese Bezeichnungen ordnen absichtlich kein Gerät und keine App auf Verdacht zu."
+              },
+          }
+          for filename, value in (
+              ("custom_components/emby/strings.json", english),
+              ("custom_components/emby/translations/en.json", english),
+              ("custom_components/emby/translations/de.json", german),
+          ):
+              target = Path(filename)
+              data = json.loads(target.read_text(encoding="utf-8"))
+              data["options"]["step"]["older_rules"] = value
+              target.write_text(
+                  json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+                  encoding="utf-8",
+              )
           PY
           ruff check --fix --unsafe-fixes .
           ruff format .
