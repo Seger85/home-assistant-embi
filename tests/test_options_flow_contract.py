@@ -59,7 +59,7 @@ def test_dirty_draft_blocks_destructive_actions() -> None:
 
     assert guard in server_cleanup
     assert guard in ha_cleanup
-    assert 'if not self._dirty:' in server_cleanup
+    assert "if not self._dirty:" in server_cleanup
 
 
 def test_destructive_actions_have_one_final_boolean_confirmation_each() -> None:

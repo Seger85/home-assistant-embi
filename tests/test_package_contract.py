@@ -20,10 +20,10 @@ def test_release_archive_is_deterministic_and_installable(tmp_path: Path) -> Non
 
     BUILD_PACKAGE.build_archive(first)
     BUILD_PACKAGE.build_archive(second)
-    BUILD_PACKAGE.verify_archive(first, "0.3.0")
-    BUILD_PACKAGE.verify_archive(second, "0.3.0")
+    BUILD_PACKAGE.verify_archive(first, "0.9.0")
+    BUILD_PACKAGE.verify_archive(second, "0.9.0")
 
-    assert BUILD_PACKAGE.source_version() == "0.3.0"
+    assert BUILD_PACKAGE.source_version() == "0.9.0"
     assert first.read_bytes() == second.read_bytes()
     assert BUILD_PACKAGE.sha256(first) == BUILD_PACKAGE.sha256(second)
 
@@ -31,7 +31,7 @@ def test_release_archive_is_deterministic_and_installable(tmp_path: Path) -> Non
         names = set(archive.namelist())
         manifest = json.loads(archive.read("manifest.json"))
 
-    assert manifest["version"] == "0.3.0"
+    assert manifest["version"] == "0.9.0"
     assert {
         "__init__.py",
         "manifest.json",

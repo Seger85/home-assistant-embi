@@ -25,9 +25,7 @@ def test_devices_response_separates_record_and_client_identity() -> None:
 
 
 def test_missing_reported_device_id_falls_back_to_record_id() -> None:
-    record = EmbyDeviceRecord.from_api(
-        {"Id": "42", "Name": "Legacy client", "AppName": "Old App"}
-    )
+    record = EmbyDeviceRecord.from_api({"Id": "42", "Name": "Legacy client", "AppName": "Old App"})
 
     assert record.reported_device_id == "42"
     assert record.player_key == "42.Old App"
