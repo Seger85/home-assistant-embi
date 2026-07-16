@@ -67,7 +67,7 @@ def test_persistent_action_summary_contains_only_aggregate_fields() -> None:
 
 
 def test_removal_orders_hidden_rule_before_registry_remove_and_verifies_reload() -> None:
-    remove_source = source("player_remove.py")
+    remove_source = source("player_actions.py")
 
     hidden_position = remove_source.index("options[CONF_HIDDEN_EXACT_PLAYERS]")
     update_position = remove_source.index("update_options_and_reload")
@@ -93,14 +93,14 @@ def test_restore_removes_only_exact_rule_and_verifies_resulting_entity() -> None
 
 
 def test_home_assistant_removal_does_not_call_server_delete() -> None:
-    combined = source("player_remove.py") + source("player_actions.py")
+    combined = source("player_actions.py")
 
     assert "async_delete_device" not in combined
     assert '"/Devices"' not in combined
 
 
 def test_playing_and_paused_are_rechecked_by_the_destructive_path() -> None:
-    remove_source = source("player_remove.py")
+    remove_source = source("player_actions.py")
     context_source = source("player_context.py")
 
     assert "context.playback in ACTIVE_PLAYBACK_STATES" in remove_source
