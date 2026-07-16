@@ -10,62 +10,68 @@ def source(name: str) -> str:
     return (COMPONENT / name).read_text(encoding="utf-8")
 
 
-def function_block(text: str, name: str, next_name: str | None = None) -> str:
-    start = text.index(f"async def {name}")
-    end = text.index(f"async def {next_name}", start) if next_name else len(text)
-    return text[start:end]
-
-
-def test_normal_options_pages_are_draft_only_and_have_one_apply_write() -> None:
+def test_normal_pages_are_draft_only_and_apply_is_the_only_normal_write() -> None:
     options_flow = source("options_flow.py")
-    clients = source("options_clients.py")
-    registry = source("options_registry.py")
-    maintenance = source("maintenance_flow.py")
+    normal_pages = "\n".join(
+        source(name)
+        for name in (
+            "options_devices.py",
+            "options_cleanup.py",
+            "options_ha_cleanup.py",
+            "options_review.py",
+        )
+    )
 
-    assert "async_update_entry" not in "\n".join((options_flow, clients, registry, maintenance))
-    assert options_flow.count("self.async_create_entry(") == 1
-    assert "self._draft_options" in clients
-    assert "self._draft_options" in maintenance
-    assert "return await self.async_step_init()" in clients
-    assert "return await self.async_step_init()" in maintenance
+    assert "async_update_entry" not in normal_pages
+    assert options_flow.count("async_update_entry") == 1
+    assert "async_step_apply_changes" in options_flow
+    assert "async_step_discard_changes" in options_flow
+    assert "self._draft.discard()" in options_flow
+    assert "CONF_CONFIRM_APPLY" not in options_flow
+    assert "CONF_CONFIRM_DISCARD" not in options_flow
+
+
+def test_root_navigation_matches_the_frozen_contract() -> None:
+    options_flow = source("options_flow.py")
+
+    assert 'menu_options = ["devices_players", "cleanup"]' in options_flow
+    assert 'menu_options.append("review_changes")' in options_flow
+    assert "clients_bulk" not in options_flow
+    assert "about" not in options_flow
+    assert "server_cleanup_settings" not in options_flow
 
 
 def test_apply_no_change_discard_and_close_contract() -> None:
     options_flow = source("options_flow.py")
-    apply_block = function_block(options_flow, "async_step_apply", "async_step_discard")
-    discard_block = function_block(options_flow, "async_step_discard", "async_step_about")
 
-    assert "if updated == original_normalized" in apply_block
-    assert 'reason="no_changes"' in apply_block
-    assert apply_block.index('reason="no_changes"') < apply_block.index("self.async_create_entry(")
-    assert "self._draft.discard()" in discard_block
-    assert "async_reload" not in options_flow
+    assert 'reason="no_changes"' in options_flow
+    assert "self._draft.discard()" in options_flow
     assert "__del__" not in options_flow
     assert "async_close" not in options_flow
+    assert "async_step_apply_changes(" in options_flow
+    assert "async_step_discard_changes(" in options_flow
 
 
-def test_dirty_draft_blocks_maintenance_actions() -> None:
-    registry = source("options_registry.py")
-    maintenance = source("maintenance_flow.py")
+def test_dirty_draft_blocks_destructive_actions() -> None:
+    server_cleanup = source("options_cleanup.py")
+    ha_cleanup = source("options_ha_cleanup.py")
     guard = 'if self._dirty:\n            return self.async_abort(reason="unsaved_changes")'
 
-    assert guard in registry
-    assert maintenance.count('return self.async_abort(reason="unsaved_changes")') >= 1
+    assert guard in server_cleanup
+    assert guard in ha_cleanup
+    assert 'if not self._dirty:' in server_cleanup
 
 
-def test_automatic_warning_uses_boolean_without_text_phrase() -> None:
-    maintenance = source("maintenance_flow.py")
-    confirm = function_block(
-        maintenance,
-        "async_step_server_auto_cleanup_confirm",
-        "async_step_server_cleanup",
-    )
+def test_destructive_actions_have_one_final_boolean_confirmation_each() -> None:
+    server_cleanup = source("options_cleanup.py")
+    ha_cleanup = source("options_ha_cleanup.py")
 
-    assert "CONF_CONFIRM_AUTO_CLEANUP" in confirm
-    assert "BooleanSelector" in confirm
-    assert "TextSelector" not in confirm
-    assert "confirmation_text" not in confirm
-    assert "AUTO_CLEANUP_CONFIRMATION" not in maintenance
+    assert server_cleanup.count("CONF_CONFIRM_SERVER_DELETION") >= 2
+    assert server_cleanup.count("BooleanSelector") >= 1
+    assert "CONF_CONFIRMATION_TEXT" not in server_cleanup
+    assert "TextSelector" not in server_cleanup
+    assert ha_cleanup.count("CONF_CONFIRM_HA_REMOVAL") >= 2
+    assert ha_cleanup.count("BooleanSelector") >= 1
 
 
 def test_automation_is_not_scheduled_from_the_draft_flow() -> None:
@@ -73,9 +79,9 @@ def test_automation_is_not_scheduled_from_the_draft_flow() -> None:
         source(name)
         for name in (
             "options_flow.py",
-            "options_clients.py",
-            "options_registry.py",
-            "maintenance_flow.py",
+            "options_devices.py",
+            "options_cleanup.py",
+            "options_ha_cleanup.py",
         )
     )
 
