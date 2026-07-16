@@ -1,9 +1,7 @@
 name: Capture final EMBi 0.9 pytest report once
 
 on:
-  push:
-    branches:
-      - feature/embi-0.9.0
+  pull_request:
     paths:
       - .github/workflows/pytest-report-once.yml
 
@@ -15,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: feature/embi-0.9.0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
