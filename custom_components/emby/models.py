@@ -121,22 +121,114 @@ class CleanupRunReport:
 
 
 @dataclass(slots=True)
+class MaintenanceActionSummary:
+    """Bounded privacy-safe summary of one player removal or restore action."""
+
+    action: str | None = None
+    status: str = "not_run"
+    started_at: str | None = None
+    completed_at: str | None = None
+    requested: int = 0
+    succeeded: int = 0
+    protected: int = 0
+    failed: int = 0
+    reason_codes: tuple[str, ...] = ()
+
+    def as_dict(self) -> dict[str, Any]:
+        data = asdict(self)
+        data["reason_codes"] = list(self.reason_codes)
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any] | None) -> MaintenanceActionSummary:
+        if data is None:
+            return cls()
+        if not isinstance(data, Mapping):
+            raise ValueError("maintenance action must be a mapping")
+        reason_codes = data.get("reason_codes", ())
+        if not isinstance(reason_codes, (list, tuple)):
+            raise ValueError("maintenance action reason codes must be a list")
+        return cls(
+            action=str(data["action"]) if data.get("action") is not None else None,
+            status=str(data.get("status", "not_run")),
+            started_at=(
+                str(data["started_at"]) if data.get("started_at") is not None else None
+            ),
+            completed_at=(
+                str(data["completed_at"])
+                if data.get("completed_at") is not None
+                else None
+            ),
+            requested=max(0, int(data.get("requested", 0))),
+            succeeded=max(0, int(data.get("succeeded", 0))),
+            protected=max(0, int(data.get("protected", 0))),
+            failed=max(0, int(data.get("failed", 0))),
+            reason_codes=tuple(sorted({str(value) for value in reason_codes})),
+        )
+
+
+@dataclass(slots=True)
+class MigrationSummary:
+    """One idempotent options/storage migration result."""
+
+    status: str = "not_run"
+    from_schema: int | None = None
+    to_schema: int = 2
+    completed_at: str | None = None
+    changed: bool = False
+    unresolved_rules: int = 0
+    last_error: str | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any] | None) -> MigrationSummary:
+        if data is None:
+            return cls()
+        if not isinstance(data, Mapping):
+            raise ValueError("migration summary must be a mapping")
+        return cls(
+            status=str(data.get("status", "not_run")),
+            from_schema=(
+                int(data["from_schema"]) if data.get("from_schema") is not None else None
+            ),
+            to_schema=int(data.get("to_schema", 2)),
+            completed_at=(
+                str(data["completed_at"])
+                if data.get("completed_at") is not None
+                else None
+            ),
+            changed=bool(data.get("changed", False)),
+            unresolved_rules=max(0, int(data.get("unresolved_rules", 0))),
+            last_error=str(data["last_error"]) if data.get("last_error") else None,
+        )
+
+
+@dataclass(slots=True)
 class MaintenanceState:
     report: CleanupRunReport = field(default_factory=CleanupRunReport)
     initial_run_completed: bool = False
+    last_player_action: MaintenanceActionSummary = field(default_factory=MaintenanceActionSummary)
+    last_restore: MaintenanceActionSummary = field(default_factory=MaintenanceActionSummary)
+    migration: MigrationSummary = field(default_factory=MigrationSummary)
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "schema_version": MAINTENANCE_STORE_VERSION,
             "report": self.report.as_dict(),
             "initial_run_completed": self.initial_run_completed,
+            "last_player_action": self.last_player_action.as_dict(),
+            "last_restore": self.last_restore.as_dict(),
+            "migration": self.migration.as_dict(),
         }
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> MaintenanceState:
         if not isinstance(data, Mapping):
             raise ValueError("maintenance state must be a mapping")
-        if data.get("schema_version") != MAINTENANCE_STORE_VERSION:
+        schema_version = data.get("schema_version")
+        if schema_version not in {1, MAINTENANCE_STORE_VERSION}:
             raise ValueError("unsupported maintenance Store schema version")
         initial = data.get("initial_run_completed", False)
         if not isinstance(initial, bool):
@@ -144,6 +236,11 @@ class MaintenanceState:
         return cls(
             report=CleanupRunReport.from_dict(data.get("report", {})),
             initial_run_completed=initial,
+            last_player_action=MaintenanceActionSummary.from_dict(
+                data.get("last_player_action")
+            ),
+            last_restore=MaintenanceActionSummary.from_dict(data.get("last_restore")),
+            migration=MigrationSummary.from_dict(data.get("migration")),
         )
 
 
@@ -180,3 +277,4 @@ class EmbiRuntimeData:
     auto_cleanup_scheduled: bool = False
     cancel_auto_cleanup: Callable[[], None] | None = None
     unloading: bool = False
+    suppress_update_listener: bool = False
