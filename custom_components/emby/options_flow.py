@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from homeassistant import config_entries
+from homeassistant.helpers import entity_registry as er
 
 from .api import EmbyApiError, EmbyDeviceRecord
 from .const import CONF_HIDDEN_EXACT_PLAYERS, CONF_SERVER_AUTO_CLEANUP_ENABLED
@@ -15,11 +16,7 @@ from .options_ha_cleanup import HomeAssistantCleanupOptionsMixin
 from .options_model import migrate_options_090
 from .options_review import semantic_changes
 from .options_runtime import fresh_catalog, player_label_map
-from .player_actions import (
-    async_enable_ha_entities,
-    async_remove_ha_players,
-    async_restore_players,
-)
+from .player_action_common import owned_exact
 from .player_context import ACTIVE_PLAYBACK_STATES
 
 
@@ -146,7 +143,6 @@ class EmbyOptionsFlow(
         after_hidden = {str(value) for value in updated.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
         hide_keys = after_hidden - before_hidden
         restore_keys = before_hidden - after_hidden
-
         protected_keys = {
             player.player_key
             for player in players
@@ -155,13 +151,7 @@ class EmbyOptionsFlow(
         if protected_keys:
             after_hidden -= protected_keys
             updated[CONF_HIDDEN_EXACT_PLAYERS] = sorted(after_hidden)
-            hide_keys -= protected_keys
 
-        hide_entity_ids = [
-            player.entity_id
-            for player in players
-            if player.player_key in hide_keys and player.entity_id
-        ]
         original_auto = bool(original.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
         updated_auto = bool(updated.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
         if original_auto != updated_auto:
@@ -184,39 +174,36 @@ class EmbyOptionsFlow(
         finally:
             self._runtime.suppress_update_listener = False
 
-        removed = restored = enabled = failed = 0
-        protected = len(protected_keys)
-        performed_reload = False
-        if hide_entity_ids:
-            result = await async_remove_ha_players(self.hass, self._entry, hide_entity_ids)
-            removed += len(result.succeeded)
-            protected += len(result.protected)
-            failed += len(result.failed)
-            performed_reload = True
-        if restore_keys:
-            result = await async_restore_players(self.hass, self._entry, sorted(restore_keys))
-            restored += len(result.succeeded)
-            failed += len(result.failed)
-            performed_reload = True
-        if self._pending_enable_entity_ids:
-            result = await async_enable_ha_entities(
-                self.hass,
-                self._entry,
-                sorted(self._pending_enable_entity_ids),
+        enabled = failed = 0
+        registry = er.async_get(self.hass)
+        for entity_id in sorted(self._pending_enable_entity_ids):
+            entity = registry.async_get(entity_id)
+            player_key = str(getattr(entity, "unique_id", ""))
+            if not owned_exact(entity, self._entry, player_key):
+                failed += 1
+                continue
+            registry.async_update_entity(entity_id, disabled_by=None)
+            enabled += 1
+
+        await self.hass.config_entries.async_reload(self._entry.entry_id)
+        current_entry = self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+        registry = er.async_get(self.hass)
+        restored = sum(
+            any(
+                owned_exact(entity, current_entry, player_key)
+                for entity in registry.entities.values()
             )
-            enabled += len(result.succeeded)
-            failed += len(result.failed)
-            performed_reload = True
-        if not performed_reload:
-            await self.hass.config_entries.async_reload(self._entry.entry_id)
+            for player_key in restore_keys
+        )
+        failed += max(0, len(restore_keys) - restored)
 
         return self.async_abort(
             reason="apply_complete",
             description_placeholders={
-                "removed": str(removed),
+                "removed": "0",
                 "restored": str(restored),
                 "enabled": str(enabled),
-                "protected": str(protected),
+                "protected": str(len(protected_keys)),
                 "failed": str(failed),
             },
         )
