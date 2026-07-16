@@ -195,7 +195,9 @@ class CleanupOptionsMixin:
             age_days=age_days,
             active_player_keys=active_player_keys(self.hass, self._entry),
         )
-        candidates = {device.record_id: device for device in plan.candidates}
+        candidates: dict[str, EmbyDeviceRecord] = {
+            device.record_id: device for device in plan.candidates
+        }
         if user_input is not None and not errors:
             if not candidates:
                 return await self.async_step_cleanup()
@@ -214,18 +216,16 @@ class CleanupOptionsMixin:
 
         fields: dict[Any, Any] = {}
         if candidates:
-            fields[vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[])] = (
-                selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            {"value": key, "label": label}
-                            for key, label in server_device_selector_options(
-                                plan.candidates
-                            ).items()
-                        ],
-                        multiple=True,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
+            fields[vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[])] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": key, "label": label}
+                        for key, label in server_device_selector_options(
+                            plan.candidates
+                        ).items()
+                    ],
+                    multiple=True,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             )
         return self.async_show_form(
