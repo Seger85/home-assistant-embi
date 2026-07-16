@@ -129,3 +129,103 @@ No horizontal overflow, buttons reachable, long IDs safe, dialogs fit and no des
 - release ZIP mismatch,
 - failing CI,
 - missing blocker evidence.
+
+<!-- EMBI-0.9-EVIDENCE-START -->
+## Implementierungs- und automatisierte Nachweise
+
+Diese Tabelle ergänzt die unveränderten Akzeptanzszenarien. `Automatisiert` bedeutet, dass der Nachweis im Repository vorhanden ist und in Quality/Spec Contract ausgeführt wird. Reale Home-Assistant- und visuelle Nachweise bleiben bis zur privaten Abnahme ausdrücklich offen.
+
+| Blocker-ID | Implementierung | Automatisierter Nachweis | Verbleibender Live-Nachweis |
+|---|---|---|---|
+| `CLN-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-004` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-005` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-006` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-007` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-008` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-009` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-010` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-011` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-012` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-013` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-014` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-015` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-016` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-017` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `CLN-018` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-004` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-005` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-006` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-007` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-008` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-009` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-010` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-011` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-012` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-013` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-014` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DEV-015` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DOC-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `DOC-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `LOG-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `LOG-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `LOG-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-004` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-005` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-006` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-007` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `MIG-008` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `NAV-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `NAV-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `NAV-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `NAV-004` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `NAV-005` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `NAV-006` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `NAV-007` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `REL-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `REL-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `REL-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `REL-004` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `REL-005` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `REL-006` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `REL-007` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `ROOT-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `ROOT-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `ROOT-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `SAFE-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `SAFE-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `SAFE-003` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `SAFE-004` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `SAFE-005` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `SAFE-006` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `TXT-001` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+| `TXT-002` | `options_model.py`, `entry_setup.py`, `entry_lifecycle.py` | `test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py` | Live: upgrade, 29-player identity and metadata baseline |
+
+### CI-Gates für diese Evidenz
+
+- Quality Python 3.13 und 3.14
+- vollständiger Pytest-Lauf
+- Ruff und Ruff Format
+- JSON, YAML und Compileall
+- Specification Contract und Stable Contract
+- Secret-/Privacy-Scan
+- HACS Validation und Hassfest
+- releasegleicher privater Paketbau mit SHA-256 und `BUILD_COMMIT`
+
+### Noch nicht als bestanden markiert
+
+- Migration im produktiven Home Assistant
+- 29-Player-Identitäts- und Metadatenbaseline
+- visuelle Prüfung auf iPhone, iPad und Desktop
+- kontrollierte Entfernung und Wiederherstellung eines normalen nicht spielenden Players
+- separate Serverhistorien-Aktion
+- Scheduler-, Reload-, Neustart- und Rollbacknachweis
+<!-- EMBI-0.9-EVIDENCE-END -->
