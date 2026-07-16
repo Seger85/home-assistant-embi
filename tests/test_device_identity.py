@@ -25,7 +25,9 @@ def test_devices_response_separates_record_and_client_identity() -> None:
 
 
 def test_missing_reported_device_id_falls_back_to_record_id() -> None:
-    record = EmbyDeviceRecord.from_api({"Id": "42", "Name": "Legacy client", "AppName": "Old App"})
+    record = EmbyDeviceRecord.from_api(
+        {"Id": "42", "Name": "Legacy client", "AppName": "Old App"}
+    )
 
     assert record.reported_device_id == "42"
     assert record.player_key == "42.Old App"
@@ -46,7 +48,7 @@ def test_label_contains_human_context_but_not_internal_record_id() -> None:
     assert "99" not in record.label
 
 
-def test_server_cleanup_label_contains_no_reported_client_id() -> None:
+def test_server_cleanup_label_contains_no_internal_identity() -> None:
     record = EmbyDeviceRecord.from_api(
         {
             "Id": "history-record-0001",
@@ -59,8 +61,9 @@ def test_server_cleanup_label_contains_no_reported_client_id() -> None:
     )
 
     assert "private-client-identity" not in record.server_cleanup_label
+    assert "history-record-0001" not in record.server_cleanup_label
     assert "AndroidTv 3.4.5" in record.server_cleanup_label
-    assert "ID hist…0001" in record.server_cleanup_label
+    assert "2026-07-13 18:35 UTC" in record.server_cleanup_label
 
 
 def test_seven_digit_emby_timestamp_is_parsed_as_utc() -> None:
