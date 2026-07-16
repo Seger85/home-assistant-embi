@@ -35,6 +35,7 @@ from .const import (
     PLAYER_MODE_PERSISTENT,
 )
 
+ACTIVE_STATES = {"playing", "paused"}
 _LEGACY_IGNORED_DEVICE_IDS = "ignored_device_ids"
 _LEGACY_CLEANUP_API_KEY = "server_cleanup_api_key"
 _LEGACY_AUTO_CONFIRMATION_TEXT = "auto_cleanup_confirmation_text"
@@ -143,7 +144,6 @@ def migrate_options_090(
             False if legacy_mode == CLIENT_MODE_ALLOWLIST else DEFAULT_AUTO_SHOW_NEW_PLAYERS
         )
     if CONF_TECHNICAL_ACCESS_VISIBILITY not in source:
-        # Existing technical entities remain visible on upgrade. New installs default off.
         migrated[CONF_TECHNICAL_ACCESS_VISIBILITY] = (
             DEFAULT_TECHNICAL_ACCESS_VISIBILITY if new_install else True
         )
@@ -157,7 +157,6 @@ def migrate_options_090(
         source.get(CONF_USER_MASTER_VISIBILITY, {})
     )
 
-    # Exact numeric values and both automatic-cleanup switches are preserved.
     migrated[CONF_SERVER_CLEANUP_ENABLED] = bool(
         source.get(CONF_SERVER_CLEANUP_ENABLED, defaults[CONF_SERVER_CLEANUP_ENABLED])
     )
@@ -199,3 +198,35 @@ def migrate_options_090(
         migrated.pop(legacy_key, None)
 
     return migrated, migrated != source
+
+
+def should_expose_player(
+    *,
+    player_key: str,
+    reported_device_id: str | None,
+    state: str | None,
+    options: Mapping[str, Any],
+    technical_access: bool,
+    users: Iterable[str] = (),
+) -> bool:
+    """Apply exact hidden rules and the canonical global visibility settings."""
+    hidden_exact = {str(value) for value in options.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
+    hidden_devices = {str(value) for value in options.get(CONF_HIDDEN_WHOLE_DEVICES, [])}
+    if player_key in hidden_exact:
+        return False
+    if reported_device_id and reported_device_id in hidden_devices:
+        return False
+
+    named_users = tuple(str(value) for value in users if str(value))
+    user_visibility = options.get(CONF_USER_MASTER_VISIBILITY, {})
+    if len(named_users) == 1 and isinstance(user_visibility, Mapping):
+        if user_visibility.get(named_users[0]) is False:
+            return False
+
+    if technical_access and not bool(options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)):
+        return False
+    if options.get(CONF_GLOBAL_PLAYER_MODE) == PLAYER_MODE_ACTIVE_ONLY:
+        return str(state or "").casefold() in ACTIVE_STATES
+    if not bool(options.get(CONF_AUTO_SHOW_NEW_PLAYERS, DEFAULT_AUTO_SHOW_NEW_PLAYERS)):
+        return player_key in {str(value) for value in options.get(CONF_ALLOWED_DEVICE_IDS, [])}
+    return True
