@@ -134,6 +134,8 @@ FOLLOW_UP_STATUSES = {
     FOLLOW_UP_SKIPPED,
 }
 
+# Keep the Home Assistant Store envelope version stable and migrate the internal schema.
+MAINTENANCE_STORE_STORAGE_VERSION = 1
 MAINTENANCE_STORE_VERSION = 2
 MAINTENANCE_STORE_KEY_PREFIX = f"{DOMAIN}.maintenance"
 MAINTENANCE_NOTIFICATION_ID_PREFIX = f"{DOMAIN}_maintenance"
