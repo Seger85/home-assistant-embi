@@ -219,9 +219,12 @@ def should_expose_player(
 
     named_users = tuple(str(value) for value in users if str(value))
     user_visibility = options.get(CONF_USER_MASTER_VISIBILITY, {})
-    if len(named_users) == 1 and isinstance(user_visibility, Mapping):
-        if user_visibility.get(named_users[0]) is False:
-            return False
+    if (
+        len(named_users) == 1
+        and isinstance(user_visibility, Mapping)
+        and user_visibility.get(named_users[0]) is False
+    ):
+        return False
 
     if technical_access and not bool(options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)):
         return False
