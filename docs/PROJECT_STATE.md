@@ -4,9 +4,11 @@
 
 - aktuelle stabile Version auf `main`: `v0.3.0`
 - veröffentlichter Main-Commit: `0ebf273f0bd41f6c8f878042ac0fc4160d07e978`
-- Home-Assistant-Live-Baseline aus der Stable-Abnahme: 29 EMBi-`media_player`-Entities
+- aktuelle verifizierte Home-Assistant-Live-Baseline: 69 Emby-Server-Historieneinträge und 30 aktiv geladene EMBi-`media_player`-Entities
 - zusätzliche EMBi-Wartungsentity: keine
 - Legacy YAML: nicht Bestandteil des Laufzeitpfads
+- automatische Bereinigung: deaktiviert
+- manuelle und automatische Bereinigungsschwelle: jeweils 365 Tage
 
 Keine privaten Geräteidentitäten, Zugangsdaten oder internen Config-Entry-IDs werden in diesem Dokument gespeichert.
 
@@ -80,7 +82,7 @@ Vor dem Merge von PR #29 nach `develop` ist genau ein externer Prüfpunkt vorges
 - frisches Home-Assistant-Backup
 - Upgrade von `v0.3.0` auf das private Artefakt
 - Config Entry bleibt geladen
-- 29-Player-Baseline sowie Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und disabled state bleiben erhalten
+- 69 Server-Historieneinträge und 30-Player-Baseline sowie Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und disabled state bleiben erhalten, sofern unmittelbar vor dem Test keine reale Clientänderung dokumentiert wird
 - Benutzer-, Shared-, Unassigned-, Technical- und Unknown-Gruppen prüfen
 - normale Draft-Navigation, Review, Apply, Discard und X prüfen
 - iPhone-, iPad- und Desktop-QA
