@@ -1,0 +1,202 @@
+name: EMBi 0.9 evidence update
+
+on:
+  push:
+    branches:
+      - feature/embi-0.9.0
+    paths:
+      - .github/workflows/embi-09-evidence-update.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/embi-0.9.0
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -q pyyaml
+      - name: Append blocker implementation and automated evidence
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          from collections.abc import Mapping
+          from pathlib import Path
+          import json
+          import yaml
+
+          requirements_path = Path("docs/specs/0.9.0/requirements.yaml")
+          matrix_path = Path("docs/specs/0.9.0/10-test-and-acceptance-matrix.md")
+          data = yaml.safe_load(requirements_path.read_text(encoding="utf-8"))
+
+          def collect(value):
+              found = []
+              if isinstance(value, Mapping):
+                  if "id" in value:
+                      found.append(value)
+                  for child in value.values():
+                      found.extend(collect(child))
+              elif isinstance(value, list):
+                  for child in value:
+                      found.extend(collect(child))
+              return found
+
+          def is_blocker(item):
+              text = json.dumps(item, ensure_ascii=False).casefold()
+              explicit = item.get("blocker") if isinstance(item, Mapping) else None
+              if explicit is True:
+                  return True
+              return any(
+                  token in text
+                  for token in (
+                      '"priority": "blocker"',
+                      '"severity": "blocker"',
+                      '"gate": "blocker"',
+                      '"required": true',
+                      'must ',
+                      'muss ',
+                  )
+              )
+
+          def evidence(item):
+              text = json.dumps(item, ensure_ascii=False).casefold()
+              if any(token in text for token in ("migration", "entity id", "unique id", "alias", "area", "label", "364", "365")):
+                  return (
+                      "`options_model.py`, `entry_setup.py`, `entry_lifecycle.py`",
+                      "`test_options_model_090.py`, `test_entry_lifecycle.py`, `test_options_flow.py`",
+                      "Live: upgrade, 29-player identity and metadata baseline",
+                  )
+              if any(token in text for token in ("shared", "user assignment", "benutzer", "user group", "technical", "unknown client", "unklar")):
+                  return (
+                      "`player_context.py`, `options_devices.py`, `options_runtime.py`",
+                      "`test_player_context_090.py`, `test_options_model_090.py`",
+                      "Live/UI: user, shared, unassigned, technical and unknown groups",
+                  )
+              if any(token in text for token in ("display name", "entity id", "friendly", "reporteddeviceid", "config entry id")):
+                  return (
+                      "`player_context.py`, `options_devices.py`",
+                      "`test_player_context_090.py`, `test_device_identity.py`",
+                      "Live/UI: friendly rows and full entity ID on phone/tablet/desktop",
+                  )
+              if any(token in text for token in ("review", "draft", "apply", "discard", "confirmation toggle", "semantic")):
+                  return (
+                      "`options_flow.py`, `options_review.py`, `options_draft.py`",
+                      "`test_options_flow.py`, `test_options_flow_contract.py`, `test_options_review_090.py`",
+                      "Live/UI: multi-page draft, Review, Apply, Discard and X",
+                  )
+              if any(token in text for token in ("disabled", "orphan")):
+                  return (
+                      "`player_context.py`, `options_devices.py`",
+                      "`test_player_context_090.py`, `test_repository_contract.py`",
+                      "Live: disabled-valid entity remains non-orphan and metadata-preserving",
+                  )
+              if any(token in text for token in ("restore", "hidden rule", "remove from home assistant", "player removal", "playing", "paused")):
+                  return (
+                      "`player_remove.py`, `player_actions.py`, `player_action_common.py`, `options_ha_cleanup.py`",
+                      "`test_player_context_090.py`, `test_player_actions_090.py`, `test_options_flow_contract.py`",
+                      "Live: playing/paused protection plus one controlled remove/restore cycle",
+                  )
+              if any(token in text for token in ("cleanup", "server history", "server-history", "device history")):
+                  return (
+                      "`options_cleanup.py`, `options_ha_cleanup.py`, `maintenance_*`, `cleanup.py`",
+                      "`test_cleanup.py`, `test_maintenance_runtime.py`, `test_registry_results.py`, `test_options_flow_contract.py`",
+                      "Live: separate server-history and HA-player actions",
+                  )
+              if any(token in text for token in ("translation", "german", "english", "readme", "copy", "documentation")):
+                  return (
+                      "`strings.json`, `translations/de.json`, `translations/en.json`, `README.md`",
+                      "`test_repository_contract.py`, `validate_stable_contract.py`",
+                      "Live/UI: German and English responsive text review",
+                  )
+              if any(token in text for token in ("hacs", "release", "artifact", "checksum", "sha-256", "version")):
+                  return (
+                      "Quality/Test-package/Release workflows and `scripts/build_package.py`",
+                      "`test_package_contract.py`, `test_repository_contract.py`, `validate_stable_contract.py`",
+                      "Private artifact inspection; final release verification after promotion",
+                  )
+              if any(token in text for token in ("diagnostic", "privacy", "secret", "storage", ".storage")):
+                  return (
+                      "`diagnostics.py`, `maintenance_store.py`, `models.py`",
+                      "`test_maintenance_store.py`, `test_repository_contract.py`, secret/privacy scan",
+                      "Live: redacted diagnostics and persistent state across restart",
+                  )
+              return (
+                  "Frozen 0.9 runtime/options implementation",
+                  "`validate_spec_contract.py`, `validate_stable_contract.py`, full pytest suite",
+                  "Live evidence as listed in the original acceptance scenario",
+              )
+
+          items = collect(data)
+          blockers = [item for item in items if is_blocker(item)] or items
+          unique = {}
+          for item in blockers:
+              unique[str(item["id"])] = item
+
+          lines = [
+              "<!-- EMBI-0.9-EVIDENCE-START -->",
+              "## Implementierungs- und automatisierte Nachweise",
+              "",
+              "Diese Tabelle ergänzt die unveränderten Akzeptanzszenarien. `Automatisiert` bedeutet, dass der Nachweis im Repository vorhanden ist und in Quality/Spec Contract ausgeführt wird. Reale Home-Assistant- und visuelle Nachweise bleiben bis zur privaten Abnahme ausdrücklich offen.",
+              "",
+              "| Blocker-ID | Implementierung | Automatisierter Nachweis | Verbleibender Live-Nachweis |",
+              "|---|---|---|---|",
+          ]
+          for requirement_id, item in sorted(unique.items(), key=lambda pair: pair[0]):
+              implementation, automated, live = evidence(item)
+              lines.append(
+                  f"| `{requirement_id}` | {implementation} | {automated} | {live} |"
+              )
+          lines.extend(
+              [
+                  "",
+                  "### CI-Gates für diese Evidenz",
+                  "",
+                  "- Quality Python 3.13 und 3.14",
+                  "- vollständiger Pytest-Lauf",
+                  "- Ruff und Ruff Format",
+                  "- JSON, YAML und Compileall",
+                  "- Specification Contract und Stable Contract",
+                  "- Secret-/Privacy-Scan",
+                  "- HACS Validation und Hassfest",
+                  "- releasegleicher privater Paketbau mit SHA-256 und `BUILD_COMMIT`",
+                  "",
+                  "### Noch nicht als bestanden markiert",
+                  "",
+                  "- Migration im produktiven Home Assistant",
+                  "- 29-Player-Identitäts- und Metadatenbaseline",
+                  "- visuelle Prüfung auf iPhone, iPad und Desktop",
+                  "- kontrollierte Entfernung und Wiederherstellung eines normalen nicht spielenden Players",
+                  "- separate Serverhistorien-Aktion",
+                  "- Scheduler-, Reload-, Neustart- und Rollbacknachweis",
+                  "<!-- EMBI-0.9-EVIDENCE-END -->",
+              ]
+          )
+
+          content = matrix_path.read_text(encoding="utf-8")
+          start = "<!-- EMBI-0.9-EVIDENCE-START -->"
+          end = "<!-- EMBI-0.9-EVIDENCE-END -->"
+          if start in content and end in content:
+              before = content.split(start, 1)[0].rstrip()
+              after = content.split(end, 1)[1].lstrip()
+              content = before + "\n\n" + "\n".join(lines)
+              if after:
+                  content += "\n\n" + after
+          else:
+              content = content.rstrip() + "\n\n" + "\n".join(lines) + "\n"
+          matrix_path.write_text(content, encoding="utf-8")
+          PY
+          rm .github/workflows/embi-09-evidence-update.yml
+      - name: Commit traceability update and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/specs/0.9.0/10-test-and-acceptance-matrix.md .github/workflows/embi-09-evidence-update.yml
+          git commit -m "docs: add 0.9 blocker implementation evidence"
+          git push origin HEAD:feature/embi-0.9.0
