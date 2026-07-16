@@ -65,14 +65,23 @@ def main() -> None:
     require('PLATFORMS = ["media_player"]' in constants, "Only media_player is allowed")
     require("Store(" in (COMPONENT / "maintenance_store.py").read_text(), "Store missing")
     require("OptionsDraft.from_options" in option_flow, "Draft missing")
-    require('menu_options = ["devices_players", "cleanup"]' in option_flow, "Root navigation differs")
-    require('menu_options=["apply_changes", "discard_changes"]' in option_flow, "Review actions differ")
-    require("CONF_CONFIRM_APPLY" not in option_flow, "Normal apply still uses a confirmation toggle")
+    require(
+        'menu_options = ["devices_players", "cleanup"]' in option_flow, "Root navigation differs"
+    )
+    require(
+        'menu_options=["apply_changes", "discard_changes"]' in option_flow, "Review actions differ"
+    )
+    require(
+        "CONF_CONFIRM_APPLY" not in option_flow, "Normal apply still uses a confirmation toggle"
+    )
     require("CONF_CONFIRM_DISCARD" not in option_flow, "Discard still uses a confirmation toggle")
     require("GROUP_SHARED" in context_model, "Shared-device grouping missing")
     require("GROUP_UNASSIGNED" in context_model, "Unassigned grouping missing")
     require("CLIENT_CLASS_UNKNOWN" in context_model, "Unknown classification missing")
-    require("selector_label" in context_model and "entity_id" in context_model, "Friendly entity context missing")
+    require(
+        "selector_label" in context_model and "entity_id" in context_model,
+        "Friendly entity context missing",
+    )
     require("CONF_HIDDEN_EXACT_PLAYERS" in option_model, "Exact hidden rule missing")
     require("CONF_HIDDEN_WHOLE_DEVICES" in option_model, "Whole-device hidden rule missing")
     require("CONF_USER_MASTER_VISIBILITY" in option_model, "User master visibility missing")

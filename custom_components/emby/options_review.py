@@ -57,14 +57,10 @@ def semantic_changes(
     """Return stable, user-facing before/after descriptions for the draft."""
     labels = {
         CONF_GLOBAL_PLAYER_MODE: (
-            "Nur während der Wiedergabe anzeigen"
-            if german
-            else "Only show during playback"
+            "Nur während der Wiedergabe anzeigen" if german else "Only show during playback"
         ),
         CONF_AUTO_SHOW_NEW_PLAYERS: (
-            "Neue Player automatisch anzeigen"
-            if german
-            else "Automatically show new players"
+            "Neue Player automatisch anzeigen" if german else "Automatically show new players"
         ),
         CONF_TECHNICAL_ACCESS_VISIBILITY: (
             "Technische Zugriffe als Player anzeigen"

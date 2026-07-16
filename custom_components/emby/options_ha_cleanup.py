@@ -13,9 +13,7 @@ from .player_actions import async_remove_ha_players
 class HomeAssistantCleanupOptionsMixin:
     """Safe Home Assistant player removal from the combined Cleanup area."""
 
-    async def async_step_manage_ha_players(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_manage_ha_players(self, user_input: dict[str, Any] | None = None):
         if self._dirty:
             return self.async_abort(reason="unsaved_changes")
         errors: dict[str, str] = {}
@@ -32,15 +30,11 @@ class HomeAssistantCleanupOptionsMixin:
             if player.registry_present and player.removable and player.entity_id
         ]
         protected = [
-            player
-            for player in players
-            if player.registry_present and not player.removable
+            player for player in players if player.registry_present and not player.removable
         ]
         fields: dict[Any, Any] = {}
         if removable:
-            fields[
-                vol.Optional(CONF_SELECTED_HA_ENTITY_IDS, default=[])
-            ] = selector.SelectSelector(
+            fields[vol.Optional(CONF_SELECTED_HA_ENTITY_IDS, default=[])] = selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=entity_options(removable),
                     multiple=True,
@@ -49,9 +43,7 @@ class HomeAssistantCleanupOptionsMixin:
             )
 
         if user_input is not None and not errors:
-            selected = [
-                str(value) for value in user_input.get(CONF_SELECTED_HA_ENTITY_IDS, [])
-            ]
+            selected = [str(value) for value in user_input.get(CONF_SELECTED_HA_ENTITY_IDS, [])]
             allowed = {player.entity_id for player in removable}
             if not removable:
                 return await self.async_step_cleanup()
@@ -76,9 +68,7 @@ class HomeAssistantCleanupOptionsMixin:
             },
         )
 
-    async def async_step_confirm_ha_removal(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_confirm_ha_removal(self, user_input: dict[str, Any] | None = None):
         if not self._pending_ha_entity_ids:
             return await self.async_step_manage_ha_players()
         count = len(self._pending_ha_entity_ids)
@@ -105,11 +95,7 @@ class HomeAssistantCleanupOptionsMixin:
         return self.async_show_form(
             step_id="confirm_ha_removal",
             data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_CONFIRM_HA_REMOVAL, default=False
-                    ): selector.BooleanSelector()
-                }
+                {vol.Required(CONF_CONFIRM_HA_REMOVAL, default=False): selector.BooleanSelector()}
             ),
             errors=errors,
             description_placeholders={"count": str(count)},

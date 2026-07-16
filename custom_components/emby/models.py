@@ -151,13 +151,9 @@ class MaintenanceActionSummary:
         return cls(
             action=str(data["action"]) if data.get("action") is not None else None,
             status=str(data.get("status", "not_run")),
-            started_at=(
-                str(data["started_at"]) if data.get("started_at") is not None else None
-            ),
+            started_at=(str(data["started_at"]) if data.get("started_at") is not None else None),
             completed_at=(
-                str(data["completed_at"])
-                if data.get("completed_at") is not None
-                else None
+                str(data["completed_at"]) if data.get("completed_at") is not None else None
             ),
             requested=max(0, int(data.get("requested", 0))),
             succeeded=max(0, int(data.get("succeeded", 0))),
@@ -190,14 +186,10 @@ class MigrationSummary:
             raise ValueError("migration summary must be a mapping")
         return cls(
             status=str(data.get("status", "not_run")),
-            from_schema=(
-                int(data["from_schema"]) if data.get("from_schema") is not None else None
-            ),
+            from_schema=(int(data["from_schema"]) if data.get("from_schema") is not None else None),
             to_schema=int(data.get("to_schema", 2)),
             completed_at=(
-                str(data["completed_at"])
-                if data.get("completed_at") is not None
-                else None
+                str(data["completed_at"]) if data.get("completed_at") is not None else None
             ),
             changed=bool(data.get("changed", False)),
             unresolved_rules=max(0, int(data.get("unresolved_rules", 0))),
@@ -236,9 +228,7 @@ class MaintenanceState:
         return cls(
             report=CleanupRunReport.from_dict(data.get("report", {})),
             initial_run_completed=initial,
-            last_player_action=MaintenanceActionSummary.from_dict(
-                data.get("last_player_action")
-            ),
+            last_player_action=MaintenanceActionSummary.from_dict(data.get("last_player_action")),
             last_restore=MaintenanceActionSummary.from_dict(data.get("last_restore")),
             migration=MigrationSummary.from_dict(data.get("migration")),
         )

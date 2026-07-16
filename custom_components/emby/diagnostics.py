@@ -58,8 +58,7 @@ async def async_get_config_entry_diagnostics(
         {
             player.protected_reason
             for player in players
-            if player.protected_reason
-            and player.protected_reason not in {"playing", "paused"}
+            if player.protected_reason and player.protected_reason not in {"playing", "paused"}
         }
     )
     return {

@@ -91,9 +91,7 @@ class EmbyOptionsFlow(
         _lines, count = await self._review_lines()
         if self._dirty:
             menu_options.append("review_changes")
-        auto_status = bool(
-            self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
-        )
+        auto_status = bool(self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
         return self.async_show_menu(
             step_id="init",
             menu_options=menu_options,
@@ -107,9 +105,7 @@ class EmbyOptionsFlow(
             },
         )
 
-    async def async_step_review_changes(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_review_changes(self, user_input: dict[str, Any] | None = None):
         if not self._dirty:
             return await self.async_step_init()
         lines, count = await self._review_lines()
@@ -122,9 +118,7 @@ class EmbyOptionsFlow(
             },
         )
 
-    async def async_step_discard_changes(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_discard_changes(self, user_input: dict[str, Any] | None = None):
         self._draft.discard()
         self._pending_cleanup_records = {}
         self._pending_ha_entity_ids = []
@@ -133,9 +127,7 @@ class EmbyOptionsFlow(
         self._search_query = ""
         return await self.async_step_init()
 
-    async def async_step_apply_changes(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_apply_changes(self, user_input: dict[str, Any] | None = None):
         if not self._dirty:
             return self.async_abort(reason="no_changes")
         try:
@@ -150,20 +142,15 @@ class EmbyOptionsFlow(
         except Exception:
             return self.async_abort(reason="cannot_connect")
 
-        before_hidden = {
-            str(value) for value in original.get(CONF_HIDDEN_EXACT_PLAYERS, [])
-        }
-        after_hidden = {
-            str(value) for value in updated.get(CONF_HIDDEN_EXACT_PLAYERS, [])
-        }
+        before_hidden = {str(value) for value in original.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
+        after_hidden = {str(value) for value in updated.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
         hide_keys = after_hidden - before_hidden
         restore_keys = before_hidden - after_hidden
 
         protected_keys = {
             player.player_key
             for player in players
-            if player.player_key in hide_keys
-            and player.playback in ACTIVE_PLAYBACK_STATES
+            if player.player_key in hide_keys and player.playback in ACTIVE_PLAYBACK_STATES
         }
         if protected_keys:
             after_hidden -= protected_keys
@@ -207,9 +194,7 @@ class EmbyOptionsFlow(
             failed += len(result.failed)
             performed_reload = True
         if restore_keys:
-            result = await async_restore_players(
-                self.hass, self._entry, sorted(restore_keys)
-            )
+            result = await async_restore_players(self.hass, self._entry, sorted(restore_keys))
             restored += len(result.succeeded)
             failed += len(result.failed)
             performed_reload = True

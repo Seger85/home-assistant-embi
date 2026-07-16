@@ -54,9 +54,7 @@ def group_options(players: list[PlayerContext], *, german: bool) -> list[dict[st
         )
     labels = {
         GROUP_SHARED: "Gemeinsam genutzt" if german else "Shared devices",
-        GROUP_UNASSIGNED: (
-            "Ohne Benutzerzuordnung" if german else "Without user assignment"
-        ),
+        GROUP_UNASSIGNED: ("Ohne Benutzerzuordnung" if german else "Without user assignment"),
         GROUP_TECHNICAL: "Technische Zugriffe" if german else "Technical access",
         GROUP_UNKNOWN: "Unklare Clients" if german else "Unknown clients",
     }
@@ -72,10 +70,7 @@ def group_options(players: list[PlayerContext], *, german: bool) -> list[dict[st
 
 
 def player_options(players: list[PlayerContext]) -> list[dict[str, str]]:
-    return [
-        {"value": player.player_key, "label": player.selector_label}
-        for player in players
-    ]
+    return [{"value": player.player_key, "label": player.selector_label} for player in players]
 
 
 def entity_options(players: list[PlayerContext]) -> list[dict[str, str]]:

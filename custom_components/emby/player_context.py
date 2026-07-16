@@ -192,8 +192,7 @@ def classify_client(
     if any(record.api_only is True for record in items):
         return CLIENT_CLASS_TECHNICAL, "explicit_api_only"
     if any(
-        record.client_type
-        and record.client_type.strip().casefold() in _EXPLICIT_TECHNICAL_TYPES
+        record.client_type and record.client_type.strip().casefold() in _EXPLICIT_TECHNICAL_TYPES
         for record in items
     ):
         return CLIENT_CLASS_TECHNICAL, "explicit_client_type"
@@ -302,9 +301,7 @@ def build_player_catalog(
         original_name = _entry_value(entity, "original_name") if entity is not None else None
         ha_name = str(custom_name or original_name or device_name or app_name)
         registry_present = entity is not None
-        registry_enabled = bool(
-            entity is not None and _entry_value(entity, "disabled_by") is None
-        )
+        registry_enabled = bool(entity is not None and _entry_value(entity, "disabled_by") is None)
         registry_hidden = bool(entity is not None and _entry_value(entity, "hidden_by") is not None)
         emby_present = bool(player_records)
         playback = _playback_state(
@@ -398,14 +395,10 @@ def catalog_stats(
         protected_playback=sum(player.playback in ACTIVE_PLAYBACK_STATES for player in items),
         removable_from_ha=sum(player.removable for player in items),
         known_users=len(users),
-        technical_accesses=sum(
-            player.client_class == CLIENT_CLASS_TECHNICAL for player in items
-        ),
+        technical_accesses=sum(player.client_class == CLIENT_CLASS_TECHNICAL for player in items),
         unknown_clients=sum(player.client_class == CLIENT_CLASS_UNKNOWN for player in items),
         disabled_valid=sum(
-            player.registry_present
-            and not player.registry_enabled
-            and player.emby_present
+            player.registry_present and not player.registry_enabled and player.emby_present
             for player in items
         ),
         orphans=sum(player.orphan for player in items),

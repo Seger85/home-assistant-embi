@@ -81,11 +81,7 @@ def _user_names(data: dict[str, Any]) -> tuple[str, ...]:
         if not isinstance(raw, list):
             continue
         for item in raw:
-            value = (
-                item.get("Name") or item.get("UserName")
-                if isinstance(item, dict)
-                else item
-            )
+            value = item.get("Name") or item.get("UserName") if isinstance(item, dict) else item
             if value and str(value).strip():
                 names.add(str(value).strip())
     return tuple(sorted(names, key=str.casefold))

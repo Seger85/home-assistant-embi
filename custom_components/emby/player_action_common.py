@@ -77,9 +77,7 @@ async def fresh_catalog(hass: HomeAssistant, entry: ConfigEntry) -> list[PlayerC
     )
 
 
-async def update_options_and_reload(
-    hass: HomeAssistant, entry: ConfigEntry, options: dict
-) -> bool:
+async def update_options_and_reload(hass: HomeAssistant, entry: ConfigEntry, options: dict) -> bool:
     runtime: EmbiRuntimeData = entry.runtime_data
     runtime.suppress_update_listener = True
     try:
@@ -111,13 +109,7 @@ async def record_action(
         protected=len(result.protected),
         failed=len(result.failed),
         reason_codes=tuple(
-            sorted(
-                {
-                    item.reason
-                    for item in (*result.protected, *result.failed)
-                    if item.reason
-                }
-            )
+            sorted({item.reason for item in (*result.protected, *result.failed) if item.reason})
         ),
     )
     if action == "restore":

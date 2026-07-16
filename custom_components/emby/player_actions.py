@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -117,13 +118,7 @@ async def _record_action(
         protected=len(result.protected),
         failed=len(result.failed),
         reason_codes=tuple(
-            sorted(
-                {
-                    item.reason
-                    for item in (*result.protected, *result.failed)
-                    if item.reason
-                }
-            )
+            sorted({item.reason for item in (*result.protected, *result.failed) if item.reason})
         ),
     )
     if action == "restore":
@@ -160,9 +155,7 @@ async def async_remove_ha_players(
                     for value in requested_ids
                 ),
             )
-            await _record_action(
-                hass, entry, action="remove", started_at=started_at, result=result
-            )
+            await _record_action(hass, entry, action="remove", started_at=started_at, result=result)
             return result
 
         eligible: list[PlayerContext] = []
@@ -250,10 +243,8 @@ async def async_remove_ha_players(
                         registry.async_remove(entity.entity_id)
                     removed_keys.add(context.player_key)
 
-                try:
+                with contextlib.suppress(Exception):
                     await hass.config_entries.async_reload(entry.entry_id)
-                except Exception:
-                    pass
                 registry = er.async_get(hass)
                 for context in eligible:
                     if context.player_key not in removed_keys:
@@ -265,9 +256,7 @@ async def async_remove_ha_players(
                     still_loaded = any(
                         state is not None
                         for state in (
-                            hass.states.get(context.entity_id)
-                            if context.entity_id
-                            else None,
+                            hass.states.get(context.entity_id) if context.entity_id else None,
                         )
                     )
                     if still_registered or still_loaded:

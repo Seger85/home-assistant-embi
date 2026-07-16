@@ -69,9 +69,7 @@ class CleanupOptionsMixin:
 
     async def async_step_cleanup(self, user_input: dict[str, Any] | None = None):
         manual_days = int(
-            self._draft_options.get(
-                CONF_SERVER_CLEANUP_AGE_DAYS, DEFAULT_SERVER_CLEANUP_AGE_DAYS
-            )
+            self._draft_options.get(CONF_SERVER_CLEANUP_AGE_DAYS, DEFAULT_SERVER_CLEANUP_AGE_DAYS)
         )
         automatic_days = int(
             self._draft_options.get(
@@ -88,13 +86,9 @@ class CleanupOptionsMixin:
         fields: dict[Any, Any] = {
             vol.Required(
                 CONF_SERVER_AUTO_CLEANUP_ENABLED,
-                default=bool(
-                    self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
-                ),
+                default=bool(self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)),
             ): selector.BooleanSelector(),
-            vol.Required(
-                _AUTO_PRESET, default=age_preset_for_days(automatic_days)
-            ): _age_preset(),
+            vol.Required(_AUTO_PRESET, default=age_preset_for_days(automatic_days)): _age_preset(),
             vol.Optional(_AUTO_CUSTOM, default=automatic_days): _number(),
             vol.Required(
                 CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
@@ -105,9 +99,7 @@ class CleanupOptionsMixin:
                     )
                 ),
             ): selector.BooleanSelector(),
-            vol.Required(
-                _MANUAL_PRESET, default=age_preset_for_days(manual_days)
-            ): _age_preset(),
+            vol.Required(_MANUAL_PRESET, default=age_preset_for_days(manual_days)): _age_preset(),
             vol.Optional(_MANUAL_CUSTOM, default=manual_days): _number(),
         }
         if not self._dirty:
@@ -165,23 +157,17 @@ class CleanupOptionsMixin:
                 "protected": str(stats.protected_playback if stats else 0),
                 "last_status": report.status,
                 "last_deleted": str(report.server_deleted),
-                "last_protected": str(
-                    report.skipped_active + report.registry_entities_protected
-                ),
+                "last_protected": str(report.skipped_active + report.registry_entities_protected),
                 "last_errors": str(report.server_failed),
                 "next_run": report.next_run_at or "-",
             },
         )
 
-    async def async_step_server_history_check(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_server_history_check(self, user_input: dict[str, Any] | None = None):
         if self._dirty:
             return self.async_abort(reason="unsaved_changes")
         age_days = int(
-            self._entry.options.get(
-                CONF_SERVER_CLEANUP_AGE_DAYS, DEFAULT_SERVER_CLEANUP_AGE_DAYS
-            )
+            self._entry.options.get(CONF_SERVER_CLEANUP_AGE_DAYS, DEFAULT_SERVER_CLEANUP_AGE_DAYS)
         )
         errors: dict[str, str] = {}
         try:
@@ -201,9 +187,7 @@ class CleanupOptionsMixin:
         if user_input is not None and not errors:
             if not candidates:
                 return await self.async_step_cleanup()
-            selected = [
-                str(value) for value in user_input.get(CONF_DELETE_DEVICE_RECORD_IDS, [])
-            ]
+            selected = [str(value) for value in user_input.get(CONF_DELETE_DEVICE_RECORD_IDS, [])]
             if not selected:
                 errors["base"] = "selection_required"
             elif any(record_id not in candidates for record_id in selected):
@@ -216,16 +200,18 @@ class CleanupOptionsMixin:
 
         fields: dict[Any, Any] = {}
         if candidates:
-            fields[vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[])] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": key, "label": label}
-                        for key, label in server_device_selector_options(
-                            plan.candidates
-                        ).items()
-                    ],
-                    multiple=True,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+            fields[vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[])] = (
+                selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": key, "label": label}
+                            for key, label in server_device_selector_options(
+                                plan.candidates
+                            ).items()
+                        ],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
                 )
             )
         return self.async_show_form(
@@ -242,9 +228,7 @@ class CleanupOptionsMixin:
             },
         )
 
-    async def async_step_confirm_server_deletion(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_confirm_server_deletion(self, user_input: dict[str, Any] | None = None):
         if not self._pending_cleanup_records:
             return await self.async_step_server_history_check()
         errors: dict[str, str] = {}
