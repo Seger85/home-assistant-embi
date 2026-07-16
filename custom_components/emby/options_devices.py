@@ -60,8 +60,7 @@ class DevicesOptionsMixin:
 
         groups = group_options(players, german=self._is_de())
         unresolved = [
-            str(value)
-            for value in self._draft_options.get(CONF_UNRESOLVED_LEGACY_RULES, [])
+            str(value) for value in self._draft_options.get(CONF_UNRESOLVED_LEGACY_RULES, [])
         ]
         if unresolved:
             groups.append(
@@ -77,8 +76,7 @@ class DevicesOptionsMixin:
         fields: dict[Any, Any] = {
             vol.Required(
                 CONF_ONLY_DURING_PLAYBACK,
-                default=self._draft_options.get(CONF_GLOBAL_PLAYER_MODE)
-                == PLAYER_MODE_ACTIVE_ONLY,
+                default=self._draft_options.get(CONF_GLOBAL_PLAYER_MODE) == PLAYER_MODE_ACTIVE_ONLY,
             ): selector.BooleanSelector(),
             vol.Required(
                 CONF_AUTO_SHOW_NEW_PLAYERS,
@@ -86,9 +84,7 @@ class DevicesOptionsMixin:
             ): selector.BooleanSelector(),
             vol.Required(
                 CONF_TECHNICAL_ACCESS_VISIBILITY,
-                default=bool(
-                    self._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)
-                ),
+                default=bool(self._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)),
             ): selector.BooleanSelector(),
             vol.Optional(CONF_SEARCH_QUERY, default=self._search_query): selector.TextSelector(
                 selector.TextSelectorConfig()
@@ -149,9 +145,7 @@ class DevicesOptionsMixin:
             vol.Optional(
                 CONF_VISIBLE_PLAYER_KEYS,
                 default=[
-                    player.player_key
-                    for player in group_players
-                    if player.player_key not in hidden
+                    player.player_key for player in group_players if player.player_key not in hidden
                 ],
             ): _multi(player_options(group_players))
         }
@@ -163,9 +157,7 @@ class DevicesOptionsMixin:
                 vol.Required(
                     "show_user_players",
                     default=(
-                        visibility.get(user_name, True)
-                        if isinstance(visibility, dict)
-                        else True
+                        visibility.get(user_name, True) if isinstance(visibility, dict) else True
                     ),
                 )
             ] = selector.BooleanSelector()
@@ -180,12 +172,9 @@ class DevicesOptionsMixin:
             )
 
         if user_input is not None and not errors:
-            selected = {
-                str(value) for value in user_input.get(CONF_VISIBLE_PLAYER_KEYS, [])
-            }
+            selected = {str(value) for value in user_input.get(CONF_VISIBLE_PLAYER_KEYS, [])}
             if any(
-                player.playback in ACTIVE_PLAYBACK_STATES
-                and player.player_key not in selected
+                player.playback in ACTIVE_PLAYBACK_STATES and player.player_key not in selected
                 for player in group_players
             ):
                 errors["base"] = "playback_protected"
@@ -195,9 +184,7 @@ class DevicesOptionsMixin:
                 hidden.update(group_keys - selected)
                 self._draft_options[CONF_HIDDEN_EXACT_PLAYERS] = sorted(hidden)
                 if user_name is not None:
-                    visibility = dict(
-                        self._draft_options.get(CONF_USER_MASTER_VISIBILITY, {})
-                    )
+                    visibility = dict(self._draft_options.get(CONF_USER_MASTER_VISIBILITY, {}))
                     visibility[user_name] = bool(user_input.get("show_user_players", True))
                     self._draft_options[CONF_USER_MASTER_VISIBILITY] = visibility
                 self._pending_enable_entity_ids.update(
@@ -212,17 +199,14 @@ class DevicesOptionsMixin:
             errors=errors,
             description_placeholders={
                 "group": self._selected_group,
-                "player_rows": "\n\n".join(
-                    player.selector_label for player in group_players
-                )
+                "player_rows": "\n\n".join(player.selector_label for player in group_players)
                 or "-",
             },
         )
 
     async def async_step_older_rules(self, user_input: dict[str, Any] | None = None):
         unresolved = [
-            str(value)
-            for value in self._draft_options.get(CONF_UNRESOLVED_LEGACY_RULES, [])
+            str(value) for value in self._draft_options.get(CONF_UNRESOLVED_LEGACY_RULES, [])
         ]
         options = [
             {"value": value, "label": f"Legacy rule {index}"}

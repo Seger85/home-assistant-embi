@@ -136,6 +136,16 @@
           "discard_changes": "Discard changes",
           "apply_changes": "Apply changes"
         }
+      },
+      "older_rules": {
+        "title": "Older rules",
+        "description": "{count} older rules could not be assigned safely during migration. They remain preserved and inactive until you review them. Deselect only rules you intentionally want to discard.",
+        "data": {
+          "kept_rules": "Preserved older rules"
+        },
+        "data_description": {
+          "kept_rules": "These labels deliberately avoid guessing a device or app identity."
+        }
       }
     },
     "error": {

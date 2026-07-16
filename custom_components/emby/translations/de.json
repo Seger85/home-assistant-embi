@@ -136,6 +136,16 @@
           "discard_changes": "Änderungen verwerfen",
           "apply_changes": "Änderungen übernehmen"
         }
+      },
+      "older_rules": {
+        "title": "Ältere Regeln",
+        "description": "{count} ältere Regeln konnten während der Migration nicht sicher zugeordnet werden. Sie bleiben erhalten und inaktiv, bis du sie prüfst. Entferne nur Regeln, die du bewusst verwerfen möchtest.",
+        "data": {
+          "kept_rules": "Beibehaltene ältere Regeln"
+        },
+        "data_description": {
+          "kept_rules": "Diese Bezeichnungen ordnen absichtlich kein Gerät und keine App auf Verdacht zu."
+        }
       }
     },
     "error": {
