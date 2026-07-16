@@ -70,7 +70,10 @@ def test_main_090_documents_share_the_same_product_contract() -> None:
         "docs/architecture.md": ("PlayerContext", "Gemeinsam genutzt", "Store"),
         "docs/configuration.md": ("Änderungen prüfen", "364", "disabled"),
         "docs/server-cleanup.md": ("playing", "paused", "Wiederherstellung"),
-        "docs/security.md": ("keine direkten Änderungen an `.storage`", "Unknown"),
+        "docs/security.md": (
+            "keine direkten Änderungen an `.storage`",
+            "Unklare Clients",
+        ),
         "docs/troubleshooting.md": ("Unklare Clients", "v0.3.0"),
         "docs/development.md": ("feature/embi-0.9.0", "validate_spec_contract.py"),
         "docs/ui-qa.md": ("iPhone", "iPad", "Desktop"),
