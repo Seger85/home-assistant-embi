@@ -28,14 +28,16 @@ def test_every_frozen_requirement_has_traceable_acceptance_evidence() -> None:
     requirements = yaml.safe_load(
         (SPEC_DIR / "requirements.yaml").read_text(encoding="utf-8")
     )
-    matrix = (SPEC_DIR / "10-test-and-acceptance-matrix.md").read_text(
-        encoding="utf-8"
-    )
+    matrix = (SPEC_DIR / "10-test-and-acceptance-matrix.md").read_text(encoding="utf-8")
     requirement_ids = _collect_requirement_ids(requirements)
 
     assert requirement_ids
     assert "EMBI-0.9-EVIDENCE-START" in matrix
-    missing = sorted(requirement_id for requirement_id in requirement_ids if requirement_id not in matrix)
+    missing = sorted(
+        requirement_id
+        for requirement_id in requirement_ids
+        if requirement_id not in matrix
+    )
     assert missing == []
     assert "Noch nicht als bestanden markiert" in matrix
 
@@ -118,10 +120,10 @@ def test_090_does_not_add_reserved_entity_platforms_or_direct_storage_edits() ->
         for path in COMPONENT.rglob("*")
         if path.is_file() and path.suffix in {".py", ".json"}
     )
+    direct_storage_path = "/config/" + ".storage"
 
     assert 'PLATFORMS = ["media_player"]' in constants
     assert "sensor.py" not in {path.name for path in COMPONENT.iterdir()}
     assert "button.py" not in {path.name for path in COMPONENT.iterdir()}
     assert "update.py" not in {path.name for path in COMPONENT.iterdir()}
-    assert "open('/config/.storage" not in component_text
-    assert 'open("/config/.storage' not in component_text
+    assert direct_storage_path not in component_text
