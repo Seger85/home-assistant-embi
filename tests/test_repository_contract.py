@@ -12,7 +12,7 @@ def test_manifest_points_to_canonical_repository() -> None:
 
     assert manifest["domain"] == "emby"
     assert manifest["name"] == "Emby Integration - EMBi"
-    assert manifest["version"] == "0.3.0"
+    assert manifest["version"] == "0.9.0"
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["documentation"].endswith("Seger85/home-assistant-embi")
     assert manifest["issue_tracker"].endswith("Seger85/home-assistant-embi/issues")
@@ -37,15 +37,15 @@ def test_english_strings_match_translation_source() -> None:
 
 def test_cleanup_uses_only_main_connection_key_and_diagnostics_redact_it() -> None:
     diagnostics = (COMPONENT / "diagnostics.py").read_text()
-    maintenance_flow = (COMPONENT / "maintenance_flow.py").read_text()
+    cleanup_flow = (COMPONENT / "options_cleanup.py").read_text()
     options_flow = (COMPONENT / "options_flow.py").read_text()
     runtime_setup = (COMPONENT / "entry_setup.py").read_text()
 
     assert "CONF_API_KEY" in diagnostics
     assert "async_redact_data(dict(entry.data), {CONF_API_KEY})" in diagnostics
     assert "CONF_SERVER_CLEANUP_API_KEY" not in diagnostics
-    assert "server_cleanup_api_key" not in maintenance_flow
-    assert "self._devices()" in maintenance_flow
+    assert "server_cleanup_api_key" not in cleanup_flow
+    assert "await self._devices()" in cleanup_flow
     assert "return await self._runtime.api_client.async_get_devices()" in options_flow
     assert "api_key=entry.data[CONF_API_KEY]" in runtime_setup
 
@@ -63,19 +63,23 @@ def test_media_player_unique_id_contract_is_unchanged() -> None:
     assert "self._attr_unique_id = device_id" in media_player
 
 
-def test_diagnostics_expose_only_aggregate_maintenance_data() -> None:
+def test_diagnostics_redact_identity_options_and_expose_aggregate_evidence() -> None:
     diagnostics = (COMPONENT / "diagnostics.py").read_text()
     models = (COMPONENT / "models.py").read_text()
     api = (COMPONENT / "api.py").read_text()
 
     for identity_option in (
         "CONF_ALLOWED_DEVICE_IDS",
-        "CONF_IGNORED_PLAYER_KEYS",
-        "CONF_IGNORED_REPORTED_DEVICE_IDS",
-        "CONF_UNRESOLVED_IGNORED_IDS",
+        "CONF_HIDDEN_EXACT_PLAYERS",
+        "CONF_HIDDEN_WHOLE_DEVICES",
+        "CONF_UNRESOLVED_LEGACY_RULES",
+        "CONF_USER_MASTER_VISIBILITY",
     ):
         assert identity_option in diagnostics
-    assert '"last_cleanup_run": runtime.maintenance_state.report.as_dict()' in diagnostics
+    assert '"last_run": runtime.maintenance_state.report.as_dict()' in diagnostics
+    assert '"last_player_action"' in diagnostics
+    assert '"last_restore"' in diagnostics
+    assert '"migration"' in diagnostics
     for forbidden_report_field in (
         "record_id",
         "reported_device_id",
@@ -85,9 +89,9 @@ def test_diagnostics_expose_only_aggregate_maintenance_data() -> None:
     ):
         assert (
             forbidden_report_field
-            not in models.split("class CleanupRunReport", 1)[1].split("class MaintenanceState", 1)[
-                0
-            ]
+            not in models.split("class CleanupRunReport", 1)[1].split(
+                "class MaintenanceActionSummary", 1
+            )[0]
         )
     assert "def as_diagnostics" not in api
 
@@ -142,3 +146,4 @@ def test_test_package_is_bound_to_exact_source_commit() -> None:
     assert '--commit "${BUILD_COMMIT_SHA}"' in workflow
     assert 'test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"' in workflow
     assert "embi-test-${{ env.BUILD_COMMIT_SHA }}" in workflow
+    assert "--expected-version 0.9.0" in workflow
