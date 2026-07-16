@@ -4,9 +4,9 @@
 
 ### `main`
 
-- öffentlich veröffentlichte Linie
-- Änderungen nur über kontrollierten Promotion-PR aus `develop`
-- kein direkter Feature-, Fix- oder Dependabot-Merge
+- veröffentlichte Linie
+- bleibt bis zur finalen 0.9.0-Promotion auf Stable `v0.3.0`
+- Änderungen nur über einen kontrollierten Promotion-PR aus `develop`
 - kein Force-Push und keine History-Umschreibung
 - Stable-Tag nur auf einem Commit, der in `main` enthalten ist
 
@@ -14,34 +14,33 @@
 
 - integrierte Entwicklungs- und Pre-Live-Linie
 - Ziel normaler Feature-, Fix-, Dokumentations- und Dependabot-PRs
-- Quelle des unveröffentlichten Testartefakts
-- Prerelease-Tag nur auf einem Commit, der in `develop` enthalten ist
+- Ziel von PR #29 nach erfolgreicher privater Live-Abnahme
 
-### Arbeitsbranches
+### `feature/embi-0.9.0`
 
-- von `develop` erstellen
-- bestehende Implementierungsbranches weiterverwenden
-- keine konkurrierende Stable-Implementierung
+- einziger Implementierungsbranch für den Frozen Contract 0.9.0
+- enthält Implementierung, Tests, Dokumentation und Abnahmefixes
+- kein konkurrierender 0.9-Implementierungsbranch
 - kein Rebase oder Force-Push zur kosmetischen Historienbereinigung
 
-## Pull-Request-Fluss 0.3.0
+## Pull-Request-Fluss 0.9.0
 
 ```text
-feature/stable-0.3.0
-→ Draft-PR #18 nach develop
-→ vollständige CI auf exaktem Head
-→ Ready for review
-→ Squash-Merge nach develop
-→ vollständige CI auf Develop-Merge-Commit
-→ unveröffentlichtes Test package auf exakt diesem Commit
-→ Draft-Promotion-PR develop nach main
-→ Home-Assistant-Liveabnahme
-→ ausdrückliche Gerry-Freigabe
+feature/embi-0.9.0
+→ Draft-PR #29 nach develop
+→ vollständige CI auf einem exakten finalen Feature-Commit
+→ privates embi-test-<vollständiger SHA>-Artefakt
+→ private Home-Assistant- und visuelle Abnahme
+→ Abnahmefixes weiterhin auf demselben Branch und in PR #29
+→ vollständige CI erneut grün
+→ PR #29 nach develop mergen
+→ Promotion-PR develop nach main
 → Promotion-Merge nach main
-→ Tag und Stable Release
+→ Tag v0.9.0
+→ regulärer Stable Release als latest
 ```
 
-Der Draft-Promotion-PR ist eine technische Sperre. Grüne CI allein erlaubt keinen Merge nach `main` und keine Veröffentlichung.
+PR #29 bleibt bis zur dokumentierten privaten Abnahme Draft, offen und ungemergt. Grüne CI und ein privates Testartefakt allein erlauben keinen Merge.
 
 ## Pflichtchecks
 
@@ -49,77 +48,51 @@ Der Draft-Promotion-PR ist eine technische Sperre. Grüne CI allein erlaubt kein
 - `Quality (Python 3.14)`
 - `HACS validation`
 - `Hassfest`
+- `EMBi specification contract`
 - `Test package`
 
-Quality umfasst JSON, YAML, Compileall, Ruff, Ruff-Format, vollständigen Pytest-Lauf, Stable-Vertrag, Übersetzungssynchronität, Secret-/Privacy-Scan, releasegleichen Paketbau, SHA-256 und `BUILD_COMMIT`.
+Quality umfasst JSON, YAML, Compileall, Ruff, Ruff Format, vollständigen Pytest-Lauf, Specification Contract, Stable Contract, Secret-/Privacy-Scan, releasegleichen Paketbau, SHA-256 und `BUILD_COMMIT`. Kein Pflichtcheck darf umgangen oder abgeschwächt werden.
 
-## Testpaket
+## Privates Testpaket
 
-Der Workflow `Test package` erzeugt ausschließlich ein unveröffentlichtes Actions-Artefakt:
+Der Workflow `Test package` erzeugt ausschließlich:
 
 - `embi.zip`
 - `embi.zip.sha256`
 - `BUILD_COMMIT`
 
-Das Artefakt erzeugt keinen Tag, kein Release und kein `latest`. Installationsdateien liegen direkt im ZIP-Root. Tests, Dokumentation, `.github` und Repositorymetadaten sind ausgeschlossen.
+Der Name lautet `embi-test-<vollständiger Feature-Commit-SHA>`. Das Artefakt erzeugt keinen Tag, kein Release und kein `latest`. Das Installations-ZIP enthält nur Dateien aus `custom_components/emby` direkt im ZIP-Root.
 
 ## Releasevertrag
 
-Der Release-Workflow verwendet denselben Paketbuilder wie Quality und Test package.
+Für 0.9.0 gelten:
 
-Zulässige Versionen:
+- Tag, Manifest und interne Version exakt `0.9.0`
+- Stable-Commit muss in `main` enthalten sein
+- regulärer Release: nicht Draft, nicht Prerelease und `latest`
+- Assets ausschließlich `embi.zip` und `embi.zip.sha256`
+- veröffentlichte Assets erneut herunterladen und prüfen
 
-```text
-vMAJOR.MINOR.PATCH
-vMAJOR.MINOR.PATCH-PRERELEASE
-```
-
-Prüfungen:
-
-- Tag und Manifestversion exakt gleich
-- interne Version exakt gleich
-- Stable-Commit in `main`
-- Prerelease-Commit in `develop`
-- vollständige Tests, HACS und Hassfest
-- SHA-256 und `BUILD_COMMIT`
-- Assets nach Veröffentlichung erneut herunterladen und prüfen
-- RC ist `prerelease: true` und niemals `latest`
-- Stable ist `prerelease: false` und `latest`
-
-Ein `release/v...`-Branch darf nur nach ausdrücklicher Releasefreigabe erzeugt werden. Für 0.3.0 ist er in der Pre-Live-Runde ausdrücklich gesperrt.
+Vor der erfolgreichen privaten Abnahme sind Tag, Draft Release, Prerelease, öffentlicher RC und Stable Release gesperrt.
 
 ## HACS
 
-`hacs.json` verlangt:
+`hacs.json` verlangt `zip_release: true`, `filename: embi.zip` und `hide_default_branch: true`. Ein Feature-Commit oder privates Testartefakt ist keine HACS-Version.
 
-```json
-{
-  "zip_release": true,
-  "filename": "embi.zip"
-}
-```
+## Dependabot
 
-Ein Commit oder Testartefakt ist keine HACS-Version. HACS Stable wird erst durch den veröffentlichten Stable Release verfügbar.
-
-## Tags und Releases
-
-- vorhandene Tags und Releases sind unveränderlich
-- kein Verschieben, Ersetzen oder Neuerstellen bestehender rc-Tags
-- kein öffentliches rc4 im Stable-Abschluss
-- Stable `v0.3.0` erst nach Live-Abnahme
+Die PRs #23, #24 und #25 werden nicht in PR #29 gemischt, sofern keine Abhängigkeit technisch zwingend erforderlich ist. Eine Ausnahme benötigt dokumentierte Kompatibilitätsprüfung und Begründung.
 
 ## Rulesets
 
-Für `main` und `develop`:
+Für `main` und `develop` gilt das aktive Ruleset **Protect main and develop**:
 
 - Pull Requests erzwingen
 - Force-Push blockieren
 - Branch-Löschung blockieren
-- offene Review-Konversationen auflösen
 - Pflichtchecks erzwingen
 - kein Auto-Merge
-- Administrator-Bypass soweit möglich deaktivieren
 
 ## Historische Integrität
 
-Bereits öffentliche sichere Historie wird nicht umgeschrieben. Bei einem versehentlichen, aber nicht geheimnisbehafteten Merge werden Zustand und Folgen dokumentiert und anschließend regulär über Pull Requests korrigiert. Secrets oder private Diagnosedaten erfordern dagegen sofortige Sicherheitsmaßnahmen und gegebenenfalls Credential-Rotation.
+Veröffentlichte Historie wird nicht umgeschrieben. Bestehende Tags und Releases bleiben unverändert. Implementierungsfehler werden durch nachvollziehbare Folgecommits auf dem bestehenden Branch korrigiert.
