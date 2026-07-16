@@ -4,7 +4,7 @@ from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_API_KEY
+from homeassistant.const import CONF_API_KEY, CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -64,10 +64,10 @@ async def async_get_config_entry_diagnostics(
     return {
         "integration": {"name": NAME, "version": VERSION},
         "config_entry": {
-            "title": entry.title,
+            "title": "<redacted>",
             "version": entry.version,
             "minor_version": entry.minor_version,
-            "data": async_redact_data(dict(entry.data), {CONF_API_KEY}),
+            "data": async_redact_data(dict(entry.data), {CONF_API_KEY, CONF_HOST}),
             "options": async_redact_data(dict(entry.options), _OPTION_IDENTITIES),
         },
         "migration": runtime.maintenance_state.migration.as_dict(),

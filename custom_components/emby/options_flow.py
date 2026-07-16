@@ -7,7 +7,14 @@ from homeassistant import config_entries
 from homeassistant.helpers import entity_registry as er
 
 from .api import EmbyApiError, EmbyDeviceRecord
-from .const import CONF_HIDDEN_EXACT_PLAYERS, CONF_SERVER_AUTO_CLEANUP_ENABLED
+from .const import (
+    CONF_ALLOWED_DEVICE_IDS,
+    CONF_AUTO_SHOW_NEW_PLAYERS,
+    CONF_HIDDEN_EXACT_PLAYERS,
+    CONF_SERVER_AUTO_CLEANUP_ENABLED,
+    CONF_TECHNICAL_ACCESS_VISIBILITY,
+    CONF_USER_MASTER_VISIBILITY,
+)
 from .models import EmbiRuntimeData
 from .options_cleanup import CleanupOptionsMixin
 from .options_devices import DevicesOptionsMixin
@@ -17,7 +24,7 @@ from .options_model import migrate_options_090
 from .options_review import semantic_changes
 from .options_runtime import fresh_catalog, player_label_map
 from .player_action_common import owned_exact
-from .player_context import ACTIVE_PLAYBACK_STATES
+from .player_context import ACTIVE_PLAYBACK_STATES, CLIENT_CLASS_TECHNICAL
 
 
 class EmbyOptionsFlow(
@@ -88,7 +95,9 @@ class EmbyOptionsFlow(
         _lines, count = await self._review_lines()
         if self._dirty:
             menu_options.append("review_changes")
-        auto_status = bool(self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
+        auto_status = bool(
+            self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
+        )
         return self.async_show_menu(
             step_id="init",
             menu_options=menu_options,
@@ -115,7 +124,9 @@ class EmbyOptionsFlow(
             },
         )
 
-    async def async_step_discard_changes(self, user_input: dict[str, Any] | None = None):
+    async def async_step_discard_changes(
+        self, user_input: dict[str, Any] | None = None
+    ):
         self._draft.discard()
         self._pending_cleanup_records = {}
         self._pending_ha_entity_ids = []
@@ -139,15 +150,61 @@ class EmbyOptionsFlow(
         except Exception:
             return self.async_abort(reason="cannot_connect")
 
-        before_hidden = {str(value) for value in original.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
-        after_hidden = {str(value) for value in updated.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
+        before_hidden = {
+            str(value) for value in original.get(CONF_HIDDEN_EXACT_PLAYERS, [])
+        }
+        after_hidden = {
+            str(value) for value in updated.get(CONF_HIDDEN_EXACT_PLAYERS, [])
+        }
         hide_keys = after_hidden - before_hidden
         restore_keys = before_hidden - after_hidden
         protected_keys = {
             player.player_key
             for player in players
-            if player.player_key in hide_keys and player.playback in ACTIVE_PLAYBACK_STATES
+            if player.player_key in hide_keys
+            and player.playback in ACTIVE_PLAYBACK_STATES
         }
+
+        original_technical = bool(original.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
+        updated_technical = bool(updated.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
+        protected_technical = {
+            player.player_key
+            for player in players
+            if player.client_class == CLIENT_CLASS_TECHNICAL
+            and player.playback in ACTIVE_PLAYBACK_STATES
+        }
+        if original_technical and not updated_technical and protected_technical:
+            updated[CONF_TECHNICAL_ACCESS_VISIBILITY] = True
+            protected_keys.update(protected_technical)
+
+        original_user_visibility = original.get(CONF_USER_MASTER_VISIBILITY, {})
+        if not isinstance(original_user_visibility, dict):
+            original_user_visibility = {}
+        user_visibility = updated.get(CONF_USER_MASTER_VISIBILITY, {})
+        if not isinstance(user_visibility, dict):
+            user_visibility = {}
+        user_visibility = dict(user_visibility)
+        for player in players:
+            if len(player.users) != 1 or player.playback not in ACTIVE_PLAYBACK_STATES:
+                continue
+            user_name = player.users[0]
+            if (
+                original_user_visibility.get(user_name, True)
+                and user_visibility.get(user_name, True) is False
+            ):
+                user_visibility[player.users[0]] = True
+                protected_keys.add(player.player_key)
+        updated[CONF_USER_MASTER_VISIBILITY] = user_visibility
+
+        if bool(original.get(CONF_AUTO_SHOW_NEW_PLAYERS, True)) and not bool(
+            updated.get(CONF_AUTO_SHOW_NEW_PLAYERS, True)
+        ):
+            allowed = {str(value) for value in updated.get(CONF_ALLOWED_DEVICE_IDS, [])}
+            allowed.update(
+                player.player_key for player in players if player.visible_in_embi
+            )
+            updated[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
+
         if protected_keys:
             after_hidden -= protected_keys
             updated[CONF_HIDDEN_EXACT_PLAYERS] = sorted(after_hidden)
@@ -187,7 +244,8 @@ class EmbyOptionsFlow(
 
         await self.hass.config_entries.async_reload(self._entry.entry_id)
         current_entry = (
-            self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+            self.hass.config_entries.async_get_entry(self._entry.entry_id)
+            or self._entry
         )
         registry = er.async_get(self.hass)
         restored = sum(
