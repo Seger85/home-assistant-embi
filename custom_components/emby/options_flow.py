@@ -6,10 +6,7 @@ from typing import Any
 from homeassistant import config_entries
 
 from .api import EmbyApiError, EmbyDeviceRecord
-from .const import (
-    CONF_HIDDEN_EXACT_PLAYERS,
-    CONF_SERVER_AUTO_CLEANUP_ENABLED,
-)
+from .const import CONF_HIDDEN_EXACT_PLAYERS, CONF_SERVER_AUTO_CLEANUP_ENABLED
 from .models import EmbiRuntimeData
 from .options_cleanup import CleanupOptionsMixin
 from .options_devices import DevicesOptionsMixin
@@ -56,6 +53,11 @@ class EmbyOptionsFlow(
     def _is_de(self) -> bool:
         return str(self.hass.config.language).lower().startswith("de")
 
+    def _on_off(self, value: bool) -> str:
+        if self._is_de():
+            return "ein" if value else "aus"
+        return "on" if value else "off"
+
     async def _devices(self) -> list[EmbyDeviceRecord]:
         return await self._runtime.api_client.async_get_devices()
 
@@ -74,11 +76,9 @@ class EmbyOptionsFlow(
         lines = [change.render() for change in changes]
         for entity_id in sorted(self._pending_enable_entity_ids):
             lines.append(
-                (
-                    f"{entity_id}\nIn Home Assistant deaktiviert → In Home Assistant aktivieren"
-                    if self._is_de()
-                    else f"{entity_id}\nDisabled in Home Assistant → Enable in Home Assistant"
-                )
+                f"{entity_id}\nIn Home Assistant deaktiviert → In Home Assistant aktivieren"
+                if self._is_de()
+                else f"{entity_id}\nDisabled in Home Assistant → Enable in Home Assistant"
             )
         return lines, len(changes) + len(self._pending_enable_entity_ids)
 
@@ -102,9 +102,7 @@ class EmbyOptionsFlow(
                 "ha_players": str(stats.ha_players if stats else 0),
                 "protected": str(stats.protected_playback if stats else 0),
                 "removable": str(stats.removable_from_ha if stats else 0),
-                "automatic_cleanup": (
-                    "ein" if auto_status and self._is_de() else "on" if auto_status else "aus" if self._is_de() else "off"
-                ),
+                "automatic_cleanup": self._on_off(auto_status),
                 "review_count": str(count),
             },
         )
@@ -161,7 +159,6 @@ class EmbyOptionsFlow(
         hide_keys = after_hidden - before_hidden
         restore_keys = before_hidden - after_hidden
 
-        # A target that started playing or paused after draft creation stays visible.
         protected_keys = {
             player.player_key
             for player in players
@@ -204,9 +201,7 @@ class EmbyOptionsFlow(
         protected = len(protected_keys)
         performed_reload = False
         if hide_entity_ids:
-            result = await async_remove_ha_players(
-                self.hass, self._entry, hide_entity_ids
-            )
+            result = await async_remove_ha_players(self.hass, self._entry, hide_entity_ids)
             removed += len(result.succeeded)
             protected += len(result.protected)
             failed += len(result.failed)
