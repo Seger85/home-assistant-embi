@@ -45,7 +45,7 @@ async def test_config_entry_version_migration_is_idempotent() -> None:
     hass = FakeHass()
     entry = SimpleNamespace(version=2, minor_version=0)
     assert await async_migrate_entry(hass, entry) is True
-    assert hass.config_entries.updated == [{"version": 3, "minor_version": 1}]
+    assert hass.config_entries.updated == [{"version": 4, "minor_version": 0}]
 
     hass.config_entries.updated.clear()
     assert await async_migrate_entry(hass, entry) is True
