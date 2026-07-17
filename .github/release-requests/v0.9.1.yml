@@ -1,0 +1,9 @@
+version: "0.9.1"
+tag: "v0.9.1"
+title: "EMBi 0.9.1"
+target_sha: "8679aa75768a91ae499e20fb69ce7cce0052f26b"
+stable: true
+prerelease: false
+requested_by: "Seger"
+report_issue: 30
+request_nonce: "2026-07-17T17:00:00+02:00"
