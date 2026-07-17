@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Iterable
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .api import EmbyDeviceRecord
 from .const import (
@@ -222,8 +222,7 @@ def server_device_confirmation_details(
                 )
             )
         )
-    return "
-".join(lines) or "-"
+    return "\n".join(lines) or "-"
 
 
 def registry_cleanup_reason(
