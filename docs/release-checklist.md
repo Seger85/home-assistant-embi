@@ -1,105 +1,51 @@
 # Release-Checkliste 0.9.1
 
-## Code und Metadaten
+## Unveränderliche Basis
 
-- [x] `const.py` und `manifest.json` tragen `0.9.1`
-- [x] Config-Entry-Schema und Optionsschema bleiben migrationskompatibel
-- [x] Plattform ausschließlich `media_player`
-- [x] bestehende Unique-ID-Logik unverändert
-- [x] `strings.json` und `translations/en.json` identisch
-- [x] deutsche und englische Schlüssel sowie Platzhalter synchron
-- [x] `hacs.json`: `zip_release: true`, `filename: embi.zip`, `hide_default_branch: true`
-- [x] keine direkte `.storage`-Bearbeitung
-- [x] Emby-Serverhistorie und HA-Player-Verwaltung getrennt
-- [x] keine Dev-, Beta- oder RC-Version vorgesehen
+- [x] Manifest und Runtime tragen `0.9.1`.
+- [x] Config-Entry- und Unique-ID-Vertrag bleiben kompatibel.
+- [x] Der bestehende Stable-Tag `v0.9.0` bleibt unverändert.
+- [x] Es gibt keine Dev-, Beta- oder RC-Veröffentlichung.
+- [x] HACS verwendet `zip_release: true`, `filename: embi.zip` und `hide_default_branch: true`.
 
-## Options-Flow-UX
+## UX und Sicherheit
 
-- [x] Hauptmenü **Home-Assistant-Player** und **Emby-Server bereinigen**
-- [x] **Änderungen prüfen** nur bei offenem Entwurf
-- [x] native Zurück-Navigation auf allen Unterseiten
-- [x] Zurück erhält den vollständigen Entwurf
-- [x] X und Verwerfen ohne Optionswrite oder Reload
-- [x] unverändertes Apply ohne Optionswrite oder Reload
-- [x] geändertes Apply schreibt genau einmal und lädt höchstens einmal neu
-- [x] normale Fehler bleiben inline auf der aktiven Seite
-- [x] kurze Playerlabels ohne Entity-ID, Unique ID oder Rohstatus
-- [x] technische Angaben ausschließlich in Detailansichten
-- [x] Benutzer-Master-Schalter und Ausnahmen getrennt
-- [x] Suche und Pagination für lange Listen
-
-## Klassifizierung und Sicherheit
-
-- [x] Benutzer-, Shared-, Unassigned-, Technical- und Unknown-Gruppen
-- [x] technische Klassifizierung nicht allein anhand eines Produktnamens
-- [x] Registry-backed Player mit aktuellem Serverdatensatz als Playback-Kandidat
-- [x] disabled-valid Entity ist kein Orphan
-- [x] Server-missing und echter Home-Assistant-Orphan getrennt
-- [x] `playing`, `paused` und unklarer Wiedergabestatus geschützt
-- [x] exakte Hidden-Regel vor Registry-Änderung gespeichert
-- [x] Erfolg erst nach Reload- und Wiederkehrprüfung
-- [x] Restore nach Reload anhand exakter Ownership verifiziert
-- [x] keine automatische Sichtbarkeitsänderung durch neue Klassifizierung
+- [x] Hauptmenü: Home-Assistant-Player und Emby-Server bereinigen.
+- [x] Änderungen prüfen erscheint nur bei offenem Entwurf.
+- [x] Zurück erhält den Entwurf; X und Verwerfen schreiben nichts.
+- [x] Unverändertes Apply schreibt und lädt nicht neu.
+- [x] Geändertes Apply schreibt einmal und lädt höchstens einmal neu.
+- [x] Fehler bleiben inline auf der aktiven Seite.
+- [x] Kurze Playerlabels enthalten keine internen IDs oder Rohstatus.
+- [x] Benutzergruppen, Shared, Unassigned, Technical und Unknown sind getrennt.
+- [x] Disabled-valid, Server-missing und echte HA-Orphans sind getrennt.
+- [x] Playing, paused und unklare Wiedergabezustände sind geschützt.
+- [x] Serverhistorie, HA-Removal und Restore bleiben getrennte Aktionen.
 
 ## Migration
 
-- [x] 0.9.0 → 0.9.1 idempotent
-- [x] Entity-IDs und Unique IDs unverändert
-- [x] Namen, Aliase, Areas, Labels und disabled state erhalten
-- [x] effektive Sichtbarkeit erhalten
-- [x] automatische Bereinigung bleibt ein oder aus wie zuvor
-- [x] exakte Alterswerte wie `364` und `365` bleiben erhalten
-- [x] Scheduler- und Laufstatus bleiben erhalten
+- [x] 0.9.0 nach 0.9.1 ist idempotent.
+- [x] Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und disabled state bleiben erhalten.
+- [x] Sichtbarkeit, Cleanup-Schalter, Alterswerte, Scheduler und Laufbericht bleiben erhalten.
 
 ## CI auf dem finalen PR-Head
 
-- [ ] Quality Python 3.13 grün
-- [ ] Quality Python 3.14 grün
-- [ ] JSON und YAML grün
-- [ ] Compileall grün
-- [ ] Mypy grün
-- [ ] Ruff und Ruff-Format grün
-- [ ] vollständiger Pytest-Lauf grün
-- [ ] Specification Contract grün
-- [ ] Stable Contract grün
-- [ ] Secret-/Privacy-Scan grün
-- [ ] HACS Validation grün
-- [ ] Hassfest grün
-- [ ] releasegleicher Paketbau grün
-- [ ] SHA-256 grün
-- [ ] `BUILD_COMMIT` entspricht dem finalen PR-Head
+- [ ] Quality Python 3.13 und Python 3.14 grün.
+- [ ] JSON, YAML, Compileall, Mypy, Ruff und Ruff-Format grün.
+- [ ] Vollständiger Pytest-Lauf grün.
+- [ ] Specification Contract und Stable Contract grün.
+- [ ] Secret-/Privacy-Scan grün.
+- [ ] HACS Validation und Hassfest grün.
+- [ ] Releasegleicher Paketbau, SHA-256 und `BUILD_COMMIT` grün.
 
-## PR und Merge
+## Merge und Release
 
-- [ ] PR #30 enthält ausschließlich den freigegebenen 0.9.1-Umfang
-- [ ] keine offenen Reviewthreads
-- [ ] alle Pflichtchecks auf demselben Head grün
-- [ ] Squash-Merge nach `main`
-- [ ] finalen Main-Merge-SHA erfassen
+- [ ] PR #30 ist auf einem exakten Head vollständig grün und ohne offene Reviewthreads.
+- [ ] Squash-Merge nach `main`; finalen Merge-SHA erfassen.
+- [ ] Tag exakt `v0.9.1` auf dem finalen Main-Commit.
+- [ ] Release-Titel `EMBi 0.9.1`, nicht Draft, nicht Prerelease, als Latest.
+- [ ] Assets ausschließlich `embi.zip` und `embi.zip.sha256`.
+- [ ] Veröffentlichte Assets erneut laden, SHA-256, ZIP-Struktur und Manifest `0.9.1` prüfen.
+- [ ] HACS erkennt `v0.9.1` als Stable und installiert das Releaseasset.
 
-## Stable Release
-
-- [ ] Tag exakt `v0.9.1`
-- [ ] Tagziel entspricht dem finalen Main-Merge-SHA
-- [ ] Release-Titel `EMBi 0.9.1`
-- [ ] Release ist nicht Draft
-- [ ] Release ist nicht Prerelease
-- [ ] Release ist `latest`
-- [ ] Assets ausschließlich `embi.zip` und `embi.zip.sha256`
-- [ ] veröffentlichte Assets erneut herunterladen
-- [ ] Prüfsumme gegen das veröffentlichte ZIP verifizieren
-- [ ] ZIP öffnet erfolgreich
-- [ ] Manifest im ZIP meldet `0.9.1`
-- [ ] Installationsdateien liegen direkt im ZIP-Root
-- [ ] keine Tests, Docs, `.github`, Caches oder Repositorymetadaten im ZIP
-- [ ] Build-Verifikation bindet das Paket an den finalen Main-Commit
-
-## HACS und Home Assistant
-
-- [ ] HACS erkennt `v0.9.1` als reguläre Stable-Version
-- [ ] HACS verwendet `embi.zip` statt eines Default-Branch-Commits
-- [ ] Installation beziehungsweise Update über HACS
-- [ ] Home Assistant neu starten
-- [ ] Config Entry, Entity-IDs, Unique IDs und Namen anschließend live prüfen
-
-Die private visuelle Prüfung auf iPhone, iPad und Desktop ist eine nachgelagerte Home-Assistant-Abnahme und kein GitHub-Release-Blocker.
+Die visuelle Home-Assistant-Prüfung auf iPhone, iPad und Desktop erfolgt nachgelagert und blockiert den GitHub-Release nicht.
