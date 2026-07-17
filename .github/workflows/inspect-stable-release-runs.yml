@@ -13,21 +13,20 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect latest push publication run
+      - name: Inspect cleanup patch workflow
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          run_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish-stable-request.yml/runs?event=push&per_page=1" --jq '.workflow_runs[0].id')"
-          echo "LATEST_PUSH_RUN_ID=${run_id}"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" \
-            --jq '[.id, .run_number, .status, (.conclusion // "null"), .head_sha, .html_url] | @tsv'
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/patch-release-cleanup.yml/runs?per_page=10" \
+            --jq '.workflow_runs[] | [.id, .run_number, .event, .status, (.conclusion // "null"), .head_sha, .html_url] | @tsv'
+          run_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/patch-release-cleanup.yml/runs?per_page=1" --jq '.workflow_runs[0].id')"
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" \
             --jq '.jobs[] | [.id, .name, .status, (.conclusion // "null")] | @tsv'
           conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.conclusion // "null"')"
           if [[ "${conclusion}" == "failure" ]]; then
             job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n 1)"
             gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > failed-job.log
-            grep -n -A35 -B20 -Ei 'Traceback|##\[error\]|Process completed with exit code' failed-job.log | tail -n 220 || true
+            grep -n -A40 -B25 -Ei 'Traceback|##\[error\]|Process completed with exit code|permission|denied|protected' failed-job.log | tail -n 260 || true
           fi
