@@ -85,16 +85,12 @@ class CleanupOptionsMixin:
             ],
         )
 
-    async def async_step_back_to_server_cleanup(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_back_to_server_cleanup(self, user_input: dict[str, Any] | None = None):
         self._pending_cleanup_records = {}
         self._pending_cleanup_age_days = None
         return await self.async_step_server_cleanup()
 
-    async def async_step_automatic_cleanup(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_automatic_cleanup(self, user_input: dict[str, Any] | None = None):
         automatic_days = int(
             self._draft_options.get(
                 CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
@@ -110,9 +106,7 @@ class CleanupOptionsMixin:
         fields: dict[Any, Any] = {
             vol.Required(
                 CONF_SERVER_AUTO_CLEANUP_ENABLED,
-                default=bool(
-                    self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
-                ),
+                default=bool(self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)),
             ): selector.BooleanSelector(),
             vol.Required(_AUTO_PRESET, default=preset): _age_preset(),
         }
@@ -143,9 +137,7 @@ class CleanupOptionsMixin:
                 self._draft_options[CONF_SERVER_AUTO_CLEANUP_ENABLED] = bool(
                     user_input.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
                 )
-                self._draft_options[
-                    CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES
-                ] = bool(
+                self._draft_options[CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES] = bool(
                     user_input.get(
                         CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
                         DEFAULT_REMOVE_HA_ENTITIES,
@@ -160,9 +152,7 @@ class CleanupOptionsMixin:
             errors=errors,
         )
 
-    async def async_step_server_history_check(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_server_history_check(self, user_input: dict[str, Any] | None = None):
         manual_days = int(
             self._draft_options.get(
                 CONF_SERVER_CLEANUP_AGE_DAYS,
@@ -201,18 +191,14 @@ class CleanupOptionsMixin:
             device.record_id: device for device in plan.candidates
         }
 
-        fields: dict[Any, Any] = {
-            vol.Required(_MANUAL_PRESET, default=preset): _age_preset()
-        }
+        fields: dict[Any, Any] = {vol.Required(_MANUAL_PRESET, default=preset): _age_preset()}
         if preset == AGE_PRESET_CUSTOM:
             fields[vol.Required(_MANUAL_CUSTOM, default=age_days)] = _number()
         if candidates:
             fields[vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[])] = _multi(
                 [
                     {"value": key, "label": label}
-                    for key, label in server_device_selector_options(
-                        plan.candidates
-                    ).items()
+                    for key, label in server_device_selector_options(plan.candidates).items()
                 ]
             )
         fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
@@ -220,10 +206,7 @@ class CleanupOptionsMixin:
         if user_input is not None:
             if user_input.get(CONF_BACK):
                 return await self.async_step_server_cleanup()
-            selected = [
-                str(value)
-                for value in user_input.get(CONF_DELETE_DEVICE_RECORD_IDS, [])
-            ]
+            selected = [str(value) for value in user_input.get(CONF_DELETE_DEVICE_RECORD_IDS, [])]
             if selected and not errors:
                 saved_age = int(
                     self._entry.options.get(
@@ -241,10 +224,15 @@ class CleanupOptionsMixin:
                     }
                     self._pending_cleanup_age_days = age_days
                     return await self.async_step_confirm_server_deletion()
-            elif not selected and not errors and age_days != int(
-                self._entry.options.get(
-                    CONF_SERVER_CLEANUP_AGE_DAYS,
-                    DEFAULT_SERVER_CLEANUP_AGE_DAYS,
+            elif (
+                not selected
+                and not errors
+                and age_days
+                != int(
+                    self._entry.options.get(
+                        CONF_SERVER_CLEANUP_AGE_DAYS,
+                        DEFAULT_SERVER_CLEANUP_AGE_DAYS,
+                    )
                 )
             ):
                 return await self.async_step_server_cleanup()
@@ -263,9 +251,7 @@ class CleanupOptionsMixin:
             },
         )
 
-    async def async_step_confirm_server_deletion(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_confirm_server_deletion(self, user_input: dict[str, Any] | None = None):
         if not self._pending_cleanup_records:
             return await self.async_step_server_history_check()
         return self.async_show_menu(
@@ -274,9 +260,7 @@ class CleanupOptionsMixin:
                 "execute_server_deletion",
                 "back_to_server_history_check",
             ],
-            description_placeholders={
-                "count": str(len(self._pending_cleanup_records))
-            },
+            description_placeholders={"count": str(len(self._pending_cleanup_records))},
         )
 
     async def async_step_back_to_server_history_check(
@@ -286,9 +270,7 @@ class CleanupOptionsMixin:
         self._pending_cleanup_age_days = None
         return await self.async_step_server_history_check()
 
-    async def async_step_execute_server_deletion(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_execute_server_deletion(self, user_input: dict[str, Any] | None = None):
         if not self._pending_cleanup_records:
             return await self.async_step_server_history_check()
         report, reload_needed = await async_run_manual_cleanup(
@@ -319,9 +301,7 @@ class CleanupOptionsMixin:
             },
         )
 
-    async def async_step_last_cleanup_run(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_last_cleanup_run(self, user_input: dict[str, Any] | None = None):
         report = self._runtime.maintenance_state.report
         return self.async_show_menu(
             step_id="last_cleanup_run",
@@ -329,9 +309,7 @@ class CleanupOptionsMixin:
             description_placeholders={
                 "status": status_label(report.status, german=self._is_de()),
                 "deleted": str(report.server_deleted),
-                "protected": str(
-                    report.skipped_active + report.registry_entities_protected
-                ),
+                "protected": str(report.skipped_active + report.registry_entities_protected),
                 "failed": str(report.server_failed),
                 "next_run": report.next_run_at or "-",
             },

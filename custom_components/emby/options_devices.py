@@ -111,8 +111,7 @@ class DevicesOptionsMixin:
         fields: dict[Any, Any] = {
             vol.Required(
                 CONF_ONLY_DURING_PLAYBACK,
-                default=self._draft_options.get(CONF_GLOBAL_PLAYER_MODE)
-                == PLAYER_MODE_ACTIVE_ONLY,
+                default=self._draft_options.get(CONF_GLOBAL_PLAYER_MODE) == PLAYER_MODE_ACTIVE_ONLY,
             ): selector.BooleanSelector(),
             vol.Required(
                 CONF_AUTO_SHOW_NEW_PLAYERS,
@@ -120,13 +119,11 @@ class DevicesOptionsMixin:
             ): selector.BooleanSelector(),
             vol.Required(
                 CONF_TECHNICAL_ACCESS_VISIBILITY,
-                default=bool(
-                    self._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)
-                ),
+                default=bool(self._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)),
             ): selector.BooleanSelector(),
-            vol.Optional(
-                CONF_SEARCH_QUERY, default=self._search_query
-            ): selector.TextSelector(selector.TextSelectorConfig()),
+            vol.Optional(CONF_SEARCH_QUERY, default=self._search_query): selector.TextSelector(
+                selector.TextSelectorConfig()
+            ),
         }
         if groups:
             fields[vol.Optional(CONF_SELECTED_GROUP)] = _single(groups)
@@ -141,9 +138,7 @@ class DevicesOptionsMixin:
                 return await self.async_step_init()
             if not errors:
                 requested_auto_show = bool(user_input.get(CONF_AUTO_SHOW_NEW_PLAYERS, True))
-                requested_technical = bool(
-                    user_input.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)
-                )
+                requested_technical = bool(user_input.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
                 active_technical = [
                     player
                     for player in players
@@ -151,11 +146,7 @@ class DevicesOptionsMixin:
                     and player.playback in ACTIVE_PLAYBACK_STATES
                 ]
                 technical_would_hide_active = (
-                    bool(
-                        self._draft_options.get(
-                            CONF_TECHNICAL_ACCESS_VISIBILITY, False
-                        )
-                    )
+                    bool(self._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
                     and not requested_technical
                     and bool(active_technical)
                 )
@@ -168,25 +159,17 @@ class DevicesOptionsMixin:
                         else PLAYER_MODE_PERSISTENT
                     )
                     self._draft_options[CONF_AUTO_SHOW_NEW_PLAYERS] = requested_auto_show
-                    self._draft_options[
-                        CONF_TECHNICAL_ACCESS_VISIBILITY
-                    ] = requested_technical
+                    self._draft_options[CONF_TECHNICAL_ACCESS_VISIBILITY] = requested_technical
                     if not requested_auto_show:
                         allowed = {
                             str(value)
-                            for value in self._draft_options.get(
-                                CONF_ALLOWED_DEVICE_IDS, []
-                            )
+                            for value in self._draft_options.get(CONF_ALLOWED_DEVICE_IDS, [])
                         }
                         allowed.update(
-                            player.player_key
-                            for player in players
-                            if player.visible_in_embi
+                            player.player_key for player in players if player.visible_in_embi
                         )
                         self._draft_options[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
-                    self._search_query = str(
-                        user_input.get(CONF_SEARCH_QUERY, "")
-                    ).strip()
+                    self._search_query = str(user_input.get(CONF_SEARCH_QUERY, "")).strip()
                     selected_group = user_input.get(CONF_SELECTED_GROUP)
                     if selected_group == _OLDER_RULES_GROUP:
                         return await self.async_step_older_rules()
@@ -213,9 +196,7 @@ class DevicesOptionsMixin:
             },
         )
 
-    async def async_step_back_to_ha_players(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_back_to_ha_players(self, user_input: dict[str, Any] | None = None):
         self._selected_group = None
         self._selected_player_key = None
         return await self.async_step_ha_players()
@@ -232,9 +213,7 @@ class DevicesOptionsMixin:
         group_players = list(group_player_catalog(players).get(self._selected_group, []))
         if self._search_query:
             query = self._search_query.casefold()
-            group_players = [
-                player for player in group_players if query in player.search_text
-            ]
+            group_players = [player for player in group_players if query in player.search_text]
 
         fields: dict[Any, Any] = {}
         user_name: str | None = None
@@ -245,9 +224,7 @@ class DevicesOptionsMixin:
                 vol.Required(
                     "show_user_players",
                     default=(
-                        visibility.get(user_name, True)
-                        if isinstance(visibility, dict)
-                        else True
+                        visibility.get(user_name, True) if isinstance(visibility, dict) else True
                     ),
                 )
             ] = selector.BooleanSelector()
@@ -265,22 +242,15 @@ class DevicesOptionsMixin:
                     user_input.get("show_user_players", True)
                 )
                 active_group = any(
-                    player.playback in ACTIVE_PLAYBACK_STATES
-                    for player in group_players
+                    player.playback in ACTIVE_PLAYBACK_STATES for player in group_players
                 )
                 if hide_user_group and active_group:
                     errors["base"] = "playback_protected"
                 else:
                     if user_name is not None:
-                        visibility = dict(
-                            self._draft_options.get(CONF_USER_MASTER_VISIBILITY, {})
-                        )
-                        visibility[user_name] = bool(
-                            user_input.get("show_user_players", True)
-                        )
-                        self._draft_options[
-                            CONF_USER_MASTER_VISIBILITY
-                        ] = visibility
+                        visibility = dict(self._draft_options.get(CONF_USER_MASTER_VISIBILITY, {}))
+                        visibility[user_name] = bool(user_input.get("show_user_players", True))
+                        self._draft_options[CONF_USER_MASTER_VISIBILITY] = visibility
                     action = user_input.get(CONF_PLAYER_ACTION)
                     if action == PLAYER_ACTION_MANAGE_EXCEPTIONS:
                         return await self.async_step_player_exceptions()
@@ -288,16 +258,13 @@ class DevicesOptionsMixin:
                         return await self.async_step_player_details()
                     return await self.async_step_ha_players()
 
-        group_name = (
-            user_name
-            or next(
-                (
-                    option["label"].rsplit(" · ", 1)[0]
-                    for option in group_options(players, german=self._is_de())
-                    if option["value"] == self._selected_group
-                ),
-                self._selected_group,
-            )
+        group_name = user_name or next(
+            (
+                option["label"].rsplit(" · ", 1)[0]
+                for option in group_options(players, german=self._is_de())
+                if option["value"] == self._selected_group
+            ),
+            self._selected_group,
         )
         return self.async_show_form(
             step_id="player_group",
@@ -309,9 +276,7 @@ class DevicesOptionsMixin:
             },
         )
 
-    async def async_step_player_exceptions(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_player_exceptions(self, user_input: dict[str, Any] | None = None):
         if not self._selected_group:
             return await self.async_step_ha_players()
         errors: dict[str, str] = {}
@@ -323,9 +288,7 @@ class DevicesOptionsMixin:
         group_players = list(group_player_catalog(players).get(self._selected_group, []))
         query = self._search_query.casefold()
         if query:
-            group_players = [
-                player for player in group_players if query in player.search_text
-            ]
+            group_players = [player for player in group_players if query in player.search_text]
 
         requested_page = self._page_by_step.get("player_exceptions", 1)
         if user_input and user_input.get(CONF_PAGE):
@@ -334,36 +297,27 @@ class DevicesOptionsMixin:
             group_players, requested_page, page_size=PLAYER_PAGE_SIZE
         )
         self._page_by_step["player_exceptions"] = page
-        hidden = {
-            str(value)
-            for value in self._draft_options.get(CONF_HIDDEN_EXACT_PLAYERS, [])
-        }
+        hidden = {str(value) for value in self._draft_options.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
         fields: dict[Any, Any] = {
-            vol.Optional(
-                CONF_SEARCH_QUERY, default=self._search_query
-            ): selector.TextSelector(selector.TextSelectorConfig())
+            vol.Optional(CONF_SEARCH_QUERY, default=self._search_query): selector.TextSelector(
+                selector.TextSelectorConfig()
+            )
         }
         if total_pages > 1:
-            fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(
-                total_pages
-            )
+            fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(total_pages)
         if page_players:
             fields[
                 vol.Optional(
                     CONF_HIDDEN_PAGE_PLAYER_KEYS,
                     default=[
-                        player.player_key
-                        for player in page_players
-                        if player.player_key in hidden
+                        player.player_key for player in page_players if player.player_key in hidden
                     ],
                 )
             ] = _multi(player_options(page_players))
         disabled = [
             player
             for player in page_players
-            if player.registry_present
-            and not player.registry_enabled
-            and player.emby_present
+            if player.registry_present and not player.registry_enabled and player.emby_present
         ]
         if disabled:
             fields[vol.Optional(CONF_ENABLE_ENTITY_IDS, default=[])] = _multi(
@@ -379,10 +333,7 @@ class DevicesOptionsMixin:
                     user_input.get(CONF_SEARCH_QUERY, self._search_query)
                 ).strip()
                 selected_hidden = {
-                    str(value)
-                    for value in user_input.get(
-                        CONF_HIDDEN_PAGE_PLAYER_KEYS, []
-                    )
+                    str(value) for value in user_input.get(CONF_HIDDEN_PAGE_PLAYER_KEYS, [])
                 }
                 page_keys = {player.player_key for player in page_players}
                 hides_active = any(
@@ -397,8 +348,7 @@ class DevicesOptionsMixin:
                     hidden.update(selected_hidden & page_keys)
                     self._draft_options[CONF_HIDDEN_EXACT_PLAYERS] = sorted(hidden)
                     self._pending_enable_entity_ids.update(
-                        str(value)
-                        for value in user_input.get(CONF_ENABLE_ENTITY_IDS, [])
+                        str(value) for value in user_input.get(CONF_ENABLE_ENTITY_IDS, [])
                     )
                     return await self.async_step_player_group()
 
@@ -413,9 +363,7 @@ class DevicesOptionsMixin:
             },
         )
 
-    async def async_step_player_details(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_player_details(self, user_input: dict[str, Any] | None = None):
         if not self._selected_group:
             return await self.async_step_ha_players()
         errors: dict[str, str] = {}
@@ -446,25 +394,20 @@ class DevicesOptionsMixin:
                 errors["base"] = "invalid_selection"
 
         selected_players = (
-            [by_key[self._selected_player_key]]
-            if self._selected_player_key in by_key
-            else []
+            [by_key[self._selected_player_key]] if self._selected_player_key in by_key else []
         )
         return self.async_show_form(
             step_id="player_details",
             data_schema=vol.Schema(fields),
             errors=errors,
             description_placeholders={
-                "details": render_player_details(
-                    selected_players, german=self._is_de()
-                )
+                "details": render_player_details(selected_players, german=self._is_de())
             },
         )
 
     async def async_step_older_rules(self, user_input: dict[str, Any] | None = None):
         unresolved = [
-            str(value)
-            for value in self._draft_options.get(CONF_UNRESOLVED_LEGACY_RULES, [])
+            str(value) for value in self._draft_options.get(CONF_UNRESOLVED_LEGACY_RULES, [])
         ]
         options = [
             {"value": value, "label": f"Legacy rule {index}"}
@@ -472,16 +415,12 @@ class DevicesOptionsMixin:
         ]
         fields: dict[Any, Any] = {}
         if options:
-            fields[
-                vol.Optional("kept_rules", default=unresolved)
-            ] = _multi(options)
+            fields[vol.Optional("kept_rules", default=unresolved)] = _multi(options)
         fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
         if user_input is not None:
             if user_input.get(CONF_BACK):
                 return await self.async_step_ha_players()
-            kept = {
-                str(value) for value in user_input.get("kept_rules", unresolved)
-            }
+            kept = {str(value) for value in user_input.get("kept_rules", unresolved)}
             self._draft_options[CONF_UNRESOLVED_LEGACY_RULES] = sorted(kept)
             return await self.async_step_ha_players()
         return self.async_show_form(

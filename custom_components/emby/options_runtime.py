@@ -98,9 +98,7 @@ def group_options(players: list[PlayerContext], *, german: bool) -> list[dict[st
     return options
 
 
-def _compact_options(
-    players: list[PlayerContext], *, value_getter
-) -> list[dict[str, str]]:
+def _compact_options(players: list[PlayerContext], *, value_getter) -> list[dict[str, str]]:
     base_counts = Counter(player.selector_label for player in players)
     options: list[dict[str, str]] = []
     for player in players:
@@ -133,7 +131,9 @@ def render_player_details(players: list[PlayerContext], *, german: bool) -> str:
         return "-"
     lines: list[str] = []
     for player in players:
-        user = ", ".join(player.users) if player.users else ("Ohne Benutzer" if german else "No user")
+        user = (
+            ", ".join(player.users) if player.users else ("Ohne Benutzer" if german else "No user")
+        )
         entity = player.entity_id or "-"
         lines.append(
             "\n".join(

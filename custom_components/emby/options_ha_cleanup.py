@@ -44,9 +44,7 @@ def _page_selector(total_pages: int) -> selector.SelectSelector:
 class HomeAssistantCleanupOptionsMixin:
     """Safe Home Assistant player removal and restoration in the player area."""
 
-    async def async_step_manage_ha_players(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_manage_ha_players(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         try:
             players, stats = await fresh_catalog(self)
@@ -62,9 +60,7 @@ class HomeAssistantCleanupOptionsMixin:
             if player.registry_present and player.removable and player.entity_id
         ]
         if query:
-            removable = [
-                player for player in removable if query in player.search_text
-            ]
+            removable = [player for player in removable if query in player.search_text]
         if self._dirty and "base" not in errors:
             errors["base"] = "unsaved_changes"
 
@@ -77,31 +73,24 @@ class HomeAssistantCleanupOptionsMixin:
         self._page_by_step["manage_ha_players"] = page
 
         fields: dict[Any, Any] = {
-            vol.Optional(
-                CONF_SEARCH_QUERY, default=self._search_query
-            ): selector.TextSelector(selector.TextSelectorConfig())
+            vol.Optional(CONF_SEARCH_QUERY, default=self._search_query): selector.TextSelector(
+                selector.TextSelectorConfig()
+            )
         }
         if total_pages > 1:
-            fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(
-                total_pages
-            )
+            fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(total_pages)
         if page_players and not self._dirty:
-            fields[
-                vol.Optional(CONF_SELECTED_HA_ENTITY_IDS, default=[])
-            ] = _multi(entity_options(page_players))
+            fields[vol.Optional(CONF_SELECTED_HA_ENTITY_IDS, default=[])] = _multi(
+                entity_options(page_players)
+            )
         fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
 
         if user_input is not None:
             if user_input.get(CONF_BACK):
                 return await self.async_step_ha_players()
-            self._search_query = str(
-                user_input.get(CONF_SEARCH_QUERY, self._search_query)
-            ).strip()
+            self._search_query = str(user_input.get(CONF_SEARCH_QUERY, self._search_query)).strip()
             if not errors:
-                selected = [
-                    str(value)
-                    for value in user_input.get(CONF_SELECTED_HA_ENTITY_IDS, [])
-                ]
+                selected = [str(value) for value in user_input.get(CONF_SELECTED_HA_ENTITY_IDS, [])]
                 allowed = {player.entity_id for player in page_players}
                 if not selected:
                     errors["base"] = "selection_required"
@@ -119,41 +108,28 @@ class HomeAssistantCleanupOptionsMixin:
                 "ha_players": str(stats.ha_players if stats else 0),
                 "removable": str(len(removable)),
                 "protected": str(
-                    sum(
-                        player.registry_present and not player.removable
-                        for player in players
-                    )
+                    sum(player.registry_present and not player.removable for player in players)
                 ),
-                "server_missing": str(
-                    sum(player.server_missing for player in players)
-                ),
+                "server_missing": str(sum(player.server_missing for player in players)),
                 "page": str(page),
                 "pages": str(total_pages),
             },
         )
 
-    async def async_step_confirm_ha_removal(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_confirm_ha_removal(self, user_input: dict[str, Any] | None = None):
         if not self._pending_ha_entity_ids:
             return await self.async_step_manage_ha_players()
         return self.async_show_menu(
             step_id="confirm_ha_removal",
             menu_options=["execute_ha_removal", "back_to_manage_ha_players"],
-            description_placeholders={
-                "count": str(len(self._pending_ha_entity_ids))
-            },
+            description_placeholders={"count": str(len(self._pending_ha_entity_ids))},
         )
 
-    async def async_step_back_to_manage_ha_players(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_back_to_manage_ha_players(self, user_input: dict[str, Any] | None = None):
         self._pending_ha_entity_ids = []
         return await self.async_step_manage_ha_players()
 
-    async def async_step_execute_ha_removal(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_execute_ha_removal(self, user_input: dict[str, Any] | None = None):
         if not self._pending_ha_entity_ids:
             return await self.async_step_manage_ha_players()
         result = await async_remove_ha_players(
@@ -172,9 +148,7 @@ class HomeAssistantCleanupOptionsMixin:
             },
         )
 
-    async def async_step_restore_ha_players(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_restore_ha_players(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         try:
             players, _stats = await fresh_catalog(self)
@@ -184,18 +158,11 @@ class HomeAssistantCleanupOptionsMixin:
         if self._dirty and "base" not in errors:
             errors["base"] = "unsaved_changes"
 
-        hidden = {
-            str(value)
-            for value in self._entry.options.get(CONF_HIDDEN_EXACT_PLAYERS, [])
-        }
-        candidates = [
-            player for player in players if player.player_key in hidden
-        ]
+        hidden = {str(value) for value in self._entry.options.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
+        candidates = [player for player in players if player.player_key in hidden]
         query = self._search_query.casefold()
         if query:
-            candidates = [
-                player for player in candidates if query in player.search_text
-            ]
+            candidates = [player for player in candidates if query in player.search_text]
         requested_page = self._page_by_step.get("restore_ha_players", 1)
         if user_input and user_input.get(CONF_PAGE):
             requested_page = int(user_input[CONF_PAGE])
@@ -205,31 +172,24 @@ class HomeAssistantCleanupOptionsMixin:
         self._page_by_step["restore_ha_players"] = page
 
         fields: dict[Any, Any] = {
-            vol.Optional(
-                CONF_SEARCH_QUERY, default=self._search_query
-            ): selector.TextSelector(selector.TextSelectorConfig())
+            vol.Optional(CONF_SEARCH_QUERY, default=self._search_query): selector.TextSelector(
+                selector.TextSelectorConfig()
+            )
         }
         if total_pages > 1:
-            fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(
-                total_pages
-            )
+            fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(total_pages)
         if page_players and not self._dirty:
-            fields[
-                vol.Optional(CONF_SELECTED_RESTORE_KEYS, default=[])
-            ] = _multi(player_options(page_players))
+            fields[vol.Optional(CONF_SELECTED_RESTORE_KEYS, default=[])] = _multi(
+                player_options(page_players)
+            )
         fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
 
         if user_input is not None:
             if user_input.get(CONF_BACK):
                 return await self.async_step_ha_players()
-            self._search_query = str(
-                user_input.get(CONF_SEARCH_QUERY, self._search_query)
-            ).strip()
+            self._search_query = str(user_input.get(CONF_SEARCH_QUERY, self._search_query)).strip()
             if not errors:
-                selected = [
-                    str(value)
-                    for value in user_input.get(CONF_SELECTED_RESTORE_KEYS, [])
-                ]
+                selected = [str(value) for value in user_input.get(CONF_SELECTED_RESTORE_KEYS, [])]
                 allowed = {player.player_key for player in page_players}
                 if not selected:
                     errors["base"] = "selection_required"

@@ -292,10 +292,15 @@ class EmbyOptionsFlow(
             await self.hass.config_entries.async_reload(self._entry.entry_id)
         except Exception:
             failed += len(restore_keys)
-        current_entry = self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+        current_entry = (
+            self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+        )
         registry = er.async_get(self.hass)
         restored = sum(
-            any(owned_exact(entity, current_entry, player_key) for entity in registry.entities.values())
+            any(
+                owned_exact(entity, current_entry, player_key)
+                for entity in registry.entities.values()
+            )
             for player_key in restore_keys
         )
         failed += max(0, len(restore_keys) - restored)
