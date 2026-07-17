@@ -73,6 +73,8 @@ Die Migration von 0.9.0 auf 0.9.1 ist idempotent und verändert keine wirksame S
 
 Nicht eindeutig auflösbare ältere Regeln werden sichtbar erhalten und nicht still neu klassifiziert.
 
+Historische Einordnung: 0.9.0 führte den Bereich **Geräte & Player** ein. 0.9.1 ersetzt dessen Navigation durch **Home-Assistant-Player**. Frühere private Abnahmeartefakte sind keine Installationsquelle; produktiv wird ausschließlich der reguläre Stable-Release verwendet.
+
 ## Persistenz und Datenschutz
 
 - offizielle Home-Assistant-Storage-API
