@@ -89,20 +89,36 @@ class PlayerContext:
             return "disabled"
         if not self.visible_in_embi:
             return "hidden"
-        if self.orphan:
+        if self.server_missing:
             return "not_reported"
         return "ready"
 
     @property
     def selector_label(self) -> str:
-        """Return the normal UI row in the required friendly-information order."""
-        headline = f"{self.app_name} · {self.device_name}"
-        details = [headline, f"Home Assistant: {self.ha_name}"]
+        """Return a compact mobile-safe selector label without internal identifiers."""
+        return f"{self.device_name} · {self.app_name}"
+
+    def compact_label(self, *, include_user: bool = False) -> str:
+        """Return the normal selector label and add a user only for disambiguation."""
+        label = self.selector_label
+        if include_user and self.users:
+            label = f"{label} · {self.users[0]}"
+        return label
+
+    @property
+    def server_missing(self) -> bool:
+        """Return whether HA still has the player but Emby no longer reports it."""
+        return self.registry_present and not self.emby_present
+
+    @property
+    def technical_details(self) -> str:
+        """Return technical context for a dedicated detail or preview page only."""
+        details = [f"Home Assistant: {self.ha_name}"]
         if self.entity_id:
             details.append(self.entity_id)
         if self.users:
             details.append(f"Users: {', '.join(self.users)}")
-        details.append(self.status.replace("_", " "))
+        details.extend((f"Class: {self.client_class}", f"Status: {self.status}"))
         return " · ".join(details)
 
     @property
@@ -127,6 +143,7 @@ class PlayerCatalogStats:
     technical_accesses: int
     unknown_clients: int
     disabled_valid: int
+    server_missing: int
     orphans: int
 
 
@@ -182,6 +199,7 @@ def classify_client(
     records: Iterable[EmbyDeviceRecord],
     *,
     runtime_state: str | None = None,
+    registry_backed: bool = False,
 ) -> tuple[str, str]:
     """Classify from explicit capability/behavior metadata, never product names alone."""
     items = list(records)
@@ -196,6 +214,8 @@ def classify_client(
         for record in items
     ):
         return CLIENT_CLASS_TECHNICAL, "explicit_client_type"
+    if registry_backed and items:
+        return CLIENT_CLASS_PLAYBACK, "registry_backed_server_player"
 
     users = _record_users(items)
     repeated_explicit_non_playback = (
@@ -292,6 +312,7 @@ def build_player_catalog(
         client_class, class_reason = classify_client(
             player_records,
             runtime_state=effective_state,
+            registry_backed=entity is not None,
         )
         users = _record_users(player_records)
         latest_user = latest.last_user_name if latest else None
@@ -349,7 +370,7 @@ def build_player_catalog(
                 playback=playback,
                 emby_present=emby_present,
                 visible_in_embi=visible,
-                orphan=registry_present and not emby_present,
+                orphan=False,
                 removable=removable,
                 protected_reason=protected_reason,
             )
@@ -401,6 +422,7 @@ def catalog_stats(
             player.registry_present and not player.registry_enabled and player.emby_present
             for player in items
         ),
+        server_missing=sum(player.server_missing for player in items),
         orphans=sum(player.orphan for player in items),
     )
 
