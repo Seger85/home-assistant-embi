@@ -1,67 +1,90 @@
 # EMBi Roadmap
 
-## 0.3.0 – Stable
+## 0.3.0 – erste stabile Basis
 
-Status: Implementierung und Repositoryvertrag abgeschlossen; öffentliche Veröffentlichung gesperrt, bis die Live-Gates erfüllt und der Draft-Promotion-PR ausdrücklich freigegeben ist.
+Status: veröffentlicht.
+
+Schwerpunkte:
+
+- Config Flow und Options Flow
+- Erhalt bestehender Entity-IDs und Unique IDs
+- manuelle und automatische Bereinigung alter Emby-Gerätedatensätze
+- persistenter Wartungsstatus und absoluter Scheduler
+- exakte Registry-Nachbereitung mit getrennten Ergebniszählern
+- HACS-ZIP-Releasevertrag
+
+## 0.9.0 – Geräte, Benutzer und sichere Player-Verwaltung
+
+Status: frozen Contract implementiert auf `feature/embi-0.9.0`; private Home-Assistant-Abnahme und anschließende Stable-Promotion stehen noch aus.
 
 Enthalten:
 
-- persistenter Maintenance-Store und persistenter Laufbericht
-- absoluter Scheduler mit 120-Sekunden-Catch-up und 24 Stunden nach Abschluss
-- gemeinsamer Lock und Wiederholschutz
-- getrennte Registry-Zähler queued, matched, removed, missing und protected
-- fail-safe Verhalten bei Store-, API- und Revalidierungsfehlern
-- Options-Flow-Entwurf mit Apply und Discard
-- höchstens ein Reload nach Apply
-- ein normaler EMBi-Verbindungsschlüssel, kein zweites Cleanup-Feld
-- keine Aktivierungsphrase
-- manuelle und automatische Alterswerte mit Presets und Custom
-- getrennte App- und Geräte-Ignorierregeln
-- sichtbare unresolved Altwerte
-- keine automatische Ignore-Regel nach Serverbereinigung
-- HA-Mitbereinigung für neue Aktivierungen standardmäßig aus
-- Diagnostics-Redaktion
-- keine Wartungsentity
-- HACS-ZIP-Vertrag `embi.zip`
+- produktorientierter Bereich **Geräte & Player**
+- bekannte Emby-Benutzer als primäre Gruppen
+- **Gemeinsam genutzt** mit allen bekannten Benutzern
+- **Ohne Benutzerzuordnung**
+- **Technische Zugriffe** nur bei belastbarer Metadaten- oder Verhaltensgrundlage
+- **Unklare Clients** ohne automatische Umklassifizierung
+- verständliche App-, Geräte-, HA-Namens-, Entity-ID- und Statusangaben
+- exakte Player-, Geräte- und Benutzer-Sichtbarkeitsregeln
+- sichtbare nicht eindeutig auflösbare ältere Regeln
+- semantische Entwurfsprüfung mit Apply und Discard
+- ein gemeinsamer Bereich **Bereinigung**
+- weiterhin getrennte Serverhistorien-Löschung und Home-Assistant-Player-Entfernung
+- Schutz für `playing`, `paused` und unklaren Wiedergabestatus
+- Entfernen normaler nicht spielender EMBi-Player aus Home Assistant
+- exakte Hidden-Rule vor Registry-Entfernung
+- Reload und Verifikation, dass entfernte Player nicht zurückkehren
+- Wiederherstellung und Verifikation der resultierenden Entity
+- deaktivierte gültige Entities werden nicht als verwaist behandelt
+- idempotente Migration von 0.3.0
+- Erhalt exakter Alterswerte wie `364` und `365`
+- Erhalt der automatischen Bereinigungsstellung und des Schedulerzustands
+- Erhalt von Entity-IDs, Unique IDs, Namen, Aliasen, Areas, Labels und deaktiviertem Zustand
+- redigierte Migration-, Klassifizierungs-, Cleanup- und Restore-Diagnostics
+- genau eine Bestätigung je destruktiver Aktion
+- private releasegleiche CI-Artefakte vor der Stable-Promotion
 
-Live-Gates:
+Release-Gates:
 
-- vollständiges Home-Assistant- und Emby-Backup
-- Upgradepfad `v0.3.0-rc3` → unveröffentlichtes `0.3.0`-Testpaket
-- 29 Media-Player, Entity-IDs, Unique IDs und individuelle Namen unverändert
-- migrierter Wert 364 bleibt zunächst Custom
-- bewusste spätere Auswahl von 365 prüfen
-- Catch-up, `next_run_at`, Reload und Neustart prüfen
-- Apply, unveränderter Apply, Discard und Schließen über X prüfen
-- tatsächliche sichere Registry-Nachbereitung verifizieren
-- iPhone-, iPad- und Desktop-QA
-- Rollback auf `v0.3.0-rc3`
-- keine neuen Repairs, Fehler oder unbeabsichtigten Änderungen
+- vollständige automatisierte Anforderungs- und Akzeptanzmatrix grün
+- Python 3.13 und 3.14 grün
+- Ruff, Format, HACS Validation, Hassfest und Spec Contract grün
+- privates `0.9.0`-Testpaket exakt an den getesteten Commit gebunden
+- produktives Home-Assistant-Backup
+- Upgrade `0.3.0` → privates `0.9.0`-Paket
+- 29-Player-Baseline und sämtliche Identitäten/Metadaten erhalten
+- Benutzer-, Shared-, Unassigned-, Technical- und Unknown-Gruppen live geprüft
+- Apply, Discard, X und semantische Review-Ausgabe auf iPhone, iPad und Desktop geprüft
+- `playing` und `paused` live geschützt
+- ein normaler nicht spielender Player kontrolliert entfernt und wiederhergestellt
+- Serverhistorien-Bereinigung separat geprüft
+- Scheduler, Reload und Neustart geprüft
+- Rollbackweg demonstriert
+- Promotion `develop` → `main` erst nach dokumentierter Live-Freigabe
 
-## Nach 0.3.0
+## Nach 0.9.0
 
-Die folgenden Themen bleiben ausdrücklich außerhalb des Stable-Scope und werden erst nach der Veröffentlichung neu priorisiert:
+Diese Themen gehören nicht zum eingefrorenen 0.9.0-Vertrag:
 
 - Report-only-Modus
-- Bibliothekssensoren
+- Bibliothekszahlen und Bibliothekssensoren
+- Filme-, Serien- und Episodensensoren
 - zuletzt hinzugefügte Medien
 - Benutzerstatistiken
 - Wiedergabezeitstatistiken
-- neue Plattformen
-- Premium-Code
-- weitere Produktvisionen
+- neue Entity-Plattformen
+- weitere Serververwaltungsfunktionen
 
-## 0.4.x – Wartung und Testvertiefung
+## 1.0.0 – Veröffentlichung und langfristiger Vertrag
 
-- vollständige Home-Assistant-Testumgebung für Config Flow und Options Flow
-- breitere Runtime-Kompatibilitätsmatrix
-- weitere Fehler- und Recovery-Szenarien
-- strukturierte, identitätsfreie Audit-Historie nur nach neuer Scope-Freigabe
+Für 1.0.0 reserviert:
 
-## 1.0.0 – Langfristige Veröffentlichungsreife
+- breitere externe Testbasis
+- dokumentierte Home-Assistant- und Emby-Kompatibilitätsmatrix
+- abschließendes Datenschutz- und Sicherheitsreview
+- stabiler Migrationspfad über mehrere veröffentlichte Versionen
+- Community-Dokumentation und Supportprozess
+- erneute Priorisierung der ausdrücklich zurückgestellten Produktfunktionen
 
-- externe Beta-Tests
-- dokumentierte Kompatibilitätsmatrix
-- Datenschutz- und Sicherheitsreview
-- stabiler Migrationspfad über mehrere Vorversionen
-- klare Abgrenzung zum minimalen Home-Assistant-Core-Vorschlag
+Premium-Code bleibt höchstens eine entfernte Post-1.0-Idee und ist kein zugesagter Produktumfang.

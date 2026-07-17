@@ -2,90 +2,163 @@
 
 ## Verbindung
 
-EMBi benötigt genau einen Config Entry mit:
+EMBi benötigt pro Emby-Server genau einen Config Entry mit:
 
 - Name
 - Host oder IP-Adresse
 - Port
 - HTTPS an/aus
-- normalem Emby-Verbindungsschlüssel
+- Emby-API-Schlüssel
 
-Es gibt keine zusätzlichen Cleanup-Anmeldedaten. Derselbe gespeicherte Verbindungsschlüssel wird für Wiedergabe, Geräteabfrage und ausdrücklich bestätigte Wartungsaktionen verwendet. Der gespeicherte Wert wird im Reconfigure-Flow nie als Standardwert an das Frontend zurückgegeben.
+Es gibt keinen zweiten Cleanup-Schlüssel. Der gespeicherte Schlüssel wird im Reconfigure-Flow nicht als Frontend-Default zurückgegeben und in Diagnostics redigiert.
 
-## Media-Player-Modus
+## Root-Navigation
 
-- **Alle Geräte anzeigen**: kompatibles Standardverhalten
-- **Nur aktive Wiedergaben**: nur `playing` oder `paused`
-- **Nur ausgewählte Geräte**: exakte `ReportedDeviceId.AppName`-Allowlist
+Der Options Flow besitzt genau diese fachlichen Bereiche:
 
-## Ignorierregeln
+- **Geräte & Player**
+- **Bereinigung**
+- **Änderungen prüfen**, sobald der Entwurf vom gespeicherten Zustand abweicht
 
-- **Ignorierte App-Varianten**: exakte App-/Client-Identität
-- **Ignorierte Geräte**: exakte `ReportedDeviceId`, wirkt auf alle App-Varianten
-- **Nicht auflösbare Altregeln**: bleiben sichtbar erhalten, bis sie bewusst entfernt werden
+Normale Unterseiten schreiben nicht direkt. Apply schreibt Optionen einmal und lädt höchstens einmal neu. Discard und Schließen über X schreiben nichts.
 
-Ignorieren hat Vorrang vor Allowlist und Modus. Es gibt keine Präfix- oder Teilstring-Auswertung.
+## Geräte & Player
 
-## Options-Entwurf
+### Globale Darstellung
 
-Eine Options-Sitzung kann mehrere Unterseiten umfassen. Änderungen bleiben im Entwurf, bis **Änderungen übernehmen** bestätigt wird.
+**Nur während der Wiedergabe anzeigen**
 
-- Unterseiten schreiben nicht.
-- Sammelaktionen ändern nur den Entwurf.
-- Apply speichert genau einmal.
-- Bei unverändertem Entwurf erfolgt kein Write und kein Reload.
-- Discard verwirft den Entwurf vollständig.
-- Schließen über X schreibt nichts.
-- Kritische Wartungsaktionen sind bei Dirty Draft gesperrt.
+- aus: ausgewählte Player bleiben dauerhaft verfügbar
+- ein: Player erscheinen nur bei `playing` oder `paused`
 
-## Serverbereinigung
+**Neue Player automatisch anzeigen**
 
-Der Master-Schalter ist bei neuen Installationen aus. Wird er im Entwurf ausgeschaltet, wird auch die Automatik im Entwurf ausgeschaltet.
+- ein: neue Wiedergabeclients werden automatisch berücksichtigt
+- aus: neue Player bleiben verborgen, bis sie im Options Flow aktiviert werden
 
-Manuelle und automatische Alterswerte sind getrennt. Verfügbar sind:
+**Technische Zugriffe anzeigen**
+
+Technische Zugriffe werden nur bei belastbarer Metadaten- oder Verhaltensgrundlage erkannt. Ein Produktname allein reicht nicht. Unsichere Clients verbleiben unter **Unklare Clients**.
+
+### Gruppen
+
+Reihenfolge:
+
+1. bekannte Emby-Benutzer
+2. **Gemeinsam genutzt** mit allen bekannten Benutzern
+3. **Ohne Benutzerzuordnung**
+4. **Technische Zugriffe**
+5. **Unklare Clients**
+6. gegebenenfalls **Ältere Regeln**
+
+Jede Player-Zeile zeigt App/Gerät, Home-Assistant-Anzeigename, vollständige Entity-ID, Benutzerkontext und Status. ReportedDeviceId, Config Entry ID und Unique ID werden in der normalen UI nicht benötigt.
+
+### Sichtbarkeitsregeln
+
+Kanonische Regeln:
+
+- exakter logischer Player/App-Variante
+- exaktes vollständiges Gerät über alle App-Varianten
+- Master-Sichtbarkeit für Player, die ausschließlich einem Benutzer zugeordnet sind
+- nicht eindeutig migrierbare ältere Regeln
+
+Regeln arbeiten ausschließlich exakt. Präfix-, Wildcard- oder Teilstring-Matching ist ausgeschlossen.
+
+### Deaktivierte Entities
+
+Eine deaktivierte, weiterhin gültige EMBi-Entity ist kein Orphan. Sie kann gezielt wieder aktiviert werden, ohne Entity-ID, Unique ID, Namen, Alias, Area oder Labels neu zu schreiben.
+
+## Änderungen prüfen
+
+Die Review-Seite zeigt semantische Vorher-/Nachher-Angaben, zum Beispiel:
+
+- Immer verfügbar → Nur während der Wiedergabe
+- Neue Player automatisch anzeigen: Ein → Aus
+- Altersgrenze: 364 Tage → 365 Tage
+- Wohnzimmer Fernseher: In Home Assistant anzeigen → Ausgeblendet
+
+Für normales Apply und Discard gibt es keinen zusätzlichen Bestätigungsschalter.
+
+## Bereinigung
+
+Der gemeinsame Bereich zeigt getrennte Zähler für:
+
+- Emby-Server-Gerätehistorie
+- Home-Assistant-Player
+- zusätzliche historische Datensätze
+- aktuell entfernbare Player
+- durch Wiedergabe geschützte Player
+- letzten Lauf und nächsten automatischen Termin
+
+### Manuelle Serverprüfung
+
+Alterswerte:
 
 - 7 Tage
 - 30 Tage
 - 90 Tage
 - 180 Tage
 - 365 Tage
-- Benutzerdefiniert
+- benutzerdefiniert
 
-Der numerische Tageswert ist die Quelle der Wahrheit. Ein vorhandener Wert 364 bleibt 364 und erscheint als Custom. Es findet keine globale Umwandlung auf 365 statt.
+Der numerische Wert ist die Quelle der Wahrheit. `364` bleibt `364`; `365` bleibt `365`.
 
-## Automatische Bereinigung
+Wenn keine sicheren Kandidaten existieren, wird kein leerer Mehrfachselektor angezeigt. Es erfolgt keine Änderung.
 
-- bei neuen Aktivierungen aus
-- Warnseite mit Pflichtschalter
-- keine Texteingabe und keine Aktivierungsphrase
-- Start erst nach finalem Apply
-- erster beziehungsweise Catch-up-Lauf nach 120 Sekunden
-- anschließend 24 Stunden nach Abschluss
+### Automatische Serverbereinigung
+
+- bei Neuinstallation aus
+- bestehende Stellung bleibt bei Migration erhalten
+- 120-Sekunden-Catch-up für Erstaktivierung, überfälligen Termin oder Migration ohne persistenten Termin
+- danach 24 Stunden nach Abschluss des vorherigen Versuchs
+- persistentes absolutes `next_run_at`
 - kein Batchlimit
 
-## HA-Mitbereinigung
+### Home-Assistant-Player entfernen
 
-Die Option für passende HA-Media-Player ist bei neuen Aktivierungen standardmäßig `false`. Vorhandene Werte werden bei der Migration nicht verändert. Gerrys bestehender Wert `true` bleibt deshalb erhalten.
+Dies ist eine eigene destruktive Aktion und löscht keine Emby-Serverhistorie.
 
-Eine tatsächliche Registry-Entfernung kann individuelle Namen, Entity-IDs, Dashboards, Automationen, HomeKit und Siri betreffen. Sie wird ausschließlich nach dem vollständigen Sicherheitsvertrag ausgeführt.
+Auswählbar sind nur EMBi-Player, die:
 
-## Migration von rc3
+- eindeutig zur Integration gehören
+- aktuell nicht spielen
+- nicht pausiert sind
+- einen ausreichend bekannten Wiedergabestatus besitzen
 
-Erhalten werden:
+Vor der Entfernung wird eine exakte Hidden-Regel gespeichert. Danach folgen Reload, Registry-Entfernung und Verifikation. Diese Aktion besitzt genau eine abschließende Bestätigung.
 
-- Config Entry
+### Wiederherstellen
+
+Ein verborgener oder entfernter Player wird unter **Geräte & Player** wieder sichtbar geschaltet. Nach Apply lädt EMBi neu und prüft die resultierende Entity. Bei einer neu angelegten Entity können manuelle Zuordnungen in Dashboards, Automationen, HomeKit oder Siri erneut nötig sein.
+
+## Migration von 0.3.0
+
+Erhalten:
+
+- Config Entry und Verbindung
 - Entity-IDs und Unique IDs
 - individuelle Namen
-- Master-Schalter und Automatik
-- abgeschlossener rc3-Erstlauf
-- manuelle und automatische Alterswerte
+- Aliase, Areas und Labels
+- disabled state
+- bestehende Sichtbarkeitsentscheidungen
+- automatische Bereinigung ein/aus
+- exakte Alterswerte
 - HA-Mitbereinigung
-- gültige Auswahl- und Ignore-Werte
+- Scheduler- und Laufstatus
 
-Entfernt werden:
+Überführt:
 
-- zusätzliches Cleanup-Zugangsfeld
-- bisheriger Aktivierungstext
-- automatische Ignore-Option nach Serverbereinigung
-- obsoleter rc3-Erstlauf-Hilfswert nach Übertragung in den Store
-- gemischte Legacy-Ignore-Liste nach sicherer Klassifizierung
+- alter Modus → permanenter oder Active-only-Modus
+- Allowlist → exakte sichtbare Player bei ausgeschalteter Auto-Anzeige
+- App-Ignore → exakte Hidden-Player-Regel
+- Geräte-Ignore → exakte Hidden-Geräte-Regel
+- unklare Altwerte → sichtbare **Ältere Regeln**
+
+Entfernt:
+
+- separater Cleanup-API-Schlüssel
+- Aktivierungsphrase
+- automatische Ignore-Regel nach Serverlöschung
+- obsolete rc3-Hilfswerte
+
+Vor dem Upgrade ein vollständiges Home-Assistant-Backup erstellen. Keine `.storage`-Dateien direkt bearbeiten.

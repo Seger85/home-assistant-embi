@@ -9,80 +9,68 @@ Prüfen:
 - normalen EMBi-Verbindungsschlüssel
 - Erreichbarkeit von `/System/Info` und `/Devices`
 - ob eine zweite Custom Component dieselbe Domain `emby` verwendet
+- ob Manifest und Runtime beide `0.9.0` melden
 
 ## Wartungsspeicher nicht verfügbar
 
-Symptome:
+Bei `maintenance_storage_available: false` keine Wartungsaktion starten. Dateisystem, freien Speicher, Logs und Backup prüfen. `.storage` niemals direkt bearbeiten. Der sichere Rückfallpunkt ist Stable `v0.3.0` oder das vollständige Home-Assistant-Backup.
 
-- Persistent Notification „EMBi-Wartung angehalten“
-- Automatik nicht geplant
-- `maintenance_storage_available: false` in Diagnostics
+## Ein Client erscheint unter „Unklare Clients“
 
-Vorgehen:
+Das ist kein Fehler. EMBi klassifiziert einen technischen Zugriff nur anhand belastbarer Capability-, Typ- oder Verhaltensdaten. Ein Produktname allein reicht nicht. Fehlt diese Evidenz, bleibt der Eintrag bewusst unter **Unklare Clients**.
 
-1. keine Wartungsaktion auslösen
-2. Home-Assistant-Dateisystem und freien Speicher prüfen
-3. Logs auf Storage-Korruption oder Write-Fehler prüfen
-4. Backupzustand prüfen
-5. nicht manuell in `.storage` editieren
-6. bei Bedarf auf `v0.3.0-rc3` und Backup zurückrollen
+## Eine gültige deaktivierte Entity wird angezeigt
 
-## `registry_pending` nach Neustart
+Eine deaktivierte, weiterhin zum EMBi-Config-Entry gehörende und auf dem Emby-Server bekannte Entity ist gültig. Sie darf nicht als Orphan klassifiziert werden. Beim erneuten Aktivieren müssen Entity-ID, Unique ID und Registry-Metadaten erhalten bleiben.
 
-Das ist ein bewusst fail-safe behandelter Zustand. EMBi führt keine verspätete Registry-Änderung aus. Der Bericht wird als `interrupted` markiert. Serverergebnisse bleiben im Bericht erhalten; die Registry-Nachbereitung muss später mit einem neuen kontrollierten Testobjekt erneut geprüft werden.
+## Ein Player ist geschützt
 
-## `queued` größer als `removed`
+`playing` und `paused` sind geschützt. Auch ein unklarer Wiedergabestatus arbeitet fail-safe. Eine Änderung ist erst zulässig, wenn frische Emby- und Home-Assistant-Daten einen sicher nicht spielenden Zustand bestätigen.
 
-Das ist nicht automatisch ein Fehler. Mögliche Gründe:
+## Sichtbarkeit und Home-Assistant-Registry unterscheiden sich
 
-- Entity nie vorhanden: `missing`
-- aktiver State: protected
-- verbleibende gleiche Historie: protected
-- falscher Config Entry oder Plattform: protected
-- Unique ID verändert oder mehrdeutig: protected
+Normales Ausblenden in EMBi und eine Änderung der Home-Assistant-Registry sind getrennte Vorgänge. Serverhistorie und Home-Assistant-Player bleiben ebenfalls getrennt. Dadurch verändert eine normale Sichtbarkeitsregel keine Emby-Serverhistorie.
 
-Nur ein tatsächlicher `registry.async_remove()` erhöht `removed`.
+## Wiederherstellung schlägt fehl
 
-## Automatik läuft nach 120 Sekunden nicht
+EMBi entfernt nur die exakte Hidden-Rule und lädt den Config Entry neu. Danach muss genau eine zum selben Config Entry gehörende `media_player`-Entity mit der erwarteten Unique ID vorhanden sein. Mehrdeutigkeit oder eine fehlende Entity wird als Fehler gemeldet.
+
+## Automatische Bereinigung läuft nicht
 
 Prüfen:
 
-- Master-Schalter und Automatik wurden final per Apply gespeichert
-- Store ist verfügbar
+- Automatik wurde final per Apply gespeichert
+- Wartungsspeicher ist verfügbar
 - Config Entry ist `loaded`
 - `next_run_at` liegt nicht noch in der Zukunft
-- kein manueller oder anderer automatischer Lauf hält den gemeinsamen Lock
-- die Automatik wurde während der Grace Period nicht wieder deaktiviert
+- kein Lauf hält den gemeinsamen Lock
+
+In der aktuellen produktiven Ausgangsbasis ist die automatische Bereinigung bewusst deaktiviert.
 
 ## Termin verschiebt sich bei Reload oder Neustart
 
-Ein gültiger Zukunftstermin darf sich nicht verschieben. Diagnosedaten und „Letzter Bereinigungslauf“ vergleichen. Bei Abweichung keine Wartungsaktion auslösen und Logs sichern.
+Ein gültiger Zukunftstermin darf sich nicht verschieben. Diagnostics und letzten Laufbericht vergleichen. Bei Abweichung keine Wartungsaktion auslösen und Logs sichern.
 
 ## Custom 364 erscheint
 
-Das ist korrekt. Stable migriert 364 nicht automatisch auf 365. Die bewusste Auswahl von 365 erfolgt erst im Live-Test über den Options Flow.
+Das ist korrekt. EMBi migriert `364` nicht automatisch auf `365`. Der numerische Wert bleibt die Quelle der Wahrheit. Ein vorhandener Wert `365` bleibt ebenfalls exakt `365`.
 
 ## Optionen scheinbar nicht gespeichert
 
-Unterseiten ändern nur den Entwurf. Am Ende **Änderungen übernehmen** bestätigen. **Änderungen verwerfen** oder Schließen über X schreibt nichts.
-
-## Wartungsmenüs fehlen
-
-Bei ungespeicherten Entwurfsänderungen sind kritische Aktionen absichtlich gesperrt. Entwurf zuerst übernehmen oder verwerfen. Die manuelle Serverbereinigung ist außerdem nur sichtbar, wenn der Master-Schalter bereits angewendet ist.
+Unterseiten ändern nur den Entwurf. **Änderungen prüfen** zeigt semantische Vorher-/Nachher-Werte. Erst **Änderungen übernehmen** schreibt die Optionen. **Änderungen verwerfen** und Schließen über X schreiben nichts.
 
 ## Media-Player fehlen oder haben andere IDs
 
-Sofort stoppen und vergleichen:
+Der aktuell verifizierte Referenzstand vor dem privaten Upgrade ist:
 
-- erwartete Anzahl 29
-- Config-Entry-Zuordnung
-- Entity-ID
-- Unique ID
-- individueller Name
-- Disabled-/Restored-/Orphan-Status
+- 69 Emby-Server-Historieneinträge
+- 30 aktivierte und geladene EMBi-Media-Player
+- kein Registry-Orphan
+- automatische Bereinigung deaktiviert
+- manuelle und automatische Schwelle jeweils 365 Tage
 
-Keine Registry-Nachbereitung starten. Bei Identitätsabweichung Rollback auf rc3 vorbereiten.
+Eine abweichende Playerzahl ist nur akzeptabel, wenn unmittelbar vor dem Test eine reale Emby-Clientänderung dokumentiert wurde. Zusätzlich Entity-ID, Unique ID, individuellen Namen, Aliase, Area, Labels, disabled state, Repairs und Logs prüfen. Bei Identitätsabweichung Rollback auf `v0.3.0` oder das vollständige Backup vorbereiten.
 
-## HACS bietet Stable nicht an
+## HACS bietet 0.9.0 noch nicht an
 
-Vor der öffentlichen Veröffentlichung ist das korrekt. Das unveröffentlichte Testpaket ist ein Actions-Artefakt und kein HACS-Release. Stable erscheint erst nach Merge nach `main`, Tag `v0.3.0` und GitHub Stable Release.
+Vor der öffentlichen Veröffentlichung ist das korrekt. Das private `embi-test-<commit>`-Paket ist ein GitHub-Actions-Artefakt und kein HACS-Release. HACS Stable erscheint erst nach erfolgreicher privater Abnahme, Promotion nach `main`, Tag `v0.9.0` und regulärem GitHub Release.

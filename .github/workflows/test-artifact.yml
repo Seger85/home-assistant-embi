@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - develop
+      - main
   workflow_dispatch:
 
 permissions:
@@ -28,15 +28,20 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Validate stable contract
-        run: python scripts/validate_stable_contract.py
+      - name: Install validator dependencies
+        run: python -m pip install -q --upgrade pip -r requirements_test.txt
+
+      - name: Validate specification and stable contracts
+        run: |
+          python scripts/validate_spec_contract.py
+          python scripts/validate_stable_contract.py
 
       - name: Build release-equivalent integration archive
         run: |
           rm -rf dist
           python scripts/build_package.py \
             --output-dir dist \
-            --expected-version 0.3.0 \
+            --expected-version 0.9.1 \
             --commit "${BUILD_COMMIT_SHA}"
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"

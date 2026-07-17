@@ -47,6 +47,12 @@ jobs:
           PY
       - name: Compile Python
         run: python -m compileall -q custom_components/emby scripts tests
+      - name: Static type check
+        run: >-
+          mypy --ignore-missing-imports --follow-imports=skip
+          custom_components/emby/options_model.py
+          custom_components/emby/player_context.py
+          custom_components/emby/options_runtime.py
       - name: Capture Ruff lint result
         id: ruff
         shell: bash
@@ -69,8 +75,28 @@ jobs:
         run: exit 1
       - name: Ruff format
         run: ruff format --check .
-      - name: Unit tests
-        run: pytest -q
+      - name: Capture unit-test result
+        id: pytest
+        shell: bash
+        run: |
+          set +e
+          pytest -q > pytest-report.txt 2>&1
+          status=$?
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          cat pytest-report.txt
+          exit 0
+      - name: Upload unit-test report
+        if: ${{ steps.pytest.outputs.status != '0' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report-${{ matrix.python-version }}-${{ github.sha }}
+          path: pytest-report.txt
+          retention-days: 1
+      - name: Enforce unit tests
+        if: ${{ steps.pytest.outputs.status != '0' }}
+        run: exit 1
+      - name: Validate specification contract
+        run: python scripts/validate_spec_contract.py
       - name: Validate stable contract
         run: python scripts/validate_stable_contract.py
       - name: Secret and privacy scan
@@ -78,6 +104,6 @@ jobs:
       - name: Build and verify release-equivalent asset
         run: |
           rm -rf dist
-          python scripts/build_package.py --output-dir dist --expected-version 0.3.0 --commit "${GITHUB_SHA}"
+          python scripts/build_package.py --output-dir dist --expected-version 0.9.1 --commit "${GITHUB_SHA}"
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"

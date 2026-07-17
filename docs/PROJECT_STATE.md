@@ -1,71 +1,100 @@
 # EMBi Project State
 
-## Produktive Ausgangslage
+## Veröffentlichte Linie
 
-- produktive Vorversion: `v0.3.0-rc3`
-- Home Assistant: Core 2026.7.2
-- bestehender Config Entry: geladen und beizubehalten
-- Stable-Live-Baseline: 29 `media_player`-Entities
+- aktuelle Produktversion: `0.9.1`
+- Stable-Branch: `main`
+- Stable-Tag: `v0.9.1`
+- Verteilung: regulärer GitHub-Release mit `embi.zip` und `embi.zip.sha256`
+- HACS verwendet ausschließlich veröffentlichte Releaseassets; der Default-Branch-Fallback ist ausgeblendet
 - zusätzliche EMBi-Wartungsentity: keine
-- Entity-IDs, Unique IDs und individuelle Namen: unverändert zu erhalten
-- Legacy YAML: nicht Bestandteil des Stable-Laufzeitpfads
-- vorhandene Serverbereinigung und Automatik: bei der Migration zu erhalten
-- vorhandene HA-Mitbereinigung: Gerrys Wert `true` ist zu erhalten
-- vorhandene Alterswerte: 364 bleibt zunächst ein Custom-Wert
+- Legacy YAML: nicht Bestandteil des Laufzeitpfads
 
-Keine privaten Geräteidentitäten, Zugangsdaten oder internen Config-Entry-IDs werden in diesem Dokument gespeichert.
+Dieses Dokument enthält keine privaten Geräteidentitäten, Zugangsdaten, Netzwerkadressen oder Config-Entry-IDs.
 
-## Repositoryzustand
+## Produktumfang 0.9.1
 
-- Repository: öffentlich
-- `main`: veröffentlichte Linie; Stable-Promotion noch nicht gemergt
-- `develop`: Ziel des Implementierungs-PRs und Quelle des finalen Testartefakts
-- Implementierungsbranch: `feature/stable-0.3.0`
-- Implementierungs-PR: #18
-- Zielversion: `0.3.0`
-- Stable-Tag und Stable-Release: nicht erstellt
-- `v0.3.0-rc3` und alle bestehenden Tags/Releases: unverändert
+### Home-Assistant-Player
 
-## Stable-Vertrag
+- Hauptbereich **Home-Assistant-Player**
+- globale Schalter für Active-only, neue Player und technische Zugriffe
+- kompakte Benutzer-, Shared-, Unassigned-, Technical- und Unknown-Gruppen
+- Master-Schalter für bekannte Benutzer
+- einzelne Abweichungen unter **Ausnahmen verwalten**
+- Suche und Seitennavigation für lange Listen
+- kurze Labels aus Gerät und App
+- technische Angaben ausschließlich in Detailansichten
+- bestehende Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und disabled state bleiben unverändert
 
-- Config-Entry-Version 3.1
-- ausschließlich Plattform `media_player`
-- bestehende pyemby-Unique-ID-Logik unverändert
-- persistenter privater und atomarer Store
-- persistenter identitätsfreier Laufbericht
-- absolutes `next_run_at`
-- genau ein Catch-up nach 120 Sekunden bei fehlendem, ungültigem oder überfälligem Termin
-- gültiger Zukunftstermin bleibt über Reload und Neustart bestehen
-- Folgeplanung 24 Stunden nach Abschluss
-- gemeinsamer Lock für manuell und automatisch
-- keine unsichere Registry-Wiederaufnahme nach Neustart
-- Options-Entwurf, Apply und Discard
-- keine zusätzlichen Cleanup-Anmeldedaten neben der normalen Verbindung
-- keine Aktivierungsphrase
-- keine automatische Ignore-Regel nach Serverbereinigung
-- HA-Mitbereinigung bei neuen Aktivierungen standardmäßig `false`
+### Options-Flow-Draft
 
-## Korrigierter Referenztest
+- Hauptmenü aus **Home-Assistant-Player** und **Emby-Server bereinigen**
+- **Änderungen prüfen** erscheint nur bei offenem Entwurf
+- jede Unterseite besitzt **‹ Zurück**
+- Zurück behält den vollständigen Entwurf
+- X und Verwerfen schreiben nichts und laden nicht neu
+- unverändertes Apply bleibt als Inline-Hinweis im Flow
+- geändertes Apply schreibt genau einmal und lädt höchstens einmal neu
+- normale Fehler bleiben auf der aktiven Seite
 
-Der produktive rc3-Test reduzierte die Emby-Gerätehistorie von 74 auf 69 Einträge. Fünf Serverbereinigungen waren erfolgreich und keine schlug fehl. Die damalige Queue enthielt fünf Player-Identitäten; da diese nie als HA-Player vorhanden waren, ergaben sich null Matches, null tatsächliche Registry-Entfernungen und fünf missing.
+### Emby-Server bereinigen
 
-Für 0.3.0 ist dieser Fall als automatisierter Vertragstest festgeschrieben. Queue und tatsächliche Entfernung werden getrennt gezählt.
+- getrennte Seiten für automatische Bereinigung, manuelle Prüfung und letzten Lauf
+- getrennte manuelle und automatische Alterswerte
+- Presets 7, 30, 90, 180 und 365 Tage plus benutzerdefinierter Wert
+- exakte Bestandswerte wie `364` und `365` bleiben unverändert
+- benutzerdefiniertes Zahlenfeld nur bei Auswahl von **Benutzerdefiniert**
+- Kandidatenauswahl als Vorschau und anschließend genau eine Ausführung
+- Serverhistorie und Home-Assistant-Player bleiben getrennte Vorgänge
 
-## Pre-Live-Zustand
+### Player entfernen und wiederherstellen
 
-Vor der öffentlichen Stable-Veröffentlichung müssen noch erledigt werden:
+- `playing`, `paused` und unklare Wiedergabezustände sind geschützt
+- exakte Hidden-Regel wird vor einer Registry-Entfernung gespeichert
+- aktuelle Server-, Registry-, Config-Entry-, Plattform- und Unique-ID-Daten werden erneut validiert
+- Erfolg wird erst nach Reload und Wiederkehrprüfung gemeldet
+- Restore entfernt die passende Regel, lädt neu und verifiziert die resultierende Entity
+- deaktivierte gültige Entities gelten nicht als Orphans
+- Registry-Einträge ohne aktuellen Emby-Datensatz werden als **Nicht mehr vom Emby-Server gemeldet** geführt
+- echte Home-Assistant-Orphans bleiben eine separate Registry-Semantik
 
-- unveröffentlichtes Testartefakt auf dem exakten Develop-Merge-Commit prüfen
-- Draft-Promotion-PR `develop` → `main` vorbereiten und gesperrt lassen
-- Home-Assistant-Backup und Emby-Rollbackweg bestätigen
-- Upgrade und Migration live prüfen
-- 29 Media-Player und Identitäten prüfen
-- 364 zunächst unverändert bestätigen und 365 bewusst auswählen
-- Scheduler, Catch-up, Reload und Neustart prüfen
-- Options Flow auf iPhone, iPad und Desktop prüfen
-- eine tatsächliche sichere Registry-Nachbereitung testen
-- Rollback auf `v0.3.0-rc3` prüfen
+## Migration
 
-## Veröffentlichungssperre
+Die Migration von 0.9.0 auf 0.9.1 ist idempotent und verändert keine wirksame Sichtbarkeit. Erhalten bleiben:
 
-Kein Merge nach `main`, kein Tag `v0.3.0`, kein Stable Release, kein `latest`, keine HACS-Stable-Version und kein öffentliches rc4 vor Gerrys ausdrücklicher Live-Abnahme.
+- Config Entry
+- Entity-IDs und Unique IDs
+- individuelle Namen, Aliase, Areas und Labels
+- aktivierter oder deaktivierter Registry-Zustand
+- automatische Bereinigung ein oder aus
+- manuelle und automatische Alterswerte
+- persistenter Scheduler und Laufbericht
+- vorhandene exakte Player-, Geräte- und Benutzerregeln
+
+Nicht eindeutig auflösbare ältere Regeln werden sichtbar erhalten und nicht still neu klassifiziert.
+
+Historische Einordnung: 0.9.0 führte den Bereich **Geräte & Player** ein. 0.9.1 ersetzt dessen Navigation durch **Home-Assistant-Player**. Frühere private Abnahmeartefakte sind keine Installationsquelle; produktiv wird ausschließlich der reguläre Stable-Release verwendet.
+
+## Persistenz und Datenschutz
+
+- offizielle Home-Assistant-Storage-API
+- versionierter Wartungsstatus pro Config Entry
+- persistenter Scheduler mit absolutem `next_run_at`
+- persistenter Laufbericht mit getrennten Server- und Registry-Zählern
+- Diagnostics enthalten nur redigierte oder aggregierte Angaben
+- keine API-Schlüssel, vollständigen Record-IDs, ReportedDeviceIds, Player-Keys oder Benutzernamen in Reports
+- keine direkte `.storage`-Bearbeitung
+
+## Qualität und Releasevertrag
+
+Jeder Stable-Commit benötigt:
+
+- Quality auf Python 3.13 und 3.14
+- JSON, YAML, Compileall, Mypy, Ruff und Ruff-Format
+- vollständigen Pytest-Lauf
+- Specification Contract und Stable Contract
+- Secret-/Privacy-Scan
+- HACS Validation und Hassfest
+- releasegleichen Paketbau mit SHA-256 und `BUILD_COMMIT`
+
+Ein Stable-Release muss auf einem Commit in `main` liegen, darf weder Draft noch Prerelease sein, muss `latest` sein und ausschließlich `embi.zip` sowie `embi.zip.sha256` veröffentlichen.

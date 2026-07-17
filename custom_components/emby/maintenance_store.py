@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from .const import MAINTENANCE_STORE_KEY_PREFIX, MAINTENANCE_STORE_VERSION
+from .const import MAINTENANCE_STORE_KEY_PREFIX, MAINTENANCE_STORE_STORAGE_VERSION
 from .models import MaintenanceState
 
 
@@ -24,6 +24,7 @@ class StoreLoadDecision:
     state: MaintenanceState
     storage_available: bool
     initialize_store: bool
+    migrated_schema: bool = False
 
 
 def resolve_store_load(
@@ -32,13 +33,7 @@ def resolve_store_load(
     store_expected: bool,
     legacy_initial_run_completed: bool,
 ) -> StoreLoadDecision:
-    """Distinguish first initialization from an unexpectedly missing Store.
-
-    Home Assistant returns ``None`` for both a new Store and a Store it had to
-    quarantine after corruption. A hidden config-entry marker records whether
-    EMBi has successfully initialized the Store before. If that marker exists,
-    a missing load result is treated as unsafe and automatic cleanup stays off.
-    """
+    """Distinguish first initialization from an unexpectedly missing Store."""
     if loaded is None and store_expected:
         return StoreLoadDecision(MaintenanceState(), False, False)
 
@@ -49,6 +44,7 @@ def resolve_store_load(
         state=state,
         storage_available=True,
         initialize_store=loaded is None,
+        migrated_schema=loaded is not None,
     )
 
 
@@ -65,7 +61,7 @@ class EmbiMaintenanceStore:
 
         backend = Store(
             hass,
-            MAINTENANCE_STORE_VERSION,
+            MAINTENANCE_STORE_STORAGE_VERSION,
             f"{MAINTENANCE_STORE_KEY_PREFIX}.{entry_id}",
             private=True,
             atomic_writes=True,
@@ -73,7 +69,7 @@ class EmbiMaintenanceStore:
         return cls(backend)
 
     async def async_load(self) -> MaintenanceState | None:
-        """Load the stored state without hiding a missing/corrupt result."""
+        """Load and idempotently upgrade the internal maintenance schema."""
         data = await self._backend.async_load()
         return MaintenanceState.from_dict(data) if data is not None else None
 

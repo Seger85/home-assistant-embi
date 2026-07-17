@@ -10,8 +10,15 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import EmbyApiClient, EmbyApiError, EmbyAuthError
-from .const import DEFAULT_PORT, DEFAULT_SSL, DOMAIN
+from .const import (
+    CONFIG_ENTRY_MINOR_VERSION,
+    CONFIG_ENTRY_VERSION,
+    DEFAULT_PORT,
+    DEFAULT_SSL,
+    DOMAIN,
+)
 from .options_flow import EmbyOptionsFlow
+from .options_model import default_options_090
 
 
 def _text_selector(*, password: bool = False) -> selector.TextSelector:
@@ -71,8 +78,8 @@ async def _validate(hass: HomeAssistant, user_input: dict[str, Any]) -> dict[str
 class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the EMBi config flow."""
 
-    VERSION = 3
-    MINOR_VERSION = 1
+    VERSION = CONFIG_ENTRY_VERSION
+    MINOR_VERSION = CONFIG_ENTRY_MINOR_VERSION
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
@@ -92,7 +99,11 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data = dict(user_input)
                 data[CONF_PORT] = int(data[CONF_PORT])
                 title = data.pop(CONF_NAME)
-                return self.async_create_entry(title=title, data=data)
+                return self.async_create_entry(
+                    title=title,
+                    data=data,
+                    options=default_options_090(),
+                )
 
         return self.async_show_form(
             step_id="user",

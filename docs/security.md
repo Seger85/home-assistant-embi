@@ -3,11 +3,13 @@
 ## Grundprinzipien
 
 - lokale Kommunikation zum konfigurierten Emby-Server
-- offizieller Home-Assistant-Config-Entry und offizieller `Store`
+- offizieller Home-Assistant-Config-Entry
+- offizielle Config-, Options-, Entity-Registry- und Storage-APIs
 - keine direkten Änderungen an `.storage`
 - keine versteckten Wartungsentities
-- kritische Wartungsaktionen nur nach expliziter Aktivierung und Bestätigung
-- fail-closed bei unklarem Zustand
+- fail-safe bei unklarem Zustand
+- ein gemeinsamer Lock für manuelle und automatische Wartung
+- genau eine abschließende Bestätigung je destruktiver Aktion
 
 ## Zugangsdaten
 
@@ -24,56 +26,101 @@ Der Maintenance-Store ist:
 
 - privat
 - atomar geschrieben
-- versioniert
+- intern versioniert
 - pro Config Entry getrennt
-- frei von Record-IDs, ReportedDeviceIds, Player-Keys, Benutzernamen und Zugangsdaten
+- kompatibel zum bisherigen Home-Assistant-Store-Envelope
+- frei von vollständigen Record-IDs, ReportedDeviceIds, Player-Keys, Benutzernamen und Zugangsdaten
 
-Ein erwarteter, aber fehlender oder beschädigter Store stoppt automatische Wartungsläufe. Ein neuer leerer Store wird nur bei eindeutiger Erstinitialisierung angelegt.
+Ein erwarteter, aber fehlender oder beschädigter Store stoppt automatische destruktive Läufe. Migrationsergebnisse, Cleanup-Zähler und Player-Aktionsberichte enthalten ausschließlich aggregierte Werte und kategorisierte Fehler.
 
-## Serveraktionen
+## Client-Klassifizierung
 
-- Master-Schalter standardmäßig aus
-- Automatik standardmäßig aus
-- Warnseite und Pflichtbestätigung
-- manuelle Aktion zusätzlich mit dynamischem Bestätigungstext
-- aktive und undatierte Datensätze geschützt
-- frische Revalidierung vor jedem Lauf
-- kein automatisches Erzeugen einer Ignore-Regel
+Technische Zugriffe werden nicht anhand eines Produktnamens allein klassifiziert. Zulässig sind ausschließlich:
 
-## Registry-Schutz
+- explizite Capability-Daten
+- expliziter API-/Service-/Integrationstyp
+- ausreichend eindeutiges wiederholtes Nicht-Wiedergabe-Verhalten
 
-Registry-Änderungen erfordern exakte Gleichheit. Unzulässig sind:
+Bei unzureichender Evidenz bleibt der Client unter **Unklare Clients**. Unsicherheit führt nicht zu einer versteckten technischen Klassifizierung.
 
-- Wildcards
-- Präfix-Matches
-- Teilstring-Matches
-- ungeprüfte Entity-IDs
-- Wiederaufnahme nach Neustart
-- Änderung bei vorhandenem State
-- Änderung bei verbleibender gleicher Serverhistorie
+## Sichtbarkeit und Entwurf
 
-HA-Mitbereinigung ist bei neuen Aktivierungen aus. Bestehende Werte bleiben bewusst erhalten, um Migrationen nicht stillschweigend zu verändern.
+- exakte Player-Regeln
+- exakte Geräte-Regeln
+- Benutzer-Master nur für ausschließlich diesem Benutzer zugeordnete Player
+- keine Wildcards, Präfixe oder Teilstrings
+- normale Unterseiten schreiben nicht
+- Review zeigt semantische Vorher-/Nachher-Angaben
+- Apply schreibt Optionen genau einmal
+- Discard und Schließen über X schreiben nichts
+- laufende und pausierte Player können im Entwurf nicht ausgeblendet werden
+
+Normales Ausblenden ist keine Registry-Entfernung. Die Entity bleibt technisch erhalten, bis eine separate bestätigte Home-Assistant-Player-Aktion ausgeführt wird.
+
+## Serverhistorien-Schutz
+
+- Automatik bei Neuinstallation aus
+- bestehende Stellung bei Migration unverändert
+- strikt älter als UTC-Cutoff
+- exakt am Cutoff geschützt
+- fehlende oder ungültige Aktivität geschützt
+- `playing` und `paused` geschützt
+- frische Revalidierung vor jeder Aktion
+- Einzelfehler stoppt nicht automatisch den restlichen Lauf
+- kein automatisches Erzeugen einer neuen Hidden-/Ignore-Regel
+- keine unsichere Wiederholung nach Prozessabbruch
+
+## Home-Assistant-Player-Schutz
+
+Vor einer Registry-Änderung sind erforderlich:
+
+- frische Emby-Daten
+- aktueller Home-Assistant-State
+- exakter Config Entry
+- Domain `media_player`
+- Plattform `emby`
+- exakte Unique ID
+- sicherer nicht spielender Status
+- gespeicherte exakte Hidden-Regel
+- kontrollierter Reload
+- kein verbleibender Entity-State
+- Ergebnisprüfung nach der Aktion
+
+`playing`, `paused` und unklarer Wiedergabestatus sind nicht auswählbar. Eine deaktivierte, weiterhin gültige Entity wird nicht als Orphan behandelt.
+
+Eine Home-Assistant-Player-Aktion verändert keine Emby-Serverhistorie. Eine Serverhistorien-Aktion verändert keine normale Player-Sichtbarkeit.
+
+## TOCTOU und Parallelität
+
+- Ziele werden unmittelbar vor der Aktion erneut gelesen
+- ein veralteter Options-Flow-Entwurf darf keine alte Zielentscheidung erzwingen
+- Runtime-Wechsel, Unload oder fehlender Store führen zum Abbruch
+- manuelle und automatische Wartung laufen nicht parallel
+- doppelter Schedulercallback startet keinen zweiten Lauf
+- ein unklarer Zwischenzustand führt nicht zu verspäteter Registry-Änderung
 
 ## Datenschutz
 
-Diagnostics und Laufberichte enthalten nur:
+Diagnostics und Berichte enthalten nur:
 
-- Integrationsversion
-- aggregierte Geräteanzahl
-- Schedulerstatus
-- Zeitpunkte
-- Statuscodes
-- aggregierte Server- und Registry-Zähler
+- Integrations- und Schemaversion
+- aggregierte Serverhistorien- und HA-Player-Zähler
+- Gruppen- und Klassifizierungszähler
+- Sichtbarkeitszähler
+- Schedulerstatus und Zeitpunkte
+- Statuscodes und kategorisierte Fehler
+- aggregierte Removal-/Restore-Ergebnisse
 
 Private Identitäten werden weder gekürzt noch gehasht persistiert; sie werden vollständig weggelassen.
 
 ## Backup und Rollback
 
-Vor jedem Live-Test erforderlich:
+Vor der privaten 0.9.0-Live-Abnahme erforderlich:
 
 - vollständiges Home-Assistant-Backup
-- belastbarer Emby-Backup- oder Wiederherstellungsweg
-- dokumentierter Ausgangsstand der 29 Media-Player
-- verfügbare Installationsquelle von `v0.3.0-rc3`
+- belastbarer Emby-Wiederherstellungsweg
+- dokumentierter Ausgangsstand der 29 EMBi-Media-Player
+- Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und disabled state sichern
+- stabile Installationsquelle `v0.3.0` verfügbar halten
 
-Der Rollback der Integration stellt keine zuvor veränderten Emby-Historieneinträge wieder her. Dafür ist der separate Emby-Wiederherstellungsweg erforderlich.
+Primärer Rollbackweg ist die erneute Installation von `v0.3.0` oder die vollständige Backup-Wiederherstellung. Veränderte Emby-Serverhistorie benötigt den separaten Emby-Wiederherstellungsweg.

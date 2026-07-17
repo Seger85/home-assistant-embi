@@ -21,7 +21,6 @@ jobs:
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
-      prerelease: ${{ steps.release.outputs.prerelease }}
       release_branch: ${{ steps.release.outputs.release_branch }}
     steps:
       - name: Check out repository
@@ -36,7 +35,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
 
-      - name: Validate release request, manifest and source branch
+      - name: Validate stable request, version and main ancestry
         id: release
         shell: bash
         run: |
@@ -49,12 +48,12 @@ jobs:
             tag="${GITHUB_REF_NAME#release/}"
             release_branch="true"
           else
-            echo "::error::Release workflow requires a v* tag or release/v* branch."
+            echo "::error::Stable release requires a v* tag or release/v* request branch."
             exit 1
           fi
 
-          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Release tag must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE."
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Stable release tag must use vMAJOR.MINOR.PATCH."
             exit 1
           fi
 
@@ -62,33 +61,23 @@ jobs:
           manifest_version="$(python - <<'PY'
           import json
           from pathlib import Path
-
-          manifest = json.loads(
-              Path("custom_components/emby/manifest.json").read_text(encoding="utf-8")
-          )
-          print(manifest["version"])
+          print(json.loads(Path("custom_components/emby/manifest.json").read_text(encoding="utf-8"))["version"])
+          PY
+          )"
+          internal_version="$(python - <<'PY'
+          from custom_components.emby.const import VERSION
+          print(VERSION)
           PY
           )"
 
-          if [[ "${version}" != "${manifest_version}" ]]; then
-            echo "::error::Release ${tag} does not match manifest version ${manifest_version}."
+          if [[ "${version}" != "${manifest_version}" || "${version}" != "${internal_version}" ]]; then
+            echo "::error::Tag, manifest and internal version must match exactly."
             exit 1
           fi
 
-          git fetch --no-tags origin \
-            main:refs/remotes/origin/main \
-            develop:refs/remotes/origin/develop
-
-          if [[ "${version}" == *-* ]]; then
-            prerelease="true"
-            required_ref="origin/develop"
-          else
-            prerelease="false"
-            required_ref="origin/main"
-          fi
-
-          if ! git merge-base --is-ancestor "${GITHUB_SHA}" "${required_ref}"; then
-            echo "::error::Release ${tag} must point to a commit contained in ${required_ref}."
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::Stable release commit must be contained in main."
             exit 1
           fi
 
@@ -100,7 +89,6 @@ jobs:
 
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
-          echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "release_branch=${release_branch}" >> "${GITHUB_OUTPUT}"
 
       - name: Install test dependencies
@@ -116,30 +104,31 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import yaml
-
           paths = [Path(".github/dependabot.yml")]
           paths.extend(sorted(Path(".github/workflows").glob("*.yml")))
           for path in paths:
               yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
           PY
 
-      - name: Compile Python
-        run: python -m compileall -q custom_components/emby scripts tests
+      - name: Compile and type check
+        run: |
+          python -m compileall -q custom_components/emby scripts tests
+          mypy --ignore-missing-imports --follow-imports=skip \
+            custom_components/emby/options_model.py \
+            custom_components/emby/player_context.py \
+            custom_components/emby/options_runtime.py
 
-      - name: Ruff lint
-        run: ruff check .
+      - name: Ruff lint and format
+        run: |
+          ruff check .
+          ruff format --check .
 
-      - name: Ruff format
-        run: ruff format --check .
-
-      - name: Unit tests
-        run: pytest -q
-
-      - name: Validate stable contract
-        run: python scripts/validate_stable_contract.py
-
-      - name: Secret and privacy scan
-        run: python scripts/secret_scan.py
+      - name: Unit and contract tests
+        run: |
+          pytest -q
+          python scripts/validate_spec_contract.py
+          python scripts/validate_stable_contract.py
+          python scripts/secret_scan.py
 
   hacs:
     name: HACS validation
@@ -174,7 +163,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build and verify release-equivalent assets
+      - name: Build and verify stable assets
         shell: bash
         run: |
           set -euo pipefail
@@ -186,40 +175,34 @@ jobs:
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
 
-      - name: Publish release and assets
+      - name: Publish stable release and assets
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.validate.outputs.tag }}
+          name: EMBi ${{ needs.validate.outputs.version }}
           target_commitish: ${{ github.sha }}
           files: |
             dist/embi.zip
             dist/embi.zip.sha256
           fail_on_unmatched_files: true
           generate_release_notes: true
-          prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
-          make_latest: ${{ needs.validate.outputs.prerelease == 'true' && 'false' || 'true' }}
+          prerelease: false
+          draft: false
+          make_latest: true
 
-      - name: Verify published release metadata, assets and tag target
+      - name: Verify published release and assets
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.validate.outputs.tag }}
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
-          EXPECTED_PRERELEASE: ${{ needs.validate.outputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
-
-          release_json="$(gh release view "${RELEASE_TAG}" --json tagName,isPrerelease,assets)"
+          release_json="$(gh release view "${RELEASE_TAG}" --json tagName,name,isDraft,isPrerelease,assets)"
           jq -e --arg tag "${RELEASE_TAG}" '.tagName == $tag' <<<"${release_json}" >/dev/null
-          jq -e '.assets | any(.name == "embi.zip")' <<<"${release_json}" >/dev/null
-          jq -e '.assets | any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
-          jq -e '.assets | length == 2' <<<"${release_json}" >/dev/null
-
-          actual_prerelease="$(jq -r '.isPrerelease' <<<"${release_json}")"
-          if [[ "${actual_prerelease}" != "${EXPECTED_PRERELEASE}" ]]; then
-            echo "::error::Published prerelease state ${actual_prerelease} does not match ${EXPECTED_PRERELEASE}."
-            exit 1
-          fi
+          jq -e --arg name "EMBi ${RELEASE_VERSION}" '.name == $name' <<<"${release_json}" >/dev/null
+          jq -e '.isDraft == false and .isPrerelease == false' <<<"${release_json}" >/dev/null
+          jq -e '.assets | length == 2 and any(.name == "embi.zip") and any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
 
           rm -rf verify-release
           mkdir verify-release
@@ -239,31 +222,16 @@ jobs:
 
           with zipfile.ZipFile(Path("verify-release/embi.zip")) as archive:
               manifest = json.loads(archive.read("manifest.json"))
-          expected = os.environ["RELEASE_VERSION"]
-          if manifest.get("version") != expected:
-              raise RuntimeError(
-                  f"Published archive version {manifest.get('version')!r} != {expected!r}"
-              )
+          if manifest.get("version") != os.environ["RELEASE_VERSION"]:
+              raise RuntimeError("Published archive version differs")
           PY
 
+          latest_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
+          test "${latest_tag}" = "${RELEASE_TAG}"
           git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
-          tag_commit="$(git rev-list -n 1 "${RELEASE_TAG}")"
-          if [[ "${tag_commit}" != "${GITHUB_SHA}" ]]; then
-            echo "::error::Tag target ${tag_commit} does not match ${GITHUB_SHA}."
-            exit 1
-          fi
+          test "$(git rev-list -n 1 "${RELEASE_TAG}")" = "${GITHUB_SHA}"
 
-          latest_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name 2>/dev/null || true)"
-          if [[ "${EXPECTED_PRERELEASE}" == "true" && "${latest_tag}" == "${RELEASE_TAG}" ]]; then
-            echo "::error::Prerelease ${RELEASE_TAG} must never be latest."
-            exit 1
-          fi
-          if [[ "${EXPECTED_PRERELEASE}" == "false" && "${latest_tag}" != "${RELEASE_TAG}" ]]; then
-            echo "::error::Stable release ${RELEASE_TAG} must be latest; current latest is ${latest_tag}."
-            exit 1
-          fi
-
-      - name: Remove consumed release request branch
+      - name: Remove verified release request branch
         if: ${{ needs.validate.outputs.release_branch == 'true' }}
         env:
           RELEASE_BRANCH: ${{ github.ref_name }}

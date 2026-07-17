@@ -3,7 +3,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import PLATFORMS
+from .const import CONFIG_ENTRY_MINOR_VERSION, CONFIG_ENTRY_VERSION, PLATFORMS
 from .models import EmbiRuntimeData
 
 
@@ -27,12 +27,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate old config-entry formats without changing entity identities."""
-    if entry.version < 3:
-        hass.config_entries.async_update_entry(entry, version=3, minor_version=1)
+    """Advance the schema marker without changing entity identities or options."""
+    if entry.version < CONFIG_ENTRY_VERSION or entry.minor_version < CONFIG_ENTRY_MINOR_VERSION:
+        hass.config_entries.async_update_entry(
+            entry,
+            version=CONFIG_ENTRY_VERSION,
+            minor_version=CONFIG_ENTRY_MINOR_VERSION,
+        )
     return True
 
 
 async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload EMBi once after a completed options-flow apply."""
+    """Reload once after a completed normal options-flow apply."""
+    runtime = getattr(entry, "runtime_data", None)
+    if runtime is not None and runtime.suppress_update_listener:
+        return
     await hass.config_entries.async_reload(entry.entry_id)

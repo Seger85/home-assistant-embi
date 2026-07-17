@@ -15,15 +15,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 from pyemby import EmbyServer
 
-from .const import (
-    CLIENT_MODE_ALL,
-    CONF_ALLOWED_DEVICE_IDS,
-    CONF_CLIENT_MODE,
-    CONF_IGNORED_PLAYER_KEYS,
-    CONF_IGNORED_REPORTED_DEVICE_IDS,
-)
-from .helpers import reported_device_id_for_player_key, should_expose_device
+from .const import CONF_GLOBAL_PLAYER_MODE, PLAYER_MODE_PERSISTENT
 from .models import EmbiRuntimeData
+from .options_model import should_expose_player
+from .player_context import CLIENT_CLASS_TECHNICAL, classify_client
 
 MEDIA_TYPE_TRAILER = "trailer"
 SUPPORT_EMBY = (
@@ -57,14 +52,34 @@ async def async_setup_entry(
 
     def allowed(device_id: str) -> bool:
         device = emby.devices[device_id]
-        return should_expose_device(
-            device_id=device_id,
-            reported_device_id=reported_device_id_for_player_key(runtime.devices, device_id),
+        records = [record for record in runtime.devices if record.player_key == device_id]
+        latest = max(
+            records,
+            key=lambda record: record.last_activity_datetime is not None,
+            default=None,
+        )
+        client_class, _ = classify_client(
+            records,
+            runtime_state=str(getattr(device, "state", "")).casefold() or None,
+        )
+        users = {
+            user
+            for record in records
+            for user in (*record.user_names, record.last_user_name)
+            if user
+        }
+        return should_expose_player(
+            player_key=device_id,
+            reported_device_id=latest.reported_device_id if latest else None,
             state=getattr(device, "state", None),
-            mode=entry.options.get(CONF_CLIENT_MODE, CLIENT_MODE_ALL),
-            allowed_ids=entry.options.get(CONF_ALLOWED_DEVICE_IDS, []),
-            ignored_player_keys=entry.options.get(CONF_IGNORED_PLAYER_KEYS, []),
-            ignored_reported_device_ids=entry.options.get(CONF_IGNORED_REPORTED_DEVICE_IDS, []),
+            options={
+                CONF_GLOBAL_PLAYER_MODE: entry.options.get(
+                    CONF_GLOBAL_PLAYER_MODE, PLAYER_MODE_PERSISTENT
+                ),
+                **dict(entry.options),
+            },
+            technical_access=client_class == CLIENT_CLASS_TECHNICAL,
+            users=users,
         )
 
     @callback
@@ -113,6 +128,7 @@ class EmbyDevice(MediaPlayerEntity):
         self.device = self.emby.devices[self.device_id]
         self.media_status_last_position: float | None = None
         self.media_status_received = None
+        # This stable identity must not change during 0.3.0 -> 0.9.0 migration.
         self._attr_unique_id = device_id
 
     async def async_added_to_hass(self) -> None:
