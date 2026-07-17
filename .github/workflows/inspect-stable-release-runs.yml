@@ -13,20 +13,21 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Extract latest failed publication error
+      - name: Inspect latest push publication run
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          run_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish-stable-request.yml/runs?event=push&status=failure&per_page=1" --jq '.workflow_runs[0].id')"
-          job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n 1)"
-          echo "FAILED_RUN_ID=${run_id}"
-          echo "FAILED_JOB_ID=${job_id}"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > failed-job.log
-          echo "--- TRACEBACK CONTEXT ---"
-          grep -n -A30 -B15 'Traceback' failed-job.log || true
-          echo "--- FAILURE WINDOW 360-420 ---"
-          sed -n '360,420p' failed-job.log
-          echo "--- FAILURE WINDOW 420-470 ---"
-          sed -n '420,470p' failed-job.log
+          run_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish-stable-request.yml/runs?event=push&per_page=1" --jq '.workflow_runs[0].id')"
+          echo "LATEST_PUSH_RUN_ID=${run_id}"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" \
+            --jq '[.id, .run_number, .status, (.conclusion // "null"), .head_sha, .html_url] | @tsv'
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" \
+            --jq '.jobs[] | [.id, .name, .status, (.conclusion // "null")] | @tsv'
+          conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.conclusion // "null"')"
+          if [[ "${conclusion}" == "failure" ]]; then
+            job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n 1)"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > failed-job.log
+            grep -n -A35 -B20 -Ei 'Traceback|##\[error\]|Process completed with exit code' failed-job.log | tail -n 220 || true
+          fi
