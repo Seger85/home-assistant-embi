@@ -206,9 +206,7 @@ class EmbyOptionsFlow(
             description_placeholders={
                 "count": str(count),
                 "count_text": self._change_count_text(count),
-                "changes": "
-
-".join(lines) or "-",
+                "changes": "\n\n".join(lines) or "-",
                 "error": self._error_text(self._review_error),
             },
         )
