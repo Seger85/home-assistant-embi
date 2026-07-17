@@ -1,0 +1,21 @@
+name: Inspect stable release runs
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/inspect-stable-release-runs.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List recent stable release workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish-stable-request.yml/runs?per_page=20" \
+            --jq '.workflow_runs[] | [.id, .run_number, .event, .status, (.conclusion // "null"), .head_sha, .html_url] | @tsv'
