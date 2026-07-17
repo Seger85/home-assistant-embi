@@ -6,6 +6,10 @@ on:
       - "scripts/apply_092_patch.py"
       - ".github/workflows/apply-embi-0.9.2.yml"
 
+permissions:
+  contents: write
+  pull-requests: read
+
 jobs:
   apply:
     if: github.event.pull_request.head.repo.full_name == github.repository
@@ -20,12 +24,6 @@ jobs:
           python-version: "3.13"
       - name: Apply surgical 0.9.2 patch
         run: python scripts/apply_092_patch.py
-      - name: Format changed Python
-        run: |
-          python -m pip install -q ruff
-          ruff check . --fix
-          ruff format .
-          python -m compileall -q custom_components/emby scripts tests
       - name: Remove temporary patch machinery
         run: |
           rm scripts/apply_092_patch.py
