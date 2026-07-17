@@ -25,18 +25,14 @@ def _collect_requirement_ids(value) -> set[str]:
 
 
 def test_every_frozen_requirement_has_traceable_acceptance_evidence() -> None:
-    requirements = yaml.safe_load(
-        (SPEC_DIR / "requirements.yaml").read_text(encoding="utf-8")
-    )
+    requirements = yaml.safe_load((SPEC_DIR / "requirements.yaml").read_text(encoding="utf-8"))
     matrix = (SPEC_DIR / "10-test-and-acceptance-matrix.md").read_text(encoding="utf-8")
     requirement_ids = _collect_requirement_ids(requirements)
 
     assert requirement_ids
     assert "EMBI-0.9-EVIDENCE-START" in matrix
     missing = sorted(
-        requirement_id
-        for requirement_id in requirement_ids
-        if requirement_id not in matrix
+        requirement_id for requirement_id in requirement_ids if requirement_id not in matrix
     )
     assert missing == []
     assert "Noch nicht als bestanden markiert" in matrix
@@ -93,12 +89,8 @@ def test_main_documents_share_the_product_contract() -> None:
 
 def test_translations_are_structurally_identical_and_use_091_navigation() -> None:
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
-    english = json.loads(
-        (COMPONENT / "translations" / "en.json").read_text(encoding="utf-8")
-    )
-    german = json.loads(
-        (COMPONENT / "translations" / "de.json").read_text(encoding="utf-8")
-    )
+    english = json.loads((COMPONENT / "translations" / "en.json").read_text(encoding="utf-8"))
+    german = json.loads((COMPONENT / "translations" / "de.json").read_text(encoding="utf-8"))
 
     def paths(value, prefix=()):
         result = set()
