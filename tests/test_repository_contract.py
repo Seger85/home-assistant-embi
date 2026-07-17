@@ -9,7 +9,6 @@ COMPONENT = ROOT / "custom_components" / "emby"
 
 def test_manifest_points_to_canonical_repository() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text())
-
     assert manifest["domain"] == "emby"
     assert manifest["name"] == "Emby Integration - EMBi"
     assert manifest["version"] == "0.9.1"
@@ -22,7 +21,6 @@ def test_manifest_points_to_canonical_repository() -> None:
 
 def test_legacy_yaml_platform_is_removed() -> None:
     media_player = (COMPONENT / "media_player.py").read_text()
-
     assert "PLATFORM_SCHEMA" not in media_player
     assert "async_setup_platform" not in media_player
     assert "Legacy YAML" not in media_player
@@ -31,7 +29,6 @@ def test_legacy_yaml_platform_is_removed() -> None:
 def test_english_strings_match_translation_source() -> None:
     strings = json.loads((COMPONENT / "strings.json").read_text())
     english = json.loads((COMPONENT / "translations" / "en.json").read_text())
-
     assert strings == english
 
 
@@ -40,7 +37,6 @@ def test_cleanup_uses_only_main_connection_key_and_diagnostics_redact_it() -> No
     cleanup_flow = (COMPONENT / "options_cleanup.py").read_text()
     options_flow = (COMPONENT / "options_flow.py").read_text()
     runtime_setup = (COMPONENT / "entry_setup.py").read_text()
-
     assert "from homeassistant.const import CONF_API_KEY, CONF_HOST" in diagnostics
     assert '"title": "<redacted>"' in diagnostics
     assert "async_redact_data(dict(entry.data), {CONF_API_KEY, CONF_HOST})" in diagnostics
@@ -53,14 +49,12 @@ def test_cleanup_uses_only_main_connection_key_and_diagnostics_redact_it() -> No
 
 def test_password_field_does_not_reuse_stored_secret_as_default() -> None:
     config_flow = (COMPONENT / "config_flow.py").read_text()
-
     assert "defaults.get(CONF_API_KEY" not in config_flow
     assert "submitted_api_key or entry.data[CONF_API_KEY]" in config_flow
 
 
 def test_media_player_unique_id_contract_is_unchanged() -> None:
     media_player = (COMPONENT / "media_player.py").read_text()
-
     assert "self._attr_unique_id = device_id" in media_player
 
 
@@ -68,7 +62,6 @@ def test_diagnostics_redact_identity_options_and_expose_aggregate_evidence() -> 
     diagnostics = (COMPONENT / "diagnostics.py").read_text()
     models = (COMPONENT / "models.py").read_text()
     api = (COMPONENT / "api.py").read_text()
-
     for identity_option in (
         "CONF_ALLOWED_DEVICE_IDS",
         "CONF_HIDDEN_EXACT_PLAYERS",
@@ -104,7 +97,6 @@ def test_automatic_cleanup_contract_is_explicit_persistent_and_uncapped() -> Non
     cleanup = (COMPONENT / "cleanup.py").read_text()
     execution = (COMPONENT / "maintenance_cycle_execute.py").read_text()
     scheduler = (COMPONENT / "maintenance_scheduler.py").read_text()
-
     assert "AUTO_CLEANUP_INITIAL_DELAY_SECONDS = 120" in constants
     assert "AUTO_CLEANUP_INTERVAL_HOURS = 24" in constants
     assert "DEFAULT_SERVER_CLEANUP_AGE_DAYS = 365" in constants
@@ -119,7 +111,6 @@ def test_registry_removal_requires_exact_post_delete_revalidation() -> None:
     execution = (COMPONENT / "maintenance_cycle_execute.py").read_text()
     evaluator = (COMPONENT / "maintenance_registry_evaluate.py").read_text()
     committer = (COMPONENT / "maintenance_registry_commit.py").read_text()
-
     assert "remaining = await client.async_get_devices()" in execution
     assert "plan_registry_followup" in execution
     assert "remaining_player_keys" in evaluator
@@ -129,23 +120,25 @@ def test_registry_removal_requires_exact_post_delete_revalidation() -> None:
     assert "apply_exact_registry_removals" in committer
 
 
-def test_release_assets_are_zip_and_checksum_only() -> None:
+def test_release_assets_and_request_branch_contract() -> None:
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text()
     publish_block = workflow.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[0]
-
     assert "dist/embi.zip" in publish_block
     assert "dist/embi.zip.sha256" in publish_block
     assert "BUILD_COMMIT" not in publish_block
     assert "cmp dist/embi.zip verify-release/embi.zip" in workflow
     assert "origin/main" in workflow
-    assert 'tags:\n      - "v*"\n      - "[0-9]*"' in workflow
+    assert 'tags:\n      - "v*"' in workflow
+    assert 'branches:\n      - "release/v*"' in workflow
+    assert '"[0-9]*"' not in workflow
+    assert "^v[0-9]+" in workflow
+    assert "Remove verified release request branch" in workflow
     assert "prerelease: false" in workflow
     assert "make_latest: true" in workflow
 
 
 def test_test_package_is_bound_to_exact_source_commit() -> None:
     workflow = (ROOT / ".github" / "workflows" / "test-artifact.yml").read_text()
-
     assert "github.event.pull_request.head.sha || github.sha" in workflow
     assert "ref: ${{ env.BUILD_COMMIT_SHA }}" in workflow
     assert '--commit "${BUILD_COMMIT_SHA}"' in workflow
