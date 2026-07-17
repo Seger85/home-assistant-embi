@@ -65,6 +65,7 @@ jobs:
     permissions:
       contents: write
       issues: write
+      pull-requests: write
     steps:
       - name: Check out main with complete history and tags
         uses: actions/checkout@v7
@@ -156,8 +157,14 @@ jobs:
           )" = "${VERSION}"
 
           test "$(python - <<'PY'
-          from custom_components.emby.const import VERSION
-          print(VERSION)
+          import re
+          from pathlib import Path
+
+          constants = Path("custom_components/emby/const.py").read_text(encoding="utf-8")
+          match = re.search(r'^VERSION = "([^"]+)"$', constants, re.MULTILINE)
+          if match is None:
+              raise SystemExit("const.py does not expose a literal VERSION")
+          print(match.group(1))
           PY
           )" = "${VERSION}"
 
@@ -348,6 +355,32 @@ jobs:
           ZIP_SHA256=${sha}
           BUILD_COMMIT=${build_commit}
           EOF
+
+      - name: Remove temporary release branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            "release/0.9.1"
+            "release/v0.9.1"
+            "fix/publish-v0.9.1"
+            "fix/retrigger-v0.9.1"
+            "fix/release-workflow-v0.9.1"
+            "fix/observe-release-v0.9.1"
+            "fix/publish-v0.9.1-validation"
+          )
+          for branch in "${branches[@]}"; do
+            endpoint="repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch}"
+            if gh api "${endpoint}" >/dev/null 2>&1; then
+              gh api --method DELETE "${endpoint}" >/dev/null
+            fi
+            if gh api "${endpoint}" >/dev/null 2>&1; then
+              echo "::error::Temporary branch ${branch} still exists."
+              exit 1
+            fi
+          done
 
       - name: Report stable release result
         if: always()
