@@ -1,117 +1,105 @@
-# Release-Checkliste 0.9.0
+# Release-Checkliste 0.9.1
 
 ## Code und Metadaten
 
-- [x] `const.py` und `manifest.json` tragen `0.9.0`
-- [x] Config-Entry-Schema 4.0 und Optionsschema 2
+- [x] `const.py` und `manifest.json` tragen `0.9.1`
+- [x] Config-Entry-Schema und Optionsschema bleiben migrationskompatibel
 - [x] Plattform ausschließlich `media_player`
 - [x] bestehende Unique-ID-Logik unverändert
 - [x] `strings.json` und `translations/en.json` identisch
-- [x] deutsche Übersetzung strukturell synchron
-- [x] `hacs.json`: `zip_release: true`, `filename: embi.zip`
-- [x] keine zusätzlichen Cleanup-Anmeldedaten
+- [x] deutsche und englische Schlüssel sowie Platzhalter synchron
+- [x] `hacs.json`: `zip_release: true`, `filename: embi.zip`, `hide_default_branch: true`
 - [x] keine direkte `.storage`-Bearbeitung
-- [x] Serverhistorie und HA-Player-Entfernung getrennt
-- [x] keine öffentliche Vorabversion angelegt
-- [x] bestehende Tags und Releases unverändert
+- [x] Emby-Serverhistorie und HA-Player-Verwaltung getrennt
+- [x] keine Dev-, Beta- oder RC-Version vorgesehen
 
-## Automatische Tests auf dem finalen Feature-Commit
+## Options-Flow-UX
+
+- [x] Hauptmenü **Home-Assistant-Player** und **Emby-Server bereinigen**
+- [x] **Änderungen prüfen** nur bei offenem Entwurf
+- [x] native Zurück-Navigation auf allen Unterseiten
+- [x] Zurück erhält den vollständigen Entwurf
+- [x] X und Verwerfen ohne Optionswrite oder Reload
+- [x] unverändertes Apply ohne Optionswrite oder Reload
+- [x] geändertes Apply schreibt genau einmal und lädt höchstens einmal neu
+- [x] normale Fehler bleiben inline auf der aktiven Seite
+- [x] kurze Playerlabels ohne Entity-ID, Unique ID oder Rohstatus
+- [x] technische Angaben ausschließlich in Detailansichten
+- [x] Benutzer-Master-Schalter und Ausnahmen getrennt
+- [x] Suche und Pagination für lange Listen
+
+## Klassifizierung und Sicherheit
+
+- [x] Benutzer-, Shared-, Unassigned-, Technical- und Unknown-Gruppen
+- [x] technische Klassifizierung nicht allein anhand eines Produktnamens
+- [x] Registry-backed Player mit aktuellem Serverdatensatz als Playback-Kandidat
+- [x] disabled-valid Entity ist kein Orphan
+- [x] Server-missing und echter Home-Assistant-Orphan getrennt
+- [x] `playing`, `paused` und unklarer Wiedergabestatus geschützt
+- [x] exakte Hidden-Regel vor Registry-Änderung gespeichert
+- [x] Erfolg erst nach Reload- und Wiederkehrprüfung
+- [x] Restore nach Reload anhand exakter Ownership verifiziert
+- [x] keine automatische Sichtbarkeitsänderung durch neue Klassifizierung
+
+## Migration
+
+- [x] 0.9.0 → 0.9.1 idempotent
+- [x] Entity-IDs und Unique IDs unverändert
+- [x] Namen, Aliase, Areas, Labels und disabled state erhalten
+- [x] effektive Sichtbarkeit erhalten
+- [x] automatische Bereinigung bleibt ein oder aus wie zuvor
+- [x] exakte Alterswerte wie `364` und `365` bleiben erhalten
+- [x] Scheduler- und Laufstatus bleiben erhalten
+
+## CI auf dem finalen PR-Head
 
 - [ ] Quality Python 3.13 grün
 - [ ] Quality Python 3.14 grün
 - [ ] JSON und YAML grün
 - [ ] Compileall grün
+- [ ] Mypy grün
 - [ ] Ruff und Ruff-Format grün
 - [ ] vollständiger Pytest-Lauf grün
 - [ ] Specification Contract grün
 - [ ] Stable Contract grün
 - [ ] Secret-/Privacy-Scan grün
-- [ ] Übersetzungssynchronität grün
 - [ ] HACS Validation grün
 - [ ] Hassfest grün
-- [ ] privater releasegleicher Paketbau grün
+- [ ] releasegleicher Paketbau grün
 - [ ] SHA-256 grün
-- [ ] `BUILD_COMMIT` entspricht dem finalen Feature-Commit
+- [ ] `BUILD_COMMIT` entspricht dem finalen PR-Head
 
-## Frozen-Contract-Nachweise
+## PR und Merge
 
-- [x] bekannte Benutzer, Shared, Unassigned, Technical und Unknown modelliert
-- [x] technische Klassifizierung nicht nur anhand eines Produktnamens
-- [x] disabled-valid Entity ist kein Orphan
-- [x] `playing` und `paused` bei Sichtbarkeit und Removal geschützt
-- [x] exakte Hidden-Rule vor Registry-Entfernung gespeichert
-- [x] Removal-Erfolg erst nach Reload- und Registry-/State-Verifikation
-- [x] Restore nach Reload anhand exakter Ownership verifiziert
-- [x] exakte Werte `364` und `365` migrationsstabil
-- [x] Automatikstellung und Schedulerzustand migrationsstabil
-- [x] normale Änderungen als Draft mit semantischem Review
-- [x] Apply schreibt Optionen einmal und lädt höchstens einmal neu
-- [x] Discard und X ohne Write oder Reload
-- [x] Diagnostics redigieren API-Schlüssel und Serververbindungsdaten
-- [x] jede Requirement-ID in der Akzeptanzmatrix nachvollziehbar
+- [ ] PR #30 enthält ausschließlich den freigegebenen 0.9.1-Umfang
+- [ ] keine offenen Reviewthreads
+- [ ] alle Pflichtchecks auf demselben Head grün
+- [ ] Squash-Merge nach `main`
+- [ ] finalen Main-Merge-SHA erfassen
 
-## Finales privates Artefakt
+## Stable Release
 
-- [ ] exakten finalen Feature-Commit erfassen
-- [ ] `Test package` auf exakt diesem Commit erfolgreich
-- [ ] Artefaktname `embi-test-<vollständiger SHA>`
-- [ ] Artefakt-ID erfassen
-- [ ] Actions-Artefakt herunterladen und öffnen
-- [ ] äußere Dateien: `embi.zip`, `embi.zip.sha256`, `BUILD_COMMIT`
-- [ ] inneres Installations-ZIP öffnet erfolgreich
-- [ ] Manifestversion exakt `0.9.0`
-- [ ] erwartete Home-Assistant-/HACS-Struktur direkt im ZIP-Root
-- [ ] keine Tests, Docs, `.github`, Caches oder Repositorymetadaten im Installations-ZIP
-- [ ] SHA-256 des exakten `embi.zip` geprüft und dokumentiert
-- [ ] `BUILD_COMMIT` entspricht dem vollständigen finalen Feature-SHA
-- [ ] PR #29 mit finaler Evidenz aktualisiert
-- [ ] PR #29 bleibt Draft, offen und ungemergt
+- [ ] Tag exakt `v0.9.1`
+- [ ] Tagziel entspricht dem finalen Main-Merge-SHA
+- [ ] Release-Titel `EMBi 0.9.1`
+- [ ] Release ist nicht Draft
+- [ ] Release ist nicht Prerelease
+- [ ] Release ist `latest`
+- [ ] Assets ausschließlich `embi.zip` und `embi.zip.sha256`
+- [ ] veröffentlichte Assets erneut herunterladen
+- [ ] Prüfsumme gegen das veröffentlichte ZIP verifizieren
+- [ ] ZIP öffnet erfolgreich
+- [ ] Manifest im ZIP meldet `0.9.1`
+- [ ] Installationsdateien liegen direkt im ZIP-Root
+- [ ] keine Tests, Docs, `.github`, Caches oder Repositorymetadaten im ZIP
+- [ ] Build-Verifikation bindet das Paket an den finalen Main-Commit
 
-## Private Home-Assistant-Abnahme
+## HACS und Home Assistant
 
-Verifizierte Ausgangsbasis:
+- [ ] HACS erkennt `v0.9.1` als reguläre Stable-Version
+- [ ] HACS verwendet `embi.zip` statt eines Default-Branch-Commits
+- [ ] Installation beziehungsweise Update über HACS
+- [ ] Home Assistant neu starten
+- [ ] Config Entry, Entity-IDs, Unique IDs und Namen anschließend live prüfen
 
-- EMBi `0.3.0`
-- Config Entry geladen
-- 69 Emby-Server-Historieneinträge
-- 30 aktivierte und geladene EMBi-Media-Player
-- kein Registry-Orphan
-- automatische Bereinigung deaktiviert
-- manuelle und automatische Schwelle jeweils 365 Tage
-
-Abnahmepunkte:
-
-- [ ] vollständiges Home-Assistant-Backup
-- [ ] belastbarer Emby-Wiederherstellungsweg
-- [ ] finales privates Testpaket installiert
-- [ ] Manifest und Runtime melden `0.9.0`
-- [ ] Config Entry bleibt geladen
-- [ ] 69 Historieneinträge und 30 Media-Player, sofern keine reale Clientänderung unmittelbar vor dem Test dokumentiert wurde
-- [ ] Entity-IDs und Unique IDs unverändert
-- [ ] individuelle Namen, Aliase, Areas, Labels und disabled state unverändert
-- [ ] Benutzer-, Shared-, Unassigned-, Technical- und Unknown-Gruppen korrekt
-- [ ] keine internen IDs als primäre UI-Labels
-- [ ] Automatik weiterhin aus; Schwellen weiterhin 365/365
-- [ ] Apply, unveränderter Apply, Discard, Back und X geprüft
-- [ ] semantisches Review geprüft
-- [ ] iPhone-, iPad- und Desktop-QA
-- [ ] `playing` und `paused` als geschützt nachgewiesen
-- [ ] einen sicher idle Player separat aus Home Assistant entfernt
-- [ ] exakte Hidden-Rule vor Removal nachgewiesen
-- [ ] Player kehrt nach zusätzlichem Reload nicht zurück
-- [ ] Emby-Serverhistorie bei HA-Player-Removal unverändert
-- [ ] denselben Player wiederhergestellt und resultierende Entity verifiziert
-- [ ] Serverhistorien-Aktion separat und mit eigener finaler Bestätigung geprüft
-- [ ] Scheduler, `next_run_at`, Reload und Neustart geprüft
-- [ ] keine neuen Repairs, Orphans oder Laufzeitfehler
-- [ ] Rollback auf `v0.3.0` oder vollständige Backup-Wiederherstellung demonstriert
-
-## Veröffentlichungssperre
-
-Bis zur dokumentierten privaten Abnahme:
-
-- [ ] PR #29 nicht nach `develop` mergen
-- [ ] `develop` nicht nach `main` promoten
-- [ ] keinen Tag `v0.9.0` erstellen
-- [ ] keinen Draft-, Pre- oder Stable-Release erstellen
-- [ ] keine öffentliche HACS-Version 0.9.0 veröffentlichen
+Die private visuelle Prüfung auf iPhone, iPad und Desktop ist eine nachgelagerte Home-Assistant-Abnahme und kein GitHub-Release-Blocker.
