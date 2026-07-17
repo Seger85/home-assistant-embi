@@ -1,16 +1,19 @@
 name: Publish stable release request
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/publish-stable-request.yml"
+      - ".github/release-requests/*.yml"
   push:
     branches:
       - main
     paths:
       - ".github/release-requests/*.yml"
-      - ".github/workflows/publish-stable-request.yml"
   workflow_dispatch:
     inputs:
       request:
-        description: Release-request file below .github/release-requests
+        description: Release-request filename
         required: true
         type: string
 
@@ -19,13 +22,49 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  issues: write
+  contents: read
 
 jobs:
+  validate-definition:
+    name: Validate stable release workflow definition
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Validate request schema and workflow YAML
+        run: |
+          python -m pip install --disable-pip-version-check PyYAML==6.0.3
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import yaml
+
+          workflow = Path(".github/workflows/publish-stable-request.yml")
+          yaml.load(workflow.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+
+          request = Path(".github/release-requests/v0.9.1.yml")
+          data = yaml.safe_load(request.read_text(encoding="utf-8"))
+          required = {"version", "tag", "title", "target_sha", "stable", "prerelease"}
+          if not isinstance(data, dict) or required - data.keys():
+              raise SystemExit("Invalid stable release request")
+          if data["tag"] != f"v{data['version']}":
+              raise SystemExit("Tag/version mismatch")
+          if not re.fullmatch(r"[0-9a-f]{40}", str(data["target_sha"])):
+              raise SystemExit("target_sha must be a full SHA")
+          if data["stable"] is not True or data["prerelease"] is not False:
+              raise SystemExit("Request is not stable")
+          PY
+
   publish:
     name: Validate, publish and verify stable release
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
     steps:
       - name: Check out main with complete history and tags
         uses: actions/checkout@v7
@@ -40,16 +79,15 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
 
-      - name: Install validation dependencies
+      - name: Install release dependencies
         run: python -m pip install --upgrade pip -r requirements_test.txt
 
-      - name: Resolve and validate release request
+      - name: Resolve stable release request
         env:
-          DISPATCH_REQUEST: ${{ inputs.request }}
+          DISPATCH_REQUEST: ${{ github.event.inputs.request }}
         shell: bash
         run: |
           set -euo pipefail
-
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             request_path=".github/release-requests/${DISPATCH_REQUEST##*/}"
           else
@@ -57,76 +95,51 @@ jobs:
               git diff-tree --no-commit-id --name-only -r "${GITHUB_SHA}" |
                 grep -E '^\.github/release-requests/[^/]+\.yml$' || true
             )
-            if [[ "${#requests[@]}" -ne 1 ]]; then
-              echo "::error::Exactly one release-request file must change; found ${#requests[@]}."
-              exit 1
-            fi
+            test "${#requests[@]}" -eq 1
             request_path="${requests[0]}"
           fi
-
           test -f "${request_path}"
-          python - "${request_path}" "${GITHUB_ENV}" <<'PY'
-          from __future__ import annotations
 
+          python - "${request_path}" "${GITHUB_ENV}" <<'PY'
+          from pathlib import Path
           import re
           import sys
-          from pathlib import Path
-
           import yaml
 
-          request_path = Path(sys.argv[1])
-          env_path = Path(sys.argv[2])
-          raw = yaml.safe_load(request_path.read_text(encoding="utf-8"))
-          if not isinstance(raw, dict):
+          path = Path(sys.argv[1])
+          env_file = Path(sys.argv[2])
+          data = yaml.safe_load(path.read_text(encoding="utf-8"))
+          required = {"version", "tag", "title", "target_sha", "stable", "prerelease"}
+          if not isinstance(data, dict):
               raise SystemExit("Release request must be a mapping")
-
-          required = {
-              "version",
-              "tag",
-              "title",
-              "target_sha",
-              "stable",
-              "prerelease",
-          }
-          missing = sorted(required - raw.keys())
+          missing = sorted(required - data.keys())
           if missing:
-              raise SystemExit(f"Missing release-request keys: {missing}")
+              raise SystemExit(f"Missing keys: {missing}")
 
-          version = str(raw["version"])
-          tag = str(raw["tag"])
-          title = str(raw["title"])
-          target_sha = str(raw["target_sha"]).lower()
-          stable = raw["stable"]
-          prerelease = raw["prerelease"]
-          report_issue = int(raw.get("report_issue", 30))
+          version = str(data["version"])
+          tag = str(data["tag"])
+          title = str(data["title"])
+          target = str(data["target_sha"]).lower()
+          report_issue = int(data.get("report_issue", 30))
 
           if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
-              raise SystemExit("Version must use MAJOR.MINOR.PATCH")
-          if tag != f"v{version}":
-              raise SystemExit("Tag must equal v plus version")
-          if title != f"EMBi {version}":
-              raise SystemExit("Title must equal EMBi plus version")
-          if not re.fullmatch(r"[0-9a-f]{40}", target_sha):
-              raise SystemExit("target_sha must be a full commit SHA")
-          if stable is not True or prerelease is not False:
-              raise SystemExit("Stable request must set stable=true and prerelease=false")
-          if report_issue < 1:
-              raise SystemExit("report_issue must be positive")
+              raise SystemExit("Invalid stable version")
+          if tag != f"v{version}" or title != f"EMBi {version}":
+              raise SystemExit("Release identity mismatch")
+          if not re.fullmatch(r"[0-9a-f]{40}", target):
+              raise SystemExit("target_sha must be a full SHA")
+          if data["stable"] is not True or data["prerelease"] is not False:
+              raise SystemExit("Only stable non-prerelease requests are accepted")
 
-          values = {
-              "VERSION": version,
-              "TAG": tag,
-              "TITLE": title,
-              "TARGET_SHA": target_sha,
-              "REQUEST_PATH": request_path.as_posix(),
-              "REPORT_ISSUE": str(report_issue),
-          }
-          with env_path.open("a", encoding="utf-8") as output:
-              for key, value in values.items():
-                  output.write(f"{key}={value}\n")
+          with env_file.open("a", encoding="utf-8") as output:
+              output.write(f"VERSION={version}\n")
+              output.write(f"TAG={tag}\n")
+              output.write(f"TITLE={title}\n")
+              output.write(f"TARGET_SHA={target}\n")
+              output.write(f"REPORT_ISSUE={report_issue}\n")
           PY
 
-      - name: Validate target ancestry, versions and HACS contract
+      - name: Validate target and release contract
         shell: bash
         run: |
           set -euo pipefail
@@ -151,15 +164,12 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-
-          hacs = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
-          if hacs.get("zip_release") is not True:
-              raise SystemExit("hacs.json must set zip_release=true")
-          if hacs.get("filename") != "embi.zip":
-              raise SystemExit("hacs.json filename must be embi.zip")
+          data = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
+          assert data.get("zip_release") is True
+          assert data.get("filename") == "embi.zip"
           PY
 
-      - name: Run complete release validation
+      - name: Run complete quality and contract validation
         run: |
           python -m json.tool custom_components/emby/manifest.json >/dev/null
           python -m json.tool custom_components/emby/strings.json >/dev/null
@@ -178,17 +188,17 @@ jobs:
           python scripts/validate_stable_contract.py
           python scripts/secret_scan.py
 
-      - name: Run official HACS validation
+      - name: HACS validation
         uses: hacs/action@main
         with:
           category: integration
           comment: false
           ignore: brands description license topics
 
-      - name: Run Hassfest
+      - name: Hassfest
         uses: home-assistant/actions/hassfest@master
 
-      - name: Build and inspect deterministic HACS package
+      - name: Build and verify release assets
         shell: bash
         run: |
           set -euo pipefail
@@ -215,26 +225,21 @@ jobs:
                   "translations/de.json",
                   "translations/en.json",
               }
-              missing = sorted(required - names)
-              if missing:
-                  raise SystemExit(f"Missing package files: {missing}")
-              forbidden = sorted(
-                  name
-                  for name in names
-                  if name.startswith(("tests/", "docs/", ".github/"))
-                  or name.startswith("custom_components/")
+              if required - names:
+                  raise SystemExit("Published package would miss required files")
+              forbidden = [
+                  name for name in names
+                  if name.startswith(("tests/", "docs/", ".github/", "custom_components/"))
                   or "__pycache__" in name
                   or name.endswith((".pyc", ".pyo"))
-              )
+              ]
               if forbidden:
                   raise SystemExit(f"Forbidden package files: {forbidden}")
               manifest = json.loads(archive.read("manifest.json"))
               if manifest.get("version") != os.environ["VERSION"]:
-                  raise SystemExit("Packaged manifest version differs")
+                  raise SystemExit("Package manifest version mismatch")
           PY
 
-      - name: Generate release notes from changelog
-        run: |
           python - <<'PY'
           import os
           import re
@@ -245,15 +250,17 @@ jobs:
           match = re.search(
               rf"^## \[{re.escape(version)}\][^\n]*\n(?P<body>.*?)(?=^## \[|\Z)",
               changelog,
-              flags=re.MULTILINE | re.DOTALL,
+              re.MULTILINE | re.DOTALL,
           )
-          if match is None:
-              raise SystemExit(f"Missing changelog section for {version}")
-          notes = f"# EMBi {version}\n\n{match.group('body').strip()}\n"
-          Path("dist/release-notes.md").write_text(notes, encoding="utf-8")
+          if not match:
+              raise SystemExit("Missing changelog section")
+          Path("dist/release-notes.md").write_text(
+              f"# EMBi {version}\n\n{match.group('body').strip()}\n",
+              encoding="utf-8",
+          )
           PY
 
-      - name: Create or verify immutable tag
+      - name: Create or verify immutable release tag
         shell: bash
         run: |
           set -euo pipefail
@@ -266,17 +273,17 @@ jobs:
             git push origin "refs/tags/${TAG}"
           fi
 
-      - name: Create release or safely add missing assets
+      - name: Publish or complete stable release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            release_json="$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json name,isDraft,isPrerelease)"
+            json="$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json name,isDraft,isPrerelease)"
             jq -e --arg title "${TITLE}" \
               '.name == $title and .isDraft == false and .isPrerelease == false' \
-              <<<"${release_json}" >/dev/null
+              <<<"${json}" >/dev/null
 
             for asset in embi.zip embi.zip.sha256; do
               if ! gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
@@ -285,9 +292,8 @@ jobs:
                 gh release upload "${TAG}" "dist/${asset}" --repo "${GITHUB_REPOSITORY}"
               fi
             done
-
-            release_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .id)"
-            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+            id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .id)"
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/releases/${id}" \
               -f make_latest=true >/dev/null
           else
             gh release create "${TAG}" \
@@ -300,20 +306,19 @@ jobs:
               dist/embi.zip.sha256
           fi
 
-      - name: Verify public release, assets and provenance
+      - name: Verify published release and provenance
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-
-          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
+          json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")"
           jq -e --arg tag "${TAG}" --arg title "${TITLE}" \
             '.tag_name == $tag and .name == $title and .draft == false and .prerelease == false' \
-            <<<"${release_json}" >/dev/null
+            <<<"${json}" >/dev/null
           jq -e \
             '.assets | length == 2 and any(.name == "embi.zip") and any(.name == "embi.zip.sha256")' \
-            <<<"${release_json}" >/dev/null
+            <<<"${json}" >/dev/null
           test "$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)" = "${TAG}"
 
           git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
@@ -329,56 +334,34 @@ jobs:
           cmp dist/embi.zip verify-release/embi.zip
           cmp dist/embi.zip.sha256 verify-release/embi.zip.sha256
 
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-          import zipfile
-
-          with zipfile.ZipFile(Path("verify-release/embi.zip")) as archive:
-              manifest = json.loads(archive.read("manifest.json"))
-              if manifest.get("version") != os.environ["VERSION"]:
-                  raise SystemExit("Published manifest version differs")
-              for required in (
-                  "strings.json",
-                  "translations/de.json",
-                  "translations/en.json",
-              ):
-                  archive.getinfo(required)
-          PY
-
-          zip_sha256="$(sha256sum verify-release/embi.zip | cut -d' ' -f1)"
-          zip_size="$(jq -r '.assets[] | select(.name == "embi.zip") | .size' <<<"${release_json}")"
-          checksum_size="$(jq -r '.assets[] | select(.name == "embi.zip.sha256") | .size' <<<"${release_json}")"
-          release_url="$(jq -r .html_url <<<"${release_json}")"
+          sha="$(sha256sum verify-release/embi.zip | cut -d' ' -f1)"
+          zip_size="$(jq -r '.assets[] | select(.name == "embi.zip") | .size' <<<"${json}")"
+          checksum_size="$(jq -r '.assets[] | select(.name == "embi.zip.sha256") | .size' <<<"${json}")"
+          url="$(jq -r .html_url <<<"${json}")"
           build_commit="$(cat dist/BUILD_COMMIT)"
-
           test "${build_commit}" = "${TARGET_SHA}"
+
           cat > release-result.env <<EOF
-          RELEASE_URL=${release_url}
+          RELEASE_URL=${url}
           ZIP_SIZE=${zip_size}
           CHECKSUM_SIZE=${checksum_size}
-          ZIP_SHA256=${zip_sha256}
+          ZIP_SHA256=${sha}
           BUILD_COMMIT=${build_commit}
           EOF
 
       - name: Report stable release result
-        if: ${{ always() }}
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           JOB_STATUS: ${{ job.status }}
         shell: bash
         run: |
           set -euo pipefail
-          issue="${REPORT_ISSUE:-30}"
-          tag="${TAG:-unresolved}"
-          target="${TARGET_SHA:-unresolved}"
           release_url="unavailable"
           zip_size="unavailable"
           checksum_size="unavailable"
           zip_sha256="unavailable"
           build_commit="unavailable"
-
           if [[ -f release-result.env ]]; then
             source release-result.env
             release_url="${RELEASE_URL}"
@@ -394,8 +377,8 @@ jobs:
           Run ID: ${GITHUB_RUN_ID}
           Run URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           Workflow: ${GITHUB_WORKFLOW}
-          Tag: ${tag}
-          Target SHA: ${target}
+          Tag: ${TAG:-unresolved}
+          Target SHA: ${TARGET_SHA:-unresolved}
           Release URL: ${release_url}
           embi.zip size: ${zip_size}
           embi.zip.sha256 size: ${checksum_size}
@@ -403,8 +386,7 @@ jobs:
           BUILD_COMMIT: ${build_commit}
           EOF
 
-          gh issue comment "${issue}" \
+          gh issue comment "${REPORT_ISSUE:-30}" \
             --repo "${GITHUB_REPOSITORY}" \
             --body-file release-report.md
-
           test "${JOB_STATUS}" = "success"
