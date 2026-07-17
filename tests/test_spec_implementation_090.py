@@ -46,6 +46,7 @@ def test_temporary_implementation_workflows_are_not_committed() -> None:
         "embi-09-pytest-diagnostic.yml",
         "embi-09-evidence-update.yml",
         "embi-09-cleanup-temp.yml",
+        "format-091-once.yml",
     }
 
     assert forbidden.isdisjoint({path.name for path in workflows.glob("*.yml")})
@@ -64,7 +65,7 @@ def test_readme_is_product_oriented_and_not_a_prerelease_history_page() -> None:
     assert "0.3.0-rc" not in readme
 
 
-def test_main_090_documents_share_the_same_product_contract() -> None:
+def test_main_documents_share_the_product_contract() -> None:
     expected_terms = {
         "docs/PROJECT_STATE.md": ("0.9.0", "Geräte & Player", "private"),
         "docs/architecture.md": ("PlayerContext", "Gemeinsam genutzt", "Store"),
@@ -86,7 +87,7 @@ def test_main_090_documents_share_the_same_product_contract() -> None:
             assert term in content, f"{relative_path} misses {term}"
 
 
-def test_translations_are_structurally_identical_and_use_frozen_navigation() -> None:
+def test_translations_are_structurally_identical_and_use_091_navigation() -> None:
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
     english = json.loads((COMPONENT / "translations" / "en.json").read_text(encoding="utf-8"))
     german = json.loads((COMPONENT / "translations" / "de.json").read_text(encoding="utf-8"))
@@ -103,12 +104,12 @@ def test_translations_are_structurally_identical_and_use_frozen_navigation() -> 
     assert strings == english
     assert paths(english) == paths(german)
     root_menu = english["options"]["step"]["init"]["menu_options"]
-    assert set(root_menu) == {"devices_players", "cleanup", "review_changes"}
+    assert set(root_menu) == {"ha_players", "server_cleanup", "review_changes"}
     assert "older_rules" in english["options"]["step"]
     assert "older_rules" in german["options"]["step"]
 
 
-def test_090_does_not_add_reserved_entity_platforms_or_direct_storage_edits() -> None:
+def test_091_does_not_add_reserved_entity_platforms_or_direct_storage_edits() -> None:
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
     component_text = "\n".join(
         path.read_text(encoding="utf-8")
