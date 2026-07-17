@@ -13,7 +13,7 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Show latest generator failure tail
+      - name: Show latest generator failure matches
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -22,4 +22,4 @@ jobs:
           job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n1)"
           echo "RUN=${run_id} JOB=${job_id}"
           gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > job.log
-          tail -n 30 job.log
+          grep -n -Ei 'error|fatal|rejected|remote:|denied|failed|nothing to commit|refusing|permission' job.log | tail -n 80 || true
