@@ -5,11 +5,12 @@ from types import SimpleNamespace
 from custom_components.emby.api import EmbyDeviceRecord
 from custom_components.emby.options_model import default_options_090
 from custom_components.emby.player_context import (
+    CLIENT_CLASS_PLAYBACK,
     CLIENT_CLASS_TECHNICAL,
     CLIENT_CLASS_UNKNOWN,
     GROUP_SHARED,
     GROUP_TECHNICAL,
-    GROUP_UNKNOWN,
+    GROUP_UNASSIGNED,
     GROUP_USER_PREFIX,
     PLAYBACK_PAUSED,
     PLAYBACK_PLAYING,
@@ -100,16 +101,18 @@ def test_known_user_shared_and_special_groups() -> None:
         client_type="api_only",
         supports_playback=False,
     )
-    unknown = record(record_id="5", reported_id="mystery", app="Emby Toolbox")
+    unresolved_but_registered = record(
+        record_id="5", reported_id="mystery", app="Emby Toolbox"
+    )
     entries = [
         entity(alex.player_key),
         entity(shared_a.player_key),
         entity(technical.player_key),
-        entity(unknown.player_key),
+        entity(unresolved_but_registered.player_key),
     ]
 
     players = build_player_catalog(
-        [alex, shared_a, shared_b, technical, unknown],
+        [alex, shared_a, shared_b, technical, unresolved_but_registered],
         registry_entries=entries,
         states=States(),
         entry_id="entry",
@@ -120,7 +123,8 @@ def test_known_user_shared_and_special_groups() -> None:
     assert f"{GROUP_USER_PREFIX}Alex" in grouped
     assert grouped[GROUP_SHARED][0].users == ("Alex", "Sam")
     assert grouped[GROUP_TECHNICAL][0].client_class == CLIENT_CLASS_TECHNICAL
-    assert grouped[GROUP_UNKNOWN][0].client_class == CLIENT_CLASS_UNKNOWN
+    assert grouped[GROUP_UNASSIGNED][0].client_class == CLIENT_CLASS_PLAYBACK
+    assert grouped[GROUP_UNASSIGNED][0].classification_reason == "registry_backed_server_player"
 
 
 def test_product_name_alone_never_classifies_technical_access() -> None:
@@ -172,7 +176,27 @@ def test_disabled_valid_entity_is_not_orphaned() -> None:
     assert player.registry_enabled is False
     assert player.status == "disabled"
     assert player.orphan is False
+    assert player.server_missing is False
     assert catalog_stats([player], server_history_records=1).disabled_valid == 1
+
+
+def test_registry_player_without_current_server_record_uses_server_missing_semantics() -> None:
+    registry = entity("client.tv", entity_id="media_player.old_tv")
+
+    [player] = build_player_catalog(
+        [],
+        registry_entries=[registry],
+        states=States(),
+        entry_id="entry",
+        options=default_options_090(),
+    )
+
+    assert player.server_missing is True
+    assert player.status == "not_reported"
+    assert player.orphan is False
+    stats = catalog_stats([player], server_history_records=0)
+    assert stats.server_missing == 1
+    assert stats.orphans == 0
 
 
 def test_playing_and_paused_are_both_protected_from_removal() -> None:
@@ -201,7 +225,7 @@ def test_playing_and_paused_are_both_protected_from_removal() -> None:
     assert by_id["media_player.paused"].removable is False
 
 
-def test_friendly_row_contains_display_name_and_full_entity_id_but_no_internal_ids() -> None:
+def test_selector_label_is_compact_and_details_are_separate() -> None:
     item = record(
         record_id="private-record",
         reported_id="private-reported-id",
@@ -223,10 +247,13 @@ def test_friendly_row_contains_display_name_and_full_entity_id_but_no_internal_i
         options=default_options_090(),
     )
 
-    assert "Wohnzimmer Fernseher" in player.selector_label
-    assert "media_player.wohnzimmer_emby" in player.selector_label
-    assert "Alex" in player.selector_label
+    assert player.selector_label == "Living room TV · Emby TV"
+    assert "Wohnzimmer Fernseher" not in player.selector_label
+    assert "media_player.wohnzimmer_emby" not in player.selector_label
+    assert "Alex" not in player.selector_label
     assert "private-record" not in player.selector_label
     assert "private-reported-id" not in player.selector_label
+    assert "Wohnzimmer Fernseher" in player.technical_details
+    assert "media_player.wohnzimmer_emby" in player.technical_details
     assert filter_player_catalog([player], "wohnzimmer") == [player]
     assert filter_player_catalog([player], "media_player.wohnzimmer") == [player]
