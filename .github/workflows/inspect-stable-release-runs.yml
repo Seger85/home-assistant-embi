@@ -13,13 +13,6 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: List recent stable release workflow runs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish-stable-request.yml/runs?per_page=20" \
-            --jq '.workflow_runs[] | [.id, .run_number, .event, .status, (.conclusion // "null"), .head_sha, .html_url] | @tsv'
-
       - name: Extract latest failed publication error
         env:
           GH_TOKEN: ${{ github.token }}
@@ -31,8 +24,9 @@ jobs:
           echo "FAILED_RUN_ID=${run_id}"
           echo "FAILED_JOB_ID=${job_id}"
           gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > failed-job.log
-          echo "--- ERROR MATCHES ---"
-          grep -n -Ei '(^|[^a-z])(error|fatal|traceback|assertion|failed|failure|no such|not found|invalid)([^a-z]|$)' failed-job.log | tail -n 100 || true
-          echo "--- VALIDATION STEP AND TAIL ---"
-          grep -n -A80 -B20 'Validate target and release contract' failed-job.log | tail -n 160 || true
-          tail -n 160 failed-job.log
+          echo "--- TRACEBACK CONTEXT ---"
+          grep -n -A30 -B15 'Traceback' failed-job.log || true
+          echo "--- FAILURE WINDOW 360-420 ---"
+          sed -n '360,420p' failed-job.log
+          echo "--- FAILURE WINDOW 420-470 ---"
+          sed -n '420,470p' failed-job.log
