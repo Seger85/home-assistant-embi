@@ -19,3 +19,20 @@ jobs:
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish-stable-request.yml/runs?per_page=20" \
             --jq '.workflow_runs[] | [.id, .run_number, .event, .status, (.conclusion // "null"), .head_sha, .html_url] | @tsv'
+
+      - name: Extract latest failed publication error
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/publish-stable-request.yml/runs?event=push&status=failure&per_page=1" --jq '.workflow_runs[0].id')"
+          job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n 1)"
+          echo "FAILED_RUN_ID=${run_id}"
+          echo "FAILED_JOB_ID=${job_id}"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > failed-job.log
+          echo "--- ERROR MATCHES ---"
+          grep -n -Ei '(^|[^a-z])(error|fatal|traceback|assertion|failed|failure|no such|not found|invalid)([^a-z]|$)' failed-job.log | tail -n 100 || true
+          echo "--- VALIDATION STEP AND TAIL ---"
+          grep -n -A80 -B20 'Validate target and release contract' failed-job.log | tail -n 160 || true
+          tail -n 160 failed-job.log
