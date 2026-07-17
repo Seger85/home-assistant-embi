@@ -85,8 +85,7 @@ def group_options(players: list[PlayerContext], *, german: bool) -> list[dict[st
     for key in user_keys:
         user = key.removeprefix(GROUP_USER_PREFIX)
         count = len(grouped[key])
-        noun = "Player" if count == 1 else "Player"
-        options.append({"value": key, "label": f"{user} · {count} {noun}"})
+        options.append({"value": key, "label": f"{user} · {count} Player"})
     labels = {
         GROUP_SHARED: "Gemeinsam genutzt" if german else "Shared devices",
         GROUP_UNASSIGNED: ("Ohne Benutzerzuordnung" if german else "Without user assignment"),
@@ -143,11 +142,7 @@ def render_player_details(players: list[PlayerContext], *, german: bool) -> str:
                     f"Home Assistant: {player.ha_name}",
                     f"Entity-ID: {entity}",
                     (f"Benutzer: {user}" if german else f"Users: {user}"),
-                    (
-                        f"Status: {status_label(player.status, german=german)}"
-                        if german
-                        else f"Status: {status_label(player.status, german=german)}"
-                    ),
+                    f"Status: {status_label(player.status, german=german)}",
                 )
             )
         )
