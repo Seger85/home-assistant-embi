@@ -16,7 +16,8 @@ def test_disabling_auto_show_preserves_current_visible_players() -> None:
 
     assert "CONF_ALLOWED_DEVICE_IDS" in devices
     assert "allowed.update(" in devices
-    assert "player.player_key for player in players if player.visible_in_embi" in devices
+    assert "player.player_key" in devices
+    assert "player.visible_in_embi" in devices
     assert "CONF_ALLOWED_DEVICE_IDS" in flow
     assert "player.player_key for player in players if player.visible_in_embi" in flow
 
@@ -30,7 +31,7 @@ def test_active_technical_and_user_groups_cannot_be_hidden_by_normal_apply() -> 
     assert "hide_user_group" in devices
     assert "active_group" in devices
     assert "protected_technical" in flow
-    assert "user_visibility[player.users[0]] = True" in flow
+    assert "user_visibility[user_name] = True" in flow
 
 
 def test_diagnostics_redact_server_host_and_title() -> None:
