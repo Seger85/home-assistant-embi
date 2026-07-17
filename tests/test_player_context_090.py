@@ -124,7 +124,10 @@ def test_known_user_shared_and_special_groups() -> None:
     assert grouped[GROUP_SHARED][0].users == ("Alex", "Sam")
     assert grouped[GROUP_TECHNICAL][0].client_class == CLIENT_CLASS_TECHNICAL
     assert grouped[GROUP_UNASSIGNED][0].client_class == CLIENT_CLASS_PLAYBACK
-    assert grouped[GROUP_UNASSIGNED][0].classification_reason == "registry_backed_server_player"
+    assert (
+        grouped[GROUP_UNASSIGNED][0].classification_reason
+        == "registry_backed_server_player"
+    )
 
 
 def test_product_name_alone_never_classifies_technical_access() -> None:
@@ -180,7 +183,9 @@ def test_disabled_valid_entity_is_not_orphaned() -> None:
     assert catalog_stats([player], server_history_records=1).disabled_valid == 1
 
 
-def test_registry_player_without_current_server_record_uses_server_missing_semantics() -> None:
+def test_registry_player_without_current_server_record_uses_server_missing_semantics() -> (
+    None
+):
     registry = entity("client.tv", entity_id="media_player.old_tv")
 
     [player] = build_player_catalog(
@@ -200,8 +205,12 @@ def test_registry_player_without_current_server_record_uses_server_missing_seman
 
 
 def test_playing_and_paused_are_both_protected_from_removal() -> None:
-    playing_record = record(record_id="1", reported_id="one", app="TV", supports_playback=True)
-    paused_record = record(record_id="2", reported_id="two", app="Mobile", supports_playback=True)
+    playing_record = record(
+        record_id="1", reported_id="one", app="TV", supports_playback=True
+    )
+    paused_record = record(
+        record_id="2", reported_id="two", app="Mobile", supports_playback=True
+    )
     first = entity(playing_record.player_key, entity_id="media_player.playing")
     second = entity(paused_record.player_key, entity_id="media_player.paused")
 
