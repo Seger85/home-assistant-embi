@@ -1,111 +1,48 @@
 # Repository- und Release-Governance
 
-## Branchrollen
+## Stable-Linie
 
-### `main`
+`main` enthält veröffentlichte Stable-Versionen. Änderungen erfolgen über geprüfte Pull Requests. Force-Push und History Rewrite sind ausgeschlossen.
 
-- veröffentlichte Stable-Linie
-- Änderungen nur über geprüfte Pull Requests
-- kein Force-Push und keine History-Umschreibung
-- Stable-Tags nur auf Commits, die in `main` enthalten sind
-
-### `develop`
-
-- optionale integrierte Entwicklungslinie für größere künftige Vorhaben
-- kein notwendiger Umweg für freigegebene Stable-Hotfixes
-
-### Release-Branches
-
-Ein freigegebener Stable-Hotfix darf als einzelner `release/<version>`-Branch direkt gegen `main` geführt werden. Der Branch bleibt bis zu vollständig grüner CI erhalten und wird nicht per Rebase oder Force-Push bereinigt.
-
-## Pull-Request-Fluss 0.9.1
+## EMBi 0.9.1
 
 ```text
 release/0.9.1
-→ PR #30 direkt nach main
-→ vollständige CI auf einem exakten finalen Head
-→ Squash-Merge nach main
-→ Tag v0.9.1 auf dem exakten Merge-Commit
-→ regulärer GitHub-Release als latest
-→ Veröffentlichung von embi.zip und embi.zip.sha256
-→ erneuter Download und Verifikation der Assets
+→ PR #30 nach main
+→ vollständige CI
+→ Squash-Merge
+→ Tag v0.9.1
+→ Stable Release als latest
 ```
+
+Der vorherige Funktionsumfang 0.9.0 entstand im Branch `feature/embi-0.9.0` und in PR #29. Diese abgeschlossene Linie bleibt unverändert.
 
 ## Pflichtchecks
 
-- `Quality (Python 3.13)`
-- `Quality (Python 3.14)`
-- `HACS validation`
-- `Hassfest`
-- `EMBi specification contract`
-- `Test package`
+- Quality Python 3.13 und 3.14
+- HACS validation
+- Hassfest
+- EMBi specification contract
+- Test package
 
-Quality umfasst:
+Quality umfasst JSON, YAML, Compileall, Mypy, Ruff, Ruff-Format, Pytest, Vertragsprüfungen, Datenschutzprüfung, Paketbau, SHA-256 und `BUILD_COMMIT`.
 
-- JSON und YAML
-- Compileall
-- Mypy
-- Ruff und Ruff-Format
-- vollständigen Pytest-Lauf
-- Specification Contract
-- Stable Contract
-- Secret-/Privacy-Scan
-- releasegleichen Paketbau
-- SHA-256 und `BUILD_COMMIT`
+## Releasevertrag
 
-Kein Pflichtcheck darf übersprungen, abgeschwächt oder durch einen manuellen Direkt-Push ersetzt werden.
+- Manifest und Runtime: `0.9.1`
+- Tag: `v0.9.1`
+- Titel: `EMBi 0.9.1`
+- nicht Draft oder Prerelease
+- als Latest markiert
+- Assets: `embi.zip` und `embi.zip.sha256`
+- veröffentlichte Assets erneut prüfen
 
-## Paketvertrag
-
-Der gemeinsame Paketbuilder erzeugt:
-
-- `embi.zip`
-- `embi.zip.sha256`
-- intern für die Build-Verifikation `BUILD_COMMIT`
-
-Im veröffentlichten GitHub-Release erscheinen ausschließlich `embi.zip` und `embi.zip.sha256`. Die Installationsdateien liegen direkt im ZIP-Root. Tests, Dokumentation, `.github`, Caches und Repositorymetadaten sind ausgeschlossen.
-
-## Stable-Releasevertrag
-
-Für `v0.9.1` gelten:
-
-- Manifest und interne Runtime-Version exakt `0.9.1`
-- Tag exakt `v0.9.1`
-- Tagziel ist der finale Main-Merge-Commit
-- Release-Titel `EMBi 0.9.1`
-- nicht Draft
-- nicht Prerelease
-- als `latest` markiert
-- Releaseassets nach Veröffentlichung erneut herunterladen
-- veröffentlichte Prüfsumme gegen das veröffentlichte ZIP prüfen
-- ZIP-Struktur und Manifestversion erneut validieren
-
-Bestehende Tags und Releases werden niemals verschoben oder ersetzt.
+Bestehende Tags und Releases bleiben unverändert.
 
 ## HACS
 
-`hacs.json` verlangt:
+HACS verwendet `zip_release: true`, `filename: embi.zip` und `hide_default_branch: true`.
 
-- `zip_release: true`
-- `filename: embi.zip`
-- `hide_default_branch: true`
+## Schutz
 
-HACS installiert damit reguläre Releaseassets und verwendet keinen Default-Branch-Commit als scheinbare Stable-Version.
-
-## Dependabot und unabhängige Änderungen
-
-Abhängigkeitsupdates und unabhängige Wartungsarbeiten werden nicht beiläufig in einen Produkt- oder Release-PR gemischt. Eine technisch notwendige Ausnahme muss im PR begründet und vollständig geprüft werden.
-
-## Rulesets
-
-Für geschützte Branches gilt das Ruleset **Protect main and develop**:
-
-- Pull Requests erzwingen
-- Force-Push blockieren
-- Branch-Löschung blockieren
-- Pflichtchecks erzwingen
-- kein ungeprüfter Auto-Merge
-
-## Historische Integrität
-
-Veröffentlichte Historie wird nicht umgeschrieben. Fehler werden durch nachvollziehbare Folgecommits oder einen neuen regulären Patch-Release korrigiert. Geheimnisse oder private Diagnosedaten dürfen zu keinem Zeitpunkt in Commits, Tests, Logs, Artefakten oder Releases aufgenommen werden.
+Das Ruleset **Protect main and develop** erzwingt Pull Requests und Pflichtchecks und blockiert Force-Push. Unabhängige Änderungen werden nicht in den Release-PR gemischt. Zugangsdaten und private Systeminformationen dürfen nicht veröffentlicht werden.
