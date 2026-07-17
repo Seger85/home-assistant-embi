@@ -98,20 +98,14 @@ def device() -> EmbyDeviceRecord:
     )
 
 
-def default_options() -> dict:
-    return default_options_090()
-
-
-def setup_flow(
-    options: dict | None = None,
-) -> tuple[EmbyOptionsFlow, FakeEntry, FakeStore, FakeHass]:
+def setup_flow(options: dict | None = None):
     store = FakeStore()
     runtime = EmbiRuntimeData(
         api_client=FakeApi([device()]),
         maintenance_store=store,
         maintenance_state=MaintenanceState(),
     )
-    entry = FakeEntry(options or default_options(), runtime)
+    entry = FakeEntry(options or default_options_090(), runtime)
     hass = FakeHass()
     hass.config_entries.entry = entry
     flow = EmbyOptionsFlow(entry)
@@ -126,6 +120,7 @@ def stats() -> SimpleNamespace:
         protected_playback=0,
         removable_from_ha=1,
         known_users=1,
+        server_missing=0,
     )
 
 
@@ -136,31 +131,26 @@ async def empty_catalog(_flow):
 def patch_catalog(monkeypatch) -> None:
     monkeypatch.setattr("custom_components.emby.options_flow.fresh_catalog", empty_catalog)
     monkeypatch.setattr("custom_components.emby.options_devices.fresh_catalog", empty_catalog)
-    monkeypatch.setattr("custom_components.emby.options_cleanup.fresh_catalog", empty_catalog)
     monkeypatch.setattr("custom_components.emby.options_ha_cleanup.fresh_catalog", empty_catalog)
 
 
 @pytest.mark.asyncio
-async def test_root_contains_only_devices_cleanup_and_review_when_dirty(monkeypatch) -> None:
+async def test_root_navigation_and_dirty_review(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, _entry, _store, _hass = setup_flow()
-
     clean = await flow.async_step_init()
-    assert clean["type"] == "menu"
-    assert clean["menu_options"] == ["devices_players", "cleanup"]
-
+    assert clean["menu_options"] == ["ha_players", "server_cleanup"]
     flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
     dirty = await flow.async_step_init()
-    assert dirty["menu_options"] == ["devices_players", "cleanup", "review_changes"]
+    assert dirty["menu_options"] == ["ha_players", "server_cleanup", "review_changes"]
 
 
 @pytest.mark.asyncio
-async def test_devices_page_updates_only_the_in_memory_draft(monkeypatch) -> None:
+async def test_player_page_changes_only_draft(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, entry, store, hass = setup_flow()
     original = dict(entry.options)
-
-    result = await flow.async_step_devices_players(
+    result = await flow.async_step_ha_players(
         {
             CONF_ONLY_DURING_PLAYBACK: True,
             CONF_AUTO_SHOW_NEW_PLAYERS: False,
@@ -168,7 +158,6 @@ async def test_devices_page_updates_only_the_in_memory_draft(monkeypatch) -> Non
             CONF_SEARCH_QUERY: "Alex",
         }
     )
-
     assert result["type"] == "menu"
     assert flow._draft_options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_ACTIVE_ONLY
     assert flow._draft_options[CONF_AUTO_SHOW_NEW_PLAYERS] is False
@@ -180,54 +169,13 @@ async def test_devices_page_updates_only_the_in_memory_draft(monkeypatch) -> Non
 
 
 @pytest.mark.asyncio
-async def test_apply_writes_once_and_reloads_once_without_confirmation_toggle(monkeypatch) -> None:
+async def test_back_preserves_draft(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, entry, store, hass = setup_flow()
     flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
-
-    result = await flow.async_step_apply_changes()
-
-    assert result["type"] == "abort"
-    assert result["reason"] == "apply_complete"
-    assert len(hass.config_entries.updates) == 1
-    assert entry.options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_ACTIVE_ONLY
-    assert hass.config_entries.reloads == [entry.entry_id]
-    assert store.saved == []
-
-
-@pytest.mark.asyncio
-async def test_unchanged_apply_aborts_without_write_or_reload(monkeypatch) -> None:
-    patch_catalog(monkeypatch)
-    flow, _entry, store, hass = setup_flow()
-    result = await flow.async_step_apply_changes()
-    assert result == {"type": "abort", "reason": "no_changes"}
-    assert hass.config_entries.updates == []
-    assert hass.config_entries.reloads == []
-    assert store.saved == []
-
-
-@pytest.mark.asyncio
-async def test_discard_restores_original_without_write_or_reload(monkeypatch) -> None:
-    patch_catalog(monkeypatch)
-    flow, entry, store, hass = setup_flow()
-    flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
-
-    result = await flow.async_step_discard_changes()
-
+    result = await flow.async_step_back_to_init()
     assert result["type"] == "menu"
-    assert flow._draft_options == entry.options
-    assert flow._dirty is False
-    assert hass.config_entries.updates == []
-    assert hass.config_entries.reloads == []
-    assert store.saved == []
-
-
-@pytest.mark.asyncio
-async def test_closing_flow_with_dirty_draft_has_no_side_effects() -> None:
-    flow, entry, store, hass = setup_flow()
-    flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
-    assert flow._dirty is True
-    del flow
+    assert flow._draft_options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_ACTIVE_ONLY
     assert entry.options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_PERSISTENT
     assert hass.config_entries.updates == []
     assert hass.config_entries.reloads == []
@@ -235,15 +183,58 @@ async def test_closing_flow_with_dirty_draft_has_no_side_effects() -> None:
 
 
 @pytest.mark.asyncio
-async def test_enabling_automatic_cleanup_resets_deadline_before_apply(monkeypatch) -> None:
+async def test_apply_writes_and_reloads_once(monkeypatch) -> None:
+    patch_catalog(monkeypatch)
+    flow, entry, store, hass = setup_flow()
+    flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
+    result = await flow.async_step_apply_changes()
+    assert result["type"] == "abort"
+    assert result["reason"] == "apply_complete"
+    assert len(hass.config_entries.updates) == 1
+    assert hass.config_entries.reloads == [entry.entry_id]
+    assert store.saved == []
+
+
+@pytest.mark.asyncio
+async def test_unchanged_apply_stays_inline(monkeypatch) -> None:
+    patch_catalog(monkeypatch)
+    flow, _entry, store, hass = setup_flow()
+    result = await flow.async_step_apply_changes()
+    assert result["type"] == "menu"
+    assert result["step_id"] == "review_changes"
+    assert "keine ungespeicherten Änderungen" in result["description_placeholders"]["error"]
+    assert hass.config_entries.updates == []
+    assert hass.config_entries.reloads == []
+    assert store.saved == []
+
+
+@pytest.mark.asyncio
+async def test_discard_and_close_have_no_side_effects(monkeypatch) -> None:
+    patch_catalog(monkeypatch)
+    flow, entry, store, hass = setup_flow()
+    flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
+    result = await flow.async_step_discard_changes()
+    assert result["type"] == "menu"
+    assert flow._draft_options == entry.options
+    assert hass.config_entries.updates == []
+    assert hass.config_entries.reloads == []
+    assert store.saved == []
+
+    flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
+    del flow
+    assert entry.options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_PERSISTENT
+    assert hass.config_entries.updates == []
+    assert hass.config_entries.reloads == []
+
+
+@pytest.mark.asyncio
+async def test_auto_cleanup_change_resets_deadline_on_apply(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, entry, store, hass = setup_flow()
     flow._runtime.maintenance_state.initial_run_completed = True
     flow._runtime.maintenance_state.report.next_run_at = "2026-07-16T12:00:00+00:00"
     flow._draft_options[CONF_SERVER_AUTO_CLEANUP_ENABLED] = True
-
     result = await flow.async_step_apply_changes()
-
     assert result["reason"] == "apply_complete"
     assert len(store.saved) == 1
     assert store.saved[0].initial_run_completed is False
@@ -253,18 +244,16 @@ async def test_enabling_automatic_cleanup_resets_deadline_before_apply(monkeypat
 
 
 @pytest.mark.asyncio
-async def test_exact_cleanup_values_survive_unrelated_draft_apply(monkeypatch) -> None:
+async def test_cleanup_values_survive_unrelated_apply(monkeypatch) -> None:
     patch_catalog(monkeypatch)
-    options = default_options()
+    options = default_options_090()
     options[CONF_SERVER_CLEANUP_AGE_DAYS] = 364
     options[CONF_SERVER_AUTO_CLEANUP_AGE_DAYS] = 365
     options[CONF_SERVER_AUTO_CLEANUP_ENABLED] = True
     options[CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES] = True
     flow, entry, _store, _hass = setup_flow(options)
     flow._draft_options[CONF_AUTO_SHOW_NEW_PLAYERS] = False
-
     await flow.async_step_apply_changes()
-
     assert entry.options[CONF_SERVER_CLEANUP_AGE_DAYS] == 364
     assert entry.options[CONF_SERVER_AUTO_CLEANUP_AGE_DAYS] == 365
     assert entry.options[CONF_SERVER_AUTO_CLEANUP_ENABLED] is True
@@ -272,23 +261,18 @@ async def test_exact_cleanup_values_survive_unrelated_draft_apply(monkeypatch) -
 
 
 @pytest.mark.asyncio
-async def test_dirty_draft_blocks_destructive_entry_points(monkeypatch) -> None:
+async def test_dirty_draft_blocks_player_action_inline(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, _entry, _store, _hass = setup_flow()
     flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
-
-    assert await flow.async_step_manage_ha_players() == {
-        "type": "abort",
-        "reason": "unsaved_changes",
-    }
-    assert await flow.async_step_server_history_check() == {
-        "type": "abort",
-        "reason": "unsaved_changes",
-    }
+    result = await flow.async_step_manage_ha_players()
+    assert result["type"] == "form"
+    assert result["errors"] == {"base": "unsaved_changes"}
+    assert flow._draft_options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_ACTIVE_ONLY
 
 
 @pytest.mark.asyncio
-async def test_update_listener_performs_exactly_one_reload() -> None:
+async def test_update_listener_reloads_once() -> None:
     _flow, entry, _store, hass = setup_flow()
     await async_update_listener(hass, entry)
     assert hass.config_entries.reloads == [entry.entry_id]
