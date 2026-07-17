@@ -6,4 +6,13 @@ stable: true
 prerelease: false
 requested_by: "Seger"
 report_issue: 30
-request_nonce: "2026-07-17T20:35:00+02:00"
+cleanup_branches:
+  - "release/0.9.1"
+  - "release/v0.9.1"
+  - "fix/publish-v0.9.1"
+  - "fix/retrigger-v0.9.1"
+  - "fix/release-workflow-v0.9.1"
+  - "fix/observe-release-v0.9.1"
+  - "fix/publish-v0.9.1-validation"
+  - "fix/cleanup-v0.9.1-branches"
+request_nonce: "2026-07-17T20:50:00+02:00"
