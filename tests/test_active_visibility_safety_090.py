@@ -39,6 +39,4 @@ def test_diagnostics_redact_server_host_and_title() -> None:
 
     assert "from homeassistant.const import CONF_API_KEY, CONF_HOST" in diagnostics
     assert '"title": "<redacted>"' in diagnostics
-    assert (
-        "async_redact_data(dict(entry.data), {CONF_API_KEY, CONF_HOST})" in diagnostics
-    )
+    assert "async_redact_data(dict(entry.data), {CONF_API_KEY, CONF_HOST})" in diagnostics
