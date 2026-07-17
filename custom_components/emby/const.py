@@ -2,7 +2,7 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.0"
+VERSION = "0.9.1"
 PLATFORMS = ["media_player"]
 
 CONFIG_ENTRY_VERSION = 4
@@ -36,6 +36,23 @@ CLIENT_MODE_ALLOWLIST = "allowlist"
 CLIENT_MODES = [CLIENT_MODE_ALL, CLIENT_MODE_ACTIVE_ONLY, CLIENT_MODE_ALLOWLIST]
 
 # Native Options Flow fields which are intentionally not persisted as duplicate state.
+
+# 0.9.1 compact navigation and pagination fields.
+CONF_BACK = "back"
+CONF_PAGE = "page"
+CONF_PLAYER_ACTION = "player_action"
+PLAYER_ACTION_MANAGE_EXCEPTIONS = "manage_exceptions"
+PLAYER_ACTION_DETAILS = "player_details"
+PLAYER_ACTION_REMOVE = "remove_ha_players"
+PLAYER_ACTION_RESTORE = "restore_ha_players"
+CONF_HIDDEN_PAGE_PLAYER_KEYS = "hidden_page_player_keys"
+CONF_SELECTED_PLAYER_KEY = "selected_player_key"
+CONF_SELECTED_RESTORE_KEYS = "selected_restore_player_keys"
+CONF_REVIEW_ACTION = "review_action"
+REVIEW_ACTION_APPLY = "apply_changes"
+REVIEW_ACTION_DISCARD = "discard_changes"
+REVIEW_ACTION_BACK = "back_to_init"
+PLAYER_PAGE_SIZE = 12
 CONF_ONLY_DURING_PLAYBACK = "only_during_playback"
 CONF_SEARCH_QUERY = "search_query"
 CONF_SELECTED_GROUP = "selected_group"
