@@ -40,130 +40,166 @@
     "step": {
       "init": {
         "title": "Manage EMBi",
-        "description": "Manage Emby players in Home Assistant and safely clean up old device records when needed.\n\n{server_history} devices in Emby server device history\n{ha_players} players in Home Assistant\n{protected} protected by active playback\n{removable} currently removable from Home Assistant\nAutomatic cleanup: {automatic_cleanup}",
+        "description": "Manage Home Assistant players and clean up old Emby server records in clearly separated areas.\n\n{server_history} records in Emby server history\n{ha_players} registered Home Assistant players\n{protected} playing or paused\n{server_missing} no longer reported by the Emby server\nAutomatic cleanup: {automatic_cleanup}",
         "menu_options": {
-          "devices_players": "Devices & players",
-          "cleanup": "Cleanup",
-          "review_changes": "Review {review_count} changes"
+          "ha_players": "Home Assistant players",
+          "server_cleanup": "Clean up Emby server",
+          "review_changes": "Review changes"
         }
       },
-      "devices_players": {
-        "title": "Devices & players",
-        "description": "Choose which Emby players appear in Home Assistant.\n\n{ha_players} players in Home Assistant\n{playing} currently playing or paused\n{known_users} known Emby users\n\nAvailable groups:\n{groups}",
+      "ha_players": {
+        "title": "Home Assistant players",
+        "description": "Global visibility settings are shown first. Open a short user or client group to manage its master setting, exceptions or technical details.\n\n{ha_players} registered players\n{playing} playing or paused\n{known_users} recognized users\n{server_missing} no longer reported by the Emby server",
         "data": {
-          "only_during_playback": "Only show during playback",
-          "auto_show_new_players": "Automatically show new players",
-          "technical_access_visibility": "Show technical access as Home Assistant players",
+          "only_during_playback": "Only show players during playback",
+          "auto_show_new_players": "Automatically add new players",
+          "technical_access_visibility": "Show technical access as players",
           "search_query": "Search user, device, app or entity ID",
-          "selected_group": "Open group"
+          "selected_group": "Open group",
+          "player_action": "Player management",
+          "back": "‹ Back"
         },
         "data_description": {
-          "only_during_playback": "Off: selected players remain available when nothing is playing. On: players appear only while playing or paused.",
-          "auto_show_new_players": "When off, new playback devices remain hidden until you enable them here.",
-          "technical_access_visibility": "Technical access means API applications that are not normal playback devices. Uncertain clients remain classified as unknown.",
-          "search_query": "The search uses friendly user, device and app names plus the full Home Assistant entity ID.",
-          "selected_group": "Known users are listed first, followed by shared devices, devices without user assignment, technical access and unknown clients."
+          "only_during_playback": "When enabled, players appear only while playing or paused.",
+          "auto_show_new_players": "When disabled, current visible players remain allowed and new players stay hidden until selected.",
+          "technical_access_visibility": "Only explicitly technical or API-only clients are controlled by this setting.",
+          "selected_group": "Groups use short names and a player count.",
+          "player_action": "Remove or restore Home Assistant players in this player area.",
+          "back": "Return without closing the complete dialog. The current draft is preserved."
         }
       },
       "player_group": {
-        "title": "Devices & players",
-        "description": "{group}\n\n{player_rows}\n\nSubmitting returns to Devices & players and keeps all changes in the current draft.",
+        "title": "{group}",
+        "description": "{count} players are assigned to this group. User groups provide one master switch. Individual players are changed only under Manage exceptions.",
         "data": {
           "show_user_players": "Show all players for this user",
-          "visible_player_keys": "Players shown in Home Assistant",
-          "enable_entity_ids": "Enable in Home Assistant"
-        },
-        "data_description": {
-          "show_user_players": "Turning this off hides players assigned only to this user while preserving individual choices.",
-          "visible_player_keys": "Playing and paused players are protected. Hidden players can be shown again later.",
-          "enable_entity_ids": "A disabled but valid entity is not an orphan. Enabling preserves its identity and metadata."
+          "player_action": "Open",
+          "back": "‹ Back"
         }
       },
-      "cleanup": {
-        "title": "Cleanup",
-        "description": "Clean old Emby server records or remove unwanted players from Home Assistant. These are separate actions.\n\n{server_history} devices in Emby server device history\n{ha_players} players in Home Assistant\n{historical_difference} additional historical devices\n{removable} Home Assistant players currently removable\n{protected} players protected by playback\n\nLast cleanup run: {last_status}\nDeleted: {last_deleted}\nProtected: {last_protected}\nErrors: {last_errors}\nNext run: {next_run}",
+      "player_exceptions": {
+        "title": "Manage exceptions",
+        "description": "Only the current page is changed. Selector labels contain only device, app and—when needed for distinction—the user.\n\n{count} matching players · page {page} of {pages}",
         "data": {
-          "server_auto_cleanup_enabled": "Automatically clean old Emby records",
-          "automatic_age_preset": "Remove records older than",
-          "automatic_custom_age_days": "Custom automatic age in days",
-          "server_auto_cleanup_remove_ha_entities": "Also remove matching Home Assistant players",
-          "manual_age_preset": "Manual check age",
-          "manual_custom_age_days": "Custom manual age in days",
-          "cleanup_action": "Action"
-        },
-        "data_description": {
-          "server_auto_cleanup_enabled": "EMBi regularly checks old records and removes only records that satisfy all safety rules.",
-          "server_auto_cleanup_remove_ha_entities": "A related Home Assistant player is removed only when no remaining Emby record needs it and it is neither playing nor paused.",
-          "manual_age_preset": "Manual server checks remain available when automatic cleanup is off.",
-          "cleanup_action": "Destructive actions are available only while no normal draft changes are pending."
+          "search_query": "Search",
+          "page": "Page",
+          "hidden_page_player_keys": "Hide these players as exceptions",
+          "enable_entity_ids": "Enable disabled Home Assistant entities",
+          "back": "‹ Back"
+        }
+      },
+      "player_details": {
+        "title": "Player details",
+        "description": "Technical details are shown only on this dedicated page.\n\n{details}",
+        "data": {
+          "selected_player_key": "Player",
+          "back": "‹ Back"
+        }
+      },
+      "server_cleanup": {
+        "title": "Clean up Emby server",
+        "menu_options": {
+          "automatic_cleanup": "Automatic cleanup",
+          "server_history_check": "Check for old records now",
+          "last_cleanup_run": "Last cleanup run",
+          "back_to_init": "‹ Back"
+        }
+      },
+      "automatic_cleanup": {
+        "title": "Automatic cleanup",
+        "description": "Configure the automatic server-history cleanup. These changes remain in the draft until Review changes is applied.",
+        "data": {
+          "server_auto_cleanup_enabled": "Automatic cleanup",
+          "automatic_age_preset": "Age limit",
+          "automatic_custom_age_days": "Custom number of days",
+          "server_auto_cleanup_remove_ha_entities": "Also remove the related Home Assistant player after successful server deletion",
+          "back": "‹ Back"
         }
       },
       "server_history_check": {
-        "title": "Check Emby server device history",
-        "description": "{total} records checked\n{candidates} are older than {age_days} days and safe to delete\n{active} are protected by active playback\n{recent} do not satisfy the age rule\n{without_activity} have no valid activity date\n\nWhen no safe candidates exist, no empty selector is shown and nothing is changed.",
+        "title": "Check for old Emby records now",
+        "description": "{total} records checked\n{candidates} older than {age_days} days and eligible\n{active} protected by active playback\n{recent} too recent\n{without_activity} without a valid activity timestamp\n\nSelecting records is the preview. The next page contains exactly one clearly named execution action.",
         "data": {
-          "delete_device_record_ids": "Server-history records to delete"
+          "manual_age_preset": "Manual age limit",
+          "manual_custom_age_days": "Custom number of days",
+          "delete_device_record_ids": "Emby records to delete",
+          "back": "‹ Back"
         }
       },
       "confirm_server_deletion": {
-        "title": "Delete {count} Emby server records?",
-        "description": "The selected device-history records will be removed from the Emby server. User accounts, media, libraries and playback history are not deleted. This is the single final confirmation.",
-        "data": {
-          "confirm_server_deletion": "Delete permanently"
+        "title": "Delete {count} Emby records?",
+        "description": "Candidates are refreshed and validated again immediately before execution. Users, media, libraries and playback history are not deleted.",
+        "menu_options": {
+          "execute_server_deletion": "Delete {count} Emby records",
+          "back_to_server_history_check": "‹ Back"
+        }
+      },
+      "last_cleanup_run": {
+        "title": "Last cleanup run",
+        "description": "Status: {status}\nDeleted: {deleted}\nProtected: {protected}\nFailed: {failed}\nNext scheduled run: {next_run}",
+        "menu_options": {
+          "back_to_server_cleanup": "‹ Back"
         }
       },
       "manage_ha_players": {
-        "title": "Home Assistant players",
-        "description": "{ha_players} players in Home Assistant\n{removable} currently removable\n{protected} protected by playback or an unresolved state\n\nAll players:\n{all_rows}\n\nProtected players:\n{protected_rows}",
+        "title": "Remove Home Assistant players",
+        "description": "{ha_players} registered players\n{removable} currently removable\n{protected} protected by playback or an unresolved state\n{server_missing} no longer reported by the Emby server\nPage {page} of {pages}\n\nSelecting players is the preview. The next page contains exactly one removal action.",
         "data": {
-          "selected_ha_entity_ids": "Players to remove from Home Assistant"
-        },
-        "data_description": {
-          "selected_ha_entity_ids": "Selected players are hidden in EMBi and removed from Home Assistant. Their Emby server-history records remain and they can be restored later under Devices & players."
+          "search_query": "Search",
+          "page": "Page",
+          "selected_ha_entity_ids": "Home Assistant players to remove",
+          "back": "‹ Back"
         }
       },
       "confirm_ha_removal": {
-        "title": "Remove {count} players from Home Assistant?",
-        "description": "The selected players will be hidden in EMBi and removed from Home Assistant. They remain in Emby server device history and can be restored later. Playing and paused players are rechecked and protected. This is the single final confirmation.",
+        "title": "Remove {count} Home Assistant players?",
+        "description": "The selected players are hidden in EMBi and removed from the registry only after fresh ownership, platform, config-entry, unique-ID and playback validation.",
+        "menu_options": {
+          "execute_ha_removal": "Remove {count} Home Assistant players",
+          "back_to_manage_ha_players": "‹ Back"
+        }
+      },
+      "restore_ha_players": {
+        "title": "Restore Home Assistant players",
+        "description": "{candidates} hidden players can be restored · page {page} of {pages}. Restoration removes only the exact hidden rule and verifies the entity after reload.",
         "data": {
-          "confirm_ha_removal": "Remove players"
+          "search_query": "Search",
+          "page": "Page",
+          "selected_restore_player_keys": "Players to restore",
+          "back": "‹ Back"
         }
       },
       "review_changes": {
         "title": "Review changes",
-        "description": "{count} semantic changes are pending. Nothing has been written yet.\n\n{changes}",
+        "description": "{count_text} pending. Nothing has been written yet.\n\n{changes}\n\n{error}",
         "menu_options": {
+          "apply_changes": "Apply changes",
           "discard_changes": "Discard changes",
-          "apply_changes": "Apply changes"
+          "back_to_init": "‹ Back"
         }
       },
       "older_rules": {
         "title": "Older rules",
-        "description": "{count} older rules could not be assigned safely during migration. They remain preserved and inactive until you review them. Deselect only rules you intentionally want to discard.",
+        "description": "{count} older rules could not be assigned safely during migration. They remain preserved and inactive until reviewed.",
         "data": {
-          "kept_rules": "Preserved older rules"
-        },
-        "data_description": {
-          "kept_rules": "These labels deliberately avoid guessing a device or app identity."
+          "kept_rules": "Preserved older rules",
+          "back": "‹ Back"
         }
       }
     },
     "error": {
-      "cannot_connect": "Could not refresh current Emby and Home Assistant data.",
+      "cannot_connect": "Current Emby and Home Assistant data could not be refreshed. Try again or go back.",
       "playback_protected": "Stop playback before hiding or removing this player.",
       "invalid_age": "Choose a preset or enter a valid custom number of days.",
       "selection_required": "Select at least one item.",
-      "invalid_selection": "The selected target changed or is no longer safe. Reopen the page and try again.",
-      "confirmation_required": "Use the final confirmation to continue."
+      "invalid_selection": "The selected target changed or is no longer safe. Refresh the page and try again.",
+      "unsaved_changes": "Apply or discard the current draft before starting a destructive action."
     },
     "abort": {
-      "no_changes": "There are no unsaved changes.",
-      "cannot_connect": "The action could not be completed safely because current data was unavailable.",
-      "storage_failed": "The persistent maintenance state could not be saved. No options were applied.",
-      "unsaved_changes": "Apply or discard normal draft changes before starting a destructive action.",
-      "apply_complete": "Changes applied. Removed: {removed}. Restored: {restored}. Enabled: {enabled}. Protected: {protected}. Failed: {failed}.",
-      "server_cleanup_complete": "Server-history cleanup completed. Deleted: {server_deleted}. Failed: {server_failed}.",
-      "ha_player_removal_complete": "Home Assistant player removal completed. Requested: {requested}. Removed: {removed}. Protected: {protected}. Failed: {failed}."
+      "apply_complete": "Changes applied. Restored: {restored}. Enabled: {enabled}. Protected: {protected}. Failed: {failed}.",
+      "server_cleanup_complete": "Server cleanup completed. Deleted: {server_deleted}. Failed: {server_failed}.",
+      "ha_player_removal_complete": "Home Assistant player removal completed. Requested: {requested}. Removed: {removed}. Protected: {protected}. Failed: {failed}.",
+      "ha_player_restore_complete": "Home Assistant player restoration completed. Requested: {requested}. Restored: {restored}. Failed: {failed}."
     }
   },
   "selector": {
@@ -177,10 +213,16 @@
         "custom": "Custom"
       }
     },
-    "cleanup_action": {
+    "player_management_action": {
       "options": {
-        "manual_check": "Check Emby server device history now",
-        "manage_ha_players": "Manage Home Assistant players"
+        "remove_ha_players": "Remove Home Assistant players",
+        "restore_ha_players": "Restore Home Assistant players"
+      }
+    },
+    "player_group_action": {
+      "options": {
+        "manage_exceptions": "Manage exceptions",
+        "player_details": "Player details"
       }
     }
   }
