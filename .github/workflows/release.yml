@@ -4,7 +4,8 @@ on:
   push:
     tags:
       - "v*"
-      - "[0-9]*"
+    branches:
+      - "release/v*"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,6 +21,7 @@ jobs:
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
+      release_branch: ${{ steps.release.outputs.release_branch }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -33,16 +35,28 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
 
-      - name: Validate stable tag, manifest and main ancestry
+      - name: Validate stable request, version and main ancestry
         id: release
         shell: bash
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          if [[ ! "${tag}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Stable release tag must use MAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH."
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+            release_branch="false"
+          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == release/v* ]]; then
+            tag="${GITHUB_REF_NAME#release/}"
+            release_branch="true"
+          else
+            echo "::error::Stable release requires a v* tag or release/v* request branch."
             exit 1
           fi
+
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Stable release tag must use vMAJOR.MINOR.PATCH."
+            exit 1
+          fi
+
           version="${tag#v}"
           manifest_version="$(python - <<'PY'
           import json
@@ -55,17 +69,27 @@ jobs:
           print(VERSION)
           PY
           )"
+
           if [[ "${version}" != "${manifest_version}" || "${version}" != "${internal_version}" ]]; then
             echo "::error::Tag, manifest and internal version must match exactly."
             exit 1
           fi
+
           git fetch --no-tags origin main:refs/remotes/origin/main
           if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
             echo "::error::Stable release commit must be contained in main."
             exit 1
           fi
+
+          if [[ "${release_branch}" == "true" ]] && \
+             git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::Tag ${tag} already exists."
+            exit 1
+          fi
+
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "release_branch=${release_branch}" >> "${GITHUB_OUTPUT}"
 
       - name: Install test dependencies
         run: python -m pip install --upgrade pip -r requirements_test.txt
@@ -179,13 +203,37 @@ jobs:
           jq -e --arg name "EMBi ${RELEASE_VERSION}" '.name == $name' <<<"${release_json}" >/dev/null
           jq -e '.isDraft == false and .isPrerelease == false' <<<"${release_json}" >/dev/null
           jq -e '.assets | length == 2 and any(.name == "embi.zip") and any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
+
           rm -rf verify-release
           mkdir verify-release
-          gh release download "${RELEASE_TAG}" --dir verify-release --pattern embi.zip --pattern embi.zip.sha256
+          gh release download "${RELEASE_TAG}" \
+            --dir verify-release \
+            --pattern embi.zip \
+            --pattern embi.zip.sha256
           (cd verify-release && sha256sum --check embi.zip.sha256)
           cmp dist/embi.zip verify-release/embi.zip
           cmp dist/embi.zip.sha256 verify-release/embi.zip.sha256
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import zipfile
+
+          with zipfile.ZipFile(Path("verify-release/embi.zip")) as archive:
+              manifest = json.loads(archive.read("manifest.json"))
+          if manifest.get("version") != os.environ["RELEASE_VERSION"]:
+              raise RuntimeError("Published archive version differs")
+          PY
+
           latest_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
           test "${latest_tag}" = "${RELEASE_TAG}"
           git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
           test "$(git rev-list -n 1 "${RELEASE_TAG}")" = "${GITHUB_SHA}"
+
+      - name: Remove verified release request branch
+        if: ${{ needs.validate.outputs.release_branch == 'true' }}
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        shell: bash
+        run: git push origin --delete "${RELEASE_BRANCH}"
