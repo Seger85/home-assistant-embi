@@ -1,21 +1,28 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
 from homeassistant.helpers import selector
 
 from .const import (
-    CONF_BACK,
+    CONF_FLOW_ACTION,
     CONF_HIDDEN_EXACT_PLAYERS,
+    FLOW_ACTION_BACK,
+    FLOW_ACTION_EXECUTE,
     CONF_PAGE,
     CONF_SEARCH_QUERY,
     CONF_SELECTED_HA_ENTITY_IDS,
     CONF_SELECTED_RESTORE_KEYS,
     PLAYER_PAGE_SIZE,
 )
+from .options_navigation import action_selector, back_requested, navigation_selector
 from .options_runtime import entity_options, fresh_catalog, page_slice, player_options
 from .player_actions import async_remove_ha_players, async_restore_players
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _multi(options: list[dict[str, str]]) -> selector.SelectSelector:
@@ -49,6 +56,7 @@ class HomeAssistantCleanupOptionsMixin:
         try:
             players, stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to load current EMBi player catalog")
             players = []
             stats = None
             errors["base"] = "cannot_connect"
@@ -83,10 +91,13 @@ class HomeAssistantCleanupOptionsMixin:
             fields[vol.Optional(CONF_SELECTED_HA_ENTITY_IDS, default=[])] = _multi(
                 entity_options(page_players)
             )
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Weiter" if self._is_de() else "Continue",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_ha_players()
             self._search_query = str(user_input.get(CONF_SEARCH_QUERY, self._search_query)).strip()
             if not errors:
@@ -119,9 +130,34 @@ class HomeAssistantCleanupOptionsMixin:
     async def async_step_confirm_ha_removal(self, user_input: dict[str, Any] | None = None):
         if not self._pending_ha_entity_ids:
             return await self.async_step_manage_ha_players()
-        return self.async_show_menu(
+        if user_input is not None:
+            action = user_input.get(CONF_FLOW_ACTION)
+            if action == FLOW_ACTION_BACK:
+                return await self.async_step_back_to_manage_ha_players()
+            if action == FLOW_ACTION_EXECUTE:
+                return await self.async_step_execute_ha_removal()
+        return self.async_show_form(
             step_id="confirm_ha_removal",
-            menu_options=["execute_ha_removal", "back_to_manage_ha_players"],
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_FLOW_ACTION): action_selector(
+                        [
+                            {
+                                "value": FLOW_ACTION_EXECUTE,
+                                "label": (
+                                    f"{len(self._pending_ha_entity_ids)} HA-Player entfernen"
+                                    if self._is_de()
+                                    else f"Remove {len(self._pending_ha_entity_ids)} HA players"
+                                ),
+                            },
+                            {
+                                "value": FLOW_ACTION_BACK,
+                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                            },
+                        ]
+                    )
+                }
+            ),
             description_placeholders={"count": str(len(self._pending_ha_entity_ids))},
         )
 
@@ -153,6 +189,7 @@ class HomeAssistantCleanupOptionsMixin:
         try:
             players, _stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to load current EMBi player catalog")
             players = []
             errors["base"] = "cannot_connect"
         if self._dirty and "base" not in errors:
@@ -182,10 +219,13 @@ class HomeAssistantCleanupOptionsMixin:
             fields[vol.Optional(CONF_SELECTED_RESTORE_KEYS, default=[])] = _multi(
                 player_options(page_players)
             )
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Weiter" if self._is_de() else "Continue",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_ha_players()
             self._search_query = str(user_input.get(CONF_SEARCH_QUERY, self._search_query)).strip()
             if not errors:

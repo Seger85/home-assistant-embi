@@ -2,7 +2,7 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 PLATFORMS = ["media_player"]
 
 CONFIG_ENTRY_VERSION = 4
@@ -38,7 +38,16 @@ CLIENT_MODES = [CLIENT_MODE_ALL, CLIENT_MODE_ACTIVE_ONLY, CLIENT_MODE_ALLOWLIST]
 # Native Options Flow fields which are intentionally not persisted as duplicate state.
 
 # 0.9.1 compact navigation and pagination fields.
-CONF_BACK = "back"
+CONF_BACK = "back"  # Legacy input name; never exposed or persisted by 0.9.2 forms.
+CONF_FLOW_ACTION = "flow_action"
+FLOW_ACTION_SAVE = "save"
+FLOW_ACTION_BACK = "back"
+FLOW_ACTION_OPEN_AUTOMATIC = "open_automatic_cleanup"
+FLOW_ACTION_OPEN_HISTORY = "open_server_history_check"
+FLOW_ACTION_OPEN_LAST_RUN = "open_last_cleanup_run"
+FLOW_ACTION_APPLY = "apply_changes"
+FLOW_ACTION_DISCARD = "discard_changes"
+FLOW_ACTION_EXECUTE = "execute"
 CONF_PAGE = "page"
 CONF_PLAYER_ACTION = "player_action"
 PLAYER_ACTION_MANAGE_EXCEPTIONS = "manage_exceptions"

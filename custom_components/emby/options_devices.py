@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -8,8 +9,8 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_ALLOWED_DEVICE_IDS,
     CONF_AUTO_SHOW_NEW_PLAYERS,
-    CONF_BACK,
     CONF_ENABLE_ENTITY_IDS,
+    CONF_FLOW_ACTION,
     CONF_GLOBAL_PLAYER_MODE,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_HIDDEN_PAGE_PLAYER_KEYS,
@@ -30,6 +31,7 @@ from .const import (
     PLAYER_MODE_PERSISTENT,
     PLAYER_PAGE_SIZE,
 )
+from .options_navigation import back_requested, navigation_selector
 from .options_runtime import (
     entity_options,
     fresh_catalog,
@@ -44,6 +46,8 @@ from .player_context import (
     GROUP_USER_PREFIX,
     group_player_catalog,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 _OLDER_RULES_GROUP = "older_rules"
 
@@ -61,14 +65,14 @@ def _multi(options: list[dict[str, str]]) -> selector.SelectSelector:
 def _single(
     options: list[dict[str, str]], *, translation_key: str | None = None
 ) -> selector.SelectSelector:
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(
-            options=options,
-            multiple=False,
-            translation_key=translation_key,
-            mode=selector.SelectSelectorMode.DROPDOWN,
-        )
-    )
+    config: dict[str, Any] = {
+        "options": options,
+        "multiple": False,
+        "mode": selector.SelectSelectorMode.DROPDOWN,
+    }
+    if translation_key is not None:
+        config["translation_key"] = translation_key
+    return selector.SelectSelector(selector.SelectSelectorConfig(**config))
 
 
 def _page_selector(total_pages: int) -> selector.SelectSelector:
@@ -88,6 +92,7 @@ class DevicesOptionsMixin:
         try:
             players, stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to load current EMBi player catalog")
             players = []
             stats = None
             errors["base"] = "cannot_connect"
@@ -131,10 +136,13 @@ class DevicesOptionsMixin:
             [PLAYER_ACTION_REMOVE, PLAYER_ACTION_RESTORE],
             translation_key="player_management_action",
         )
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Übernehmen" if self._is_de() else "Apply",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_init()
             if not errors:
                 requested_auto_show = bool(user_input.get(CONF_AUTO_SHOW_NEW_PLAYERS, True))
@@ -208,6 +216,7 @@ class DevicesOptionsMixin:
         try:
             players, _stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to load current EMBi player catalog")
             players = []
             errors["base"] = "cannot_connect"
         group_players = list(group_player_catalog(players).get(self._selected_group, []))
@@ -232,10 +241,13 @@ class DevicesOptionsMixin:
             [PLAYER_ACTION_MANAGE_EXCEPTIONS, PLAYER_ACTION_DETAILS],
             translation_key="player_group_action",
         )
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Übernehmen" if self._is_de() else "Apply",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_back_to_ha_players()
             if not errors:
                 hide_user_group = user_name is not None and not bool(
@@ -283,6 +295,7 @@ class DevicesOptionsMixin:
         try:
             players, _stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to load current EMBi player catalog")
             players = []
             errors["base"] = "cannot_connect"
         group_players = list(group_player_catalog(players).get(self._selected_group, []))
@@ -323,10 +336,13 @@ class DevicesOptionsMixin:
             fields[vol.Optional(CONF_ENABLE_ENTITY_IDS, default=[])] = _multi(
                 entity_options(disabled)
             )
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Übernehmen" if self._is_de() else "Apply",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_player_group()
             if not errors:
                 self._search_query = str(
@@ -370,6 +386,7 @@ class DevicesOptionsMixin:
         try:
             players, _stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to load current EMBi player catalog")
             players = []
             errors["base"] = "cannot_connect"
         group_players = list(group_player_catalog(players).get(self._selected_group, []))
@@ -382,10 +399,13 @@ class DevicesOptionsMixin:
                     default=self._selected_player_key,
                 )
             ] = _single(player_options(group_players))
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Übernehmen" if self._is_de() else "Apply",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_player_group()
             selected = user_input.get(CONF_SELECTED_PLAYER_KEY)
             if selected and str(selected) in by_key:
@@ -416,9 +436,12 @@ class DevicesOptionsMixin:
         fields: dict[Any, Any] = {}
         if options:
             fields[vol.Optional("kept_rules", default=unresolved)] = _multi(options)
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Übernehmen" if self._is_de() else "Apply",
+        )
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_ha_players()
             kept = {str(value) for value in user_input.get("kept_rules", unresolved)}
             self._draft_options[CONF_UNRESOLVED_LEGACY_RULES] = sorted(kept)

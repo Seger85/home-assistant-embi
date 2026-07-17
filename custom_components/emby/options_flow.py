@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import logging
 from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import entity_registry as er
 
@@ -10,7 +12,11 @@ from .api import EmbyApiError, EmbyDeviceRecord
 from .const import (
     CONF_ALLOWED_DEVICE_IDS,
     CONF_AUTO_SHOW_NEW_PLAYERS,
+    CONF_FLOW_ACTION,
     CONF_HIDDEN_EXACT_PLAYERS,
+    FLOW_ACTION_APPLY,
+    FLOW_ACTION_BACK,
+    FLOW_ACTION_DISCARD,
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_TECHNICAL_ACCESS_VISIBILITY,
     CONF_USER_MASTER_VISIBILITY,
@@ -21,10 +27,13 @@ from .options_devices import DevicesOptionsMixin
 from .options_draft import OptionsDraft
 from .options_ha_cleanup import HomeAssistantCleanupOptionsMixin
 from .options_model import migrate_options_090
+from .options_navigation import action_selector
 from .options_review import semantic_changes
 from .options_runtime import fresh_catalog, player_label_map
 from .player_action_common import owned_exact
 from .player_context import ACTIVE_PLAYBACK_STATES, CLIENT_CLASS_TECHNICAL
+
+_LOGGER = logging.getLogger(__name__)
 
 _ERROR_TEXT_DE = {
     "no_changes": "Es gibt keine ungespeicherten Änderungen.",
@@ -46,7 +55,7 @@ class EmbyOptionsFlow(
     HomeAssistantCleanupOptionsMixin,
     config_entries.OptionsFlow,
 ):
-    """EMBi 0.9.1 Options Flow with a preserved in-memory draft."""
+    """EMBi 0.9.2 Options Flow with a preserved in-memory draft."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
@@ -102,6 +111,7 @@ class EmbyOptionsFlow(
             players, _stats = await fresh_catalog(self)
             labels = player_label_map(players)
         except Exception:
+            _LOGGER.exception("Failed to build EMBi option-review labels")
             labels = {}
         changes = semantic_changes(
             self._original_options,
@@ -122,6 +132,7 @@ class EmbyOptionsFlow(
         try:
             _players, stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to build EMBi root-menu statistics")
             stats = None
         menu_options = ["ha_players", "server_cleanup"]
         _lines, count = await self._review_lines()
@@ -151,16 +162,53 @@ class EmbyOptionsFlow(
         return await self.async_step_server_cleanup(user_input)
 
     async def async_step_review_changes(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            action = user_input.get(CONF_FLOW_ACTION)
+            if action == FLOW_ACTION_APPLY:
+                return await self.async_step_apply_changes()
+            if action == FLOW_ACTION_DISCARD:
+                return await self.async_step_discard_changes()
+            if action == FLOW_ACTION_BACK:
+                return await self.async_step_init()
         if not self._dirty:
             self._review_error = "no_changes"
         lines, count = await self._review_lines()
-        return self.async_show_menu(
+        return self.async_show_form(
             step_id="review_changes",
-            menu_options=["apply_changes", "discard_changes", "back_to_init"],
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_FLOW_ACTION): action_selector(
+                        [
+                            {
+                                "value": FLOW_ACTION_APPLY,
+                                "label": (
+                                    "Änderungen übernehmen"
+                                    if self._is_de()
+                                    else "Apply changes"
+                                ),
+                            },
+                            {
+                                "value": FLOW_ACTION_DISCARD,
+                                "label": (
+                                    "Änderungen verwerfen"
+                                    if self._is_de()
+                                    else "Discard changes"
+                                ),
+                            },
+                            {
+                                "value": FLOW_ACTION_BACK,
+                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                            },
+                        ]
+                    )
+                }
+            ),
             description_placeholders={
                 "count": str(count),
                 "count_text": self._change_count_text(count),
-                "changes": "\n\n".join(lines) or "-",
+                "changes": "
+
+".join(lines) or "-",
                 "error": self._error_text(self._review_error),
             },
         )
@@ -196,6 +244,7 @@ class EmbyOptionsFlow(
         try:
             players, _stats = await fresh_catalog(self)
         except Exception:
+            _LOGGER.exception("Failed to refresh EMBi players before applying options")
             self._review_error = "cannot_connect"
             return await self.async_step_review_changes()
 
@@ -272,6 +321,7 @@ class EmbyOptionsFlow(
             if blocker is not None:
                 await blocker()
         except Exception:
+            _LOGGER.exception("Failed to store EMBi options")
             self._review_error = "save_failed"
             return await self.async_step_review_changes()
         finally:

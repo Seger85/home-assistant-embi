@@ -2,6 +2,21 @@
 
 Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das Projekt folgt Semantic Versioning.
 
+## [0.9.2] - 2026-07-17
+
+### Fixed
+
+- Repaired the Home Assistant player Options Flow for Home Assistant 2026.7.2 by emitting only frontend-serializable selector configuration.
+- Replaced toggle and chevron-based Back entries with non-persistent native form actions that preserve the complete draft.
+- Added a compact localized cleanup-run report and mobile-safe old-record labels without versions, UTC or internal identifiers.
+- Shortened the matching Home Assistant player cleanup label while retaining the full safety contract in its description.
+- Improved technical-client classification using capability, playback, app, registry and session evidence while keeping ambiguous clients protected.
+
+### Validation
+
+- Added realistic 69-record, 31-entity Options Flow fixtures, complete form serialization checks, navigation and translation contracts, mobile-label tests and technical-client classification coverage.
+- Kept all destructive operations behind fresh identity and playback revalidation; no migration or test deletes server history or Home Assistant entities.
+
 ## [0.9.1] – 2026-07-17
 
 ### UX

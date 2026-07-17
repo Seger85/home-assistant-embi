@@ -255,3 +255,70 @@ def test_selector_label_is_compact_and_details_are_separate() -> None:
     assert "media_player.wohnzimmer_emby" in player.technical_details
     assert filter_player_catalog([player], "wohnzimmer") == [player]
     assert filter_player_catalog([player], "media_player.wohnzimmer") == [player]
+
+
+
+def test_known_technical_apps_use_combined_non_playback_evidence() -> None:
+    for app in ("Home Assistant", "EMBi", "Windmill", "Homarr Dashboard"):
+        item = record(
+            record_id=f"record-{app}",
+            reported_id=f"reported-{app}",
+            app=app,
+            name="Service endpoint",
+            supports_playback=False,
+        )
+        classification, reason = classify_client([item])
+        assert classification == CLIENT_CLASS_TECHNICAL
+        assert reason == "technical_app_without_playback"
+
+
+def test_normal_playback_clients_are_not_misclassified_as_technical() -> None:
+    for app in ("Emby TV", "Emby for iOS", "Emby Web", "Emby for Android"):
+        item = record(
+            record_id=f"record-{app}",
+            reported_id=f"reported-{app}",
+            app=app,
+            supports_playback=True,
+        )
+        classification, _reason = classify_client([item])
+        assert classification == CLIENT_CLASS_PLAYBACK
+
+
+def test_active_technical_app_is_always_playback_protected() -> None:
+    item = record(
+        record_id="technical-active",
+        reported_id="technical-active",
+        app="Home Assistant",
+        supports_playback=False,
+    )
+    classification, reason = classify_client([item], runtime_state="paused")
+    assert classification == CLIENT_CLASS_PLAYBACK
+    assert reason == "observed_active_playback"
+
+
+def test_technical_catalog_resolves_non_playing_but_ambiguous_remains_protected() -> None:
+    technical = record(
+        record_id="technical",
+        reported_id="technical",
+        app="Windmill",
+        supports_playback=False,
+    )
+    ambiguous = record(
+        record_id="ambiguous",
+        reported_id="ambiguous",
+        app="Unknown custom client",
+    )
+    technical_entity = entity(technical.player_key, entity_id="media_player.technical")
+    ambiguous_entity = entity(ambiguous.player_key, entity_id="media_player.ambiguous")
+    players = build_player_catalog(
+        [technical, ambiguous],
+        registry_entries=[technical_entity, ambiguous_entity],
+        states=States(),
+        entry_id="entry",
+        options=default_options_090(),
+    )
+    by_id = {player.entity_id: player for player in players}
+    assert by_id["media_player.technical"].client_class == CLIENT_CLASS_TECHNICAL
+    assert by_id["media_player.technical"].playback == "non_playing"
+    assert by_id["media_player.technical"].protected_reason is None
+    assert by_id["media_player.ambiguous"].protected_reason == "unknown_playback"

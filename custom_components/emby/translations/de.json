@@ -57,7 +57,7 @@
           "search_query": "Benutzer, Gerät, App oder Entity-ID suchen",
           "selected_group": "Gruppe öffnen",
           "player_action": "Player verwalten",
-          "back": "‹ Zurück"
+          "flow_action": "Aktion"
         },
         "data_description": {
           "only_during_playback": "Aktiviert: Player erscheinen nur während laufender oder pausierter Wiedergabe.",
@@ -74,7 +74,7 @@
         "data": {
           "show_user_players": "Alle Player dieses Benutzers anzeigen",
           "player_action": "Öffnen",
-          "back": "‹ Zurück"
+          "flow_action": "Aktion"
         }
       },
       "player_exceptions": {
@@ -85,7 +85,7 @@
           "page": "Seite",
           "hidden_page_player_keys": "Diese Player als Ausnahme ausblenden",
           "enable_entity_ids": "Deaktivierte Home-Assistant-Entities aktivieren",
-          "back": "‹ Zurück"
+          "flow_action": "Aktion"
         }
       },
       "player_details": {
@@ -93,16 +93,13 @@
         "description": "Technische Angaben werden ausschließlich auf dieser Detailseite angezeigt.\n\n{details}",
         "data": {
           "selected_player_key": "Player",
-          "back": "‹ Zurück"
+          "flow_action": "Aktion"
         }
       },
       "server_cleanup": {
         "title": "Emby-Server bereinigen",
-        "menu_options": {
-          "automatic_cleanup": "Automatische Bereinigung",
-          "server_history_check": "Jetzt auf alte Einträge prüfen",
-          "last_cleanup_run": "Letzter Bereinigungslauf",
-          "back_to_init": "‹ Zurück"
+        "data": {
+          "flow_action": "Aktion"
         }
       },
       "automatic_cleanup": {
@@ -112,8 +109,11 @@
           "server_auto_cleanup_enabled": "Automatische Bereinigung",
           "automatic_age_preset": "Altersgrenze",
           "automatic_custom_age_days": "Benutzerdefinierte Anzahl Tage",
-          "server_auto_cleanup_remove_ha_entities": "Zugehörigen Home-Assistant-Player nach erfolgreicher Serverlöschung ebenfalls entfernen",
-          "back": "‹ Zurück"
+          "server_auto_cleanup_remove_ha_entities": "Passende Home-Assistant-Player ebenfalls entfernen",
+          "flow_action": "Aktion"
+        },
+        "data_description": {
+          "server_auto_cleanup_remove_ha_entities": "Nur nach erfolgreicher Serverlöschung und erneuter Prüfung von Identität, Config Entry, Plattform, Unique-ID, verbleibender Historie und Wiedergabestatus wird ein exakt passender Home-Assistant-Player entfernt."
         }
       },
       "server_history_check": {
@@ -122,23 +122,22 @@
         "data": {
           "manual_age_preset": "Manuelle Altersgrenze",
           "manual_custom_age_days": "Benutzerdefinierte Anzahl Tage",
-          "delete_device_record_ids": "Zu löschende Emby-Einträge",
-          "back": "‹ Zurück"
+          "delete_device_record_ids": "Auswählbare Emby-Einträge",
+          "flow_action": "Aktion"
         }
       },
       "confirm_server_deletion": {
         "title": "{count} Emby-Einträge löschen?",
-        "description": "Unmittelbar vor der Ausführung werden die Kandidaten erneut geladen und validiert. Benutzer, Medien, Bibliotheken und Wiedergabeverlauf werden nicht gelöscht.",
-        "menu_options": {
-          "execute_server_deletion": "{count} Emby-Einträge löschen",
-          "back_to_server_history_check": "‹ Zurück"
+        "description": "Unmittelbar vor der Ausführung werden die Kandidaten erneut geladen und validiert. Benutzer, Medien, Bibliotheken und Wiedergabeverlauf werden nicht gelöscht.\n\n{details}",
+        "data": {
+          "flow_action": "Aktion"
         }
       },
       "last_cleanup_run": {
         "title": "Letzter Bereinigungslauf",
-        "description": "Status: {status}\nGelöscht: {deleted}\nGeschützt: {protected}\nFehlgeschlagen: {failed}\nNächster geplanter Lauf: {next_run}",
-        "menu_options": {
-          "back_to_server_cleanup": "‹ Zurück"
+        "description": "Zeitpunkt: {run_at}\nModus: {mode}\nAltersgrenze: {age}\nGelöscht: {deleted}\nGeschützt: {protected}\nFehlgeschlagen: {failed}\nNächster Lauf: {next_run}",
+        "data": {
+          "flow_action": "Aktion"
         }
       },
       "manage_ha_players": {
@@ -148,15 +147,14 @@
           "search_query": "Suchen",
           "page": "Seite",
           "selected_ha_entity_ids": "Zu entfernende Home-Assistant-Player",
-          "back": "‹ Zurück"
+          "flow_action": "Aktion"
         }
       },
       "confirm_ha_removal": {
         "title": "{count} Home-Assistant-Player entfernen?",
         "description": "Die ausgewählten Player werden erst nach erneuter Prüfung von Eigentümer, Plattform, Config Entry, Unique-ID und Wiedergabestatus in EMBi verborgen und aus der Registry entfernt.",
-        "menu_options": {
-          "execute_ha_removal": "{count} HA-Player entfernen",
-          "back_to_manage_ha_players": "‹ Zurück"
+        "data": {
+          "flow_action": "Aktion"
         }
       },
       "restore_ha_players": {
@@ -166,16 +164,14 @@
           "search_query": "Suchen",
           "page": "Seite",
           "selected_restore_player_keys": "Wiederherzustellende Player",
-          "back": "‹ Zurück"
+          "flow_action": "Aktion"
         }
       },
       "review_changes": {
         "title": "Änderungen prüfen",
         "description": "{count_text} offen. Bisher wurde nichts gespeichert.\n\n{changes}\n\n{error}",
-        "menu_options": {
-          "apply_changes": "Änderungen übernehmen",
-          "discard_changes": "Änderungen verwerfen",
-          "back_to_init": "‹ Zurück"
+        "data": {
+          "flow_action": "Aktion"
         }
       },
       "older_rules": {
@@ -183,7 +179,7 @@
         "description": "{count} ältere Regeln konnten während der Migration nicht sicher zugeordnet werden. Sie bleiben erhalten und inaktiv, bis sie geprüft werden.",
         "data": {
           "kept_rules": "Erhaltene ältere Regeln",
-          "back": "‹ Zurück"
+          "flow_action": "Aktion"
         }
       }
     },

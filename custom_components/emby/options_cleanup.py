@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import voluptuous as vol
 from homeassistant.helpers import selector
@@ -11,8 +14,13 @@ from .cleanup import plan_device_cleanup
 from .const import (
     AGE_PRESET_CUSTOM,
     AGE_PRESETS,
-    CONF_BACK,
     CONF_DELETE_DEVICE_RECORD_IDS,
+    CONF_FLOW_ACTION,
+    FLOW_ACTION_BACK,
+    FLOW_ACTION_EXECUTE,
+    FLOW_ACTION_OPEN_AUTOMATIC,
+    FLOW_ACTION_OPEN_HISTORY,
+    FLOW_ACTION_OPEN_LAST_RUN,
     CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
@@ -22,14 +30,21 @@ from .const import (
     MAX_SERVER_CLEANUP_AGE_DAYS,
     MIN_SERVER_CLEANUP_AGE_DAYS,
 )
-from .helpers import age_days_from_input, age_preset_for_days, server_device_selector_options
+from .helpers import (
+    age_days_from_input,
+    age_preset_for_days,
+    server_device_confirmation_details,
+    server_device_selector_options,
+)
 from .maintenance import active_player_keys, async_run_manual_cleanup
-from .options_runtime import status_label
+from .options_navigation import action_selector, back_requested, navigation_selector
 
 _MANUAL_PRESET = "manual_age_preset"
 _MANUAL_CUSTOM = "manual_custom_age_days"
 _AUTO_PRESET = "automatic_age_preset"
 _AUTO_CUSTOM = "automatic_custom_age_days"
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _age_preset() -> selector.SelectSelector:
@@ -75,14 +90,54 @@ class CleanupOptionsMixin:
     """Separated Emby-server cleanup settings, preview and status pages."""
 
     async def async_step_server_cleanup(self, user_input: dict[str, Any] | None = None):
-        return self.async_show_menu(
+        if user_input is not None:
+            action = user_input.get(CONF_FLOW_ACTION)
+            if action == FLOW_ACTION_OPEN_AUTOMATIC:
+                return await self.async_step_automatic_cleanup()
+            if action == FLOW_ACTION_OPEN_HISTORY:
+                return await self.async_step_server_history_check()
+            if action == FLOW_ACTION_OPEN_LAST_RUN:
+                return await self.async_step_last_cleanup_run()
+            if action == FLOW_ACTION_BACK:
+                return await self.async_step_init()
+        return self.async_show_form(
             step_id="server_cleanup",
-            menu_options=[
-                "automatic_cleanup",
-                "server_history_check",
-                "last_cleanup_run",
-                "back_to_init",
-            ],
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_FLOW_ACTION): action_selector(
+                        [
+                            {
+                                "value": FLOW_ACTION_OPEN_AUTOMATIC,
+                                "label": (
+                                    "Automatische Bereinigung"
+                                    if self._is_de()
+                                    else "Automatic cleanup"
+                                ),
+                            },
+                            {
+                                "value": FLOW_ACTION_OPEN_HISTORY,
+                                "label": (
+                                    "Jetzt auf alte Einträge prüfen"
+                                    if self._is_de()
+                                    else "Check for old records now"
+                                ),
+                            },
+                            {
+                                "value": FLOW_ACTION_OPEN_LAST_RUN,
+                                "label": (
+                                    "Letzter Bereinigungslauf"
+                                    if self._is_de()
+                                    else "Last cleanup run"
+                                ),
+                            },
+                            {
+                                "value": FLOW_ACTION_BACK,
+                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                            },
+                        ]
+                    )
+                }
+            ),
         )
 
     async def async_step_back_to_server_cleanup(self, user_input: dict[str, Any] | None = None):
@@ -123,10 +178,13 @@ class CleanupOptionsMixin:
                 ),
             )
         ] = selector.BooleanSelector()
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Übernehmen" if self._is_de() else "Apply",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_server_cleanup()
             try:
                 submitted_auto = _resolve(user_input, _AUTO_PRESET, _AUTO_CUSTOM)
@@ -168,11 +226,12 @@ class CleanupOptionsMixin:
         try:
             devices = await self._devices()
         except EmbyApiError:
+            _LOGGER.exception("Failed to load Emby server-history records")
             devices = []
             errors["base"] = "cannot_connect"
 
         age_days = manual_days
-        if user_input is not None and not user_input.get(CONF_BACK):
+        if user_input is not None and not back_requested(user_input):
             try:
                 age_days = _resolve(user_input, _MANUAL_PRESET, _MANUAL_CUSTOM)
             except (KeyError, TypeError, ValueError):
@@ -198,13 +257,20 @@ class CleanupOptionsMixin:
             fields[vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[])] = _multi(
                 [
                     {"value": key, "label": label}
-                    for key, label in server_device_selector_options(plan.candidates).items()
+                    for key, label in server_device_selector_options(
+                        plan.candidates,
+                        time_zone=self.hass.config.time_zone,
+                        german=self._is_de(),
+                    ).items()
                 ]
             )
-        fields[vol.Optional(CONF_BACK, default=False)] = selector.BooleanSelector()
+        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+            german=self._is_de(),
+            primary_label="Übernehmen" if self._is_de() else "Apply",
+        )
 
         if user_input is not None:
-            if user_input.get(CONF_BACK):
+            if back_requested(user_input):
                 return await self.async_step_server_cleanup()
             selected = [str(value) for value in user_input.get(CONF_DELETE_DEVICE_RECORD_IDS, [])]
             if selected and not errors:
@@ -251,16 +317,48 @@ class CleanupOptionsMixin:
             },
         )
 
-    async def async_step_confirm_server_deletion(self, user_input: dict[str, Any] | None = None):
+    async def async_step_confirm_server_deletion(
+        self, user_input: dict[str, Any] | None = None
+    ):
         if not self._pending_cleanup_records:
             return await self.async_step_server_history_check()
-        return self.async_show_menu(
+        if user_input is not None:
+            action = user_input.get(CONF_FLOW_ACTION)
+            if action == FLOW_ACTION_BACK:
+                return await self.async_step_back_to_server_history_check()
+            if action == FLOW_ACTION_EXECUTE:
+                return await self.async_step_execute_server_deletion()
+        count = len(self._pending_cleanup_records)
+        return self.async_show_form(
             step_id="confirm_server_deletion",
-            menu_options=[
-                "execute_server_deletion",
-                "back_to_server_history_check",
-            ],
-            description_placeholders={"count": str(len(self._pending_cleanup_records))},
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_FLOW_ACTION): action_selector(
+                        [
+                            {
+                                "value": FLOW_ACTION_EXECUTE,
+                                "label": (
+                                    f"{count} Emby-Einträge löschen"
+                                    if self._is_de()
+                                    else f"Delete {count} Emby records"
+                                ),
+                            },
+                            {
+                                "value": FLOW_ACTION_BACK,
+                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                            },
+                        ]
+                    )
+                }
+            ),
+            description_placeholders={
+                "count": str(count),
+                "details": server_device_confirmation_details(
+                    self._pending_cleanup_records.values(),
+                    time_zone=self.hass.config.time_zone,
+                    german=self._is_de(),
+                ),
+            },
         )
 
     async def async_step_back_to_server_history_check(
@@ -301,16 +399,65 @@ class CleanupOptionsMixin:
             },
         )
 
+    def _format_report_time(self, value: str | None, *, empty: str) -> str:
+        if not value:
+            return empty
+        try:
+            normalized = value.replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(normalized)
+            try:
+                zone = ZoneInfo(self.hass.config.time_zone)
+            except ZoneInfoNotFoundError:
+                zone = ZoneInfo("UTC")
+            local = parsed.astimezone(zone)
+        except (TypeError, ValueError):
+            _LOGGER.warning("Invalid persisted EMBi maintenance timestamp: %r", value)
+            return "Unbekannt" if self._is_de() else "Unknown"
+        return local.strftime("%d.%m.%Y %H:%M" if self._is_de() else "%Y-%m-%d %H:%M")
+
     async def async_step_last_cleanup_run(self, user_input: dict[str, Any] | None = None):
+        if back_requested(user_input):
+            return await self.async_step_server_cleanup()
         report = self._runtime.maintenance_state.report
-        return self.async_show_menu(
+        never = "Noch nicht ausgeführt" if self._is_de() else "Not run yet"
+        no_schedule = "Kein Lauf geplant" if self._is_de() else "No run scheduled"
+        mode = {
+            "manual": "Manuell" if self._is_de() else "Manual",
+            "automatic": "Automatisch" if self._is_de() else "Automatic",
+        }.get(report.mode, never)
+        age = (
+            f"{report.age_threshold_days} Tage"
+            if self._is_de() and report.age_threshold_days is not None
+            else (
+                f"{report.age_threshold_days} days"
+                if report.age_threshold_days is not None
+                else "-"
+            )
+        )
+        return self.async_show_form(
             step_id="last_cleanup_run",
-            menu_options=["back_to_server_cleanup"],
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_FLOW_ACTION, default=FLOW_ACTION_BACK): navigation_selector(
+                        german=self._is_de()
+                    )
+                }
+            ),
             description_placeholders={
-                "status": status_label(report.status, german=self._is_de()),
+                "run_at": self._format_report_time(
+                    report.completed_at or report.started_at,
+                    empty=never,
+                ),
+                "mode": mode,
+                "age": age,
                 "deleted": str(report.server_deleted),
-                "protected": str(report.skipped_active + report.registry_entities_protected),
+                "protected": str(
+                    report.skipped_active + report.registry_entities_protected
+                ),
                 "failed": str(report.server_failed),
-                "next_run": report.next_run_at or "-",
+                "next_run": self._format_report_time(
+                    report.next_run_at,
+                    empty=no_schedule,
+                ),
             },
         )

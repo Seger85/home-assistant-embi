@@ -62,7 +62,7 @@ class FakeConfigEntries:
 
 class FakeHass:
     def __init__(self) -> None:
-        self.config = SimpleNamespace(language="de")
+        self.config = SimpleNamespace(language="de", time_zone="Europe/Berlin")
         self.config_entries = FakeConfigEntries()
         self.data = {}
         self.states = SimpleNamespace(get=lambda _entity_id: None)
@@ -276,3 +276,162 @@ async def test_update_listener_reloads_once() -> None:
     _flow, entry, _store, hass = setup_flow()
     await async_update_listener(hass, entry)
     assert hass.config_entries.reloads == [entry.entry_id]
+
+
+
+def _realistic_player_fixture():
+    from custom_components.emby.player_context import build_player_catalog, catalog_stats
+
+    records: list[EmbyDeviceRecord] = []
+    registry_entries = []
+    apps = ["Emby TV", "Emby for iOS", "Emby Web", "Emby for Android"]
+    for index in range(69):
+        player_index = index % 31
+        app = apps[player_index % len(apps)]
+        data = {
+            "Id": f"history-{index:02d}",
+            "ReportedDeviceId": f"device-{player_index:02d}",
+            "Name": f"Room {player_index:02d}",
+            "AppName": app,
+            "LastUserName": f"User {player_index % 8}",
+            "DateLastActivity": f"2026-07-{(index % 15) + 1:02d}T12:00:00Z",
+            "SupportsPlayback": True,
+        }
+        records.append(EmbyDeviceRecord.from_api(data))
+    for player_index in range(31):
+        app = apps[player_index % len(apps)]
+        key = f"device-{player_index:02d}.{app}"
+        registry_entries.append(
+            SimpleNamespace(
+                domain="media_player",
+                platform="emby",
+                config_entry_id="entry",
+                unique_id=key,
+                entity_id=f"media_player.emby_{player_index:02d}",
+                name=f"HA Player {player_index:02d}",
+                original_name=f"Emby {player_index:02d}",
+                disabled_by=None,
+                hidden_by=None,
+            )
+        )
+
+    class FixtureStates:
+        def get(self, entity_id):
+            return SimpleNamespace(state="idle") if entity_id else None
+
+    players = build_player_catalog(
+        records,
+        registry_entries=registry_entries,
+        states=FixtureStates(),
+        entry_id="entry",
+        options=default_options_090(),
+    )
+    return records, players, catalog_stats(players, server_history_records=len(records))
+
+
+def _assert_form_serializable(result) -> None:
+    import json
+
+    assert result["type"] == "form"
+    serialized = []
+    for validator in result["data_schema"].schema.values():
+        serializer = getattr(validator, "serialize", None)
+        if serializer is not None:
+            serialized.append(serializer())
+    json.dumps(serialized)
+
+
+@pytest.mark.asyncio
+async def test_realistic_root_player_form_is_frontend_serializable(monkeypatch) -> None:
+    records, players, fixture_stats = _realistic_player_fixture()
+
+    async def catalog(_flow):
+        return players, fixture_stats
+
+    monkeypatch.setattr("custom_components.emby.options_flow.fresh_catalog", catalog)
+    monkeypatch.setattr("custom_components.emby.options_devices.fresh_catalog", catalog)
+    monkeypatch.setattr("custom_components.emby.options_ha_cleanup.fresh_catalog", catalog)
+    flow, _entry, _store, _hass = setup_flow()
+    flow._runtime.api_client = FakeApi(records)
+
+    result = await flow.async_step_ha_players()
+    assert result["step_id"] == "ha_players"
+    assert result["errors"] == {}
+    _assert_form_serializable(result)
+
+
+@pytest.mark.asyncio
+async def test_reachable_forms_serialize_and_never_expose_legacy_back_toggle(monkeypatch) -> None:
+    from custom_components.emby.const import CONF_BACK
+    from custom_components.emby.player_context import group_player_catalog
+
+    records, players, fixture_stats = _realistic_player_fixture()
+
+    async def catalog(_flow):
+        return players, fixture_stats
+
+    monkeypatch.setattr("custom_components.emby.options_flow.fresh_catalog", catalog)
+    monkeypatch.setattr("custom_components.emby.options_devices.fresh_catalog", catalog)
+    monkeypatch.setattr("custom_components.emby.options_ha_cleanup.fresh_catalog", catalog)
+    flow, _entry, _store, _hass = setup_flow()
+    flow._runtime.api_client = FakeApi(records)
+    flow._selected_group = next(iter(group_player_catalog(players)))
+
+    results = [
+        await flow.async_step_ha_players(),
+        await flow.async_step_player_group(),
+        await flow.async_step_player_exceptions(),
+        await flow.async_step_player_details(),
+        await flow.async_step_server_cleanup(),
+        await flow.async_step_automatic_cleanup(),
+        await flow.async_step_server_history_check(),
+        await flow.async_step_last_cleanup_run(),
+        await flow.async_step_manage_ha_players(),
+        await flow.async_step_restore_ha_players(),
+        await flow.async_step_review_changes(),
+    ]
+    for result in results:
+        _assert_form_serializable(result)
+        keys = {str(getattr(marker, "schema", marker)) for marker in result["data_schema"].schema}
+        assert CONF_BACK not in keys
+
+
+@pytest.mark.asyncio
+async def test_form_back_action_preserves_complete_draft(monkeypatch) -> None:
+    from custom_components.emby.const import CONF_FLOW_ACTION, FLOW_ACTION_BACK
+
+    patch_catalog(monkeypatch)
+    flow, entry, store, hass = setup_flow()
+    flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
+    result = await flow.async_step_ha_players({CONF_FLOW_ACTION: FLOW_ACTION_BACK})
+
+    assert result["type"] == "menu"
+    assert flow._draft_options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_ACTIVE_ONLY
+    assert entry.options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_PERSISTENT
+    assert hass.config_entries.updates == []
+    assert hass.config_entries.reloads == []
+    assert store.saved == []
+
+
+@pytest.mark.asyncio
+async def test_last_cleanup_run_uses_local_readable_values(monkeypatch) -> None:
+    from custom_components.emby.models import CleanupRunReport
+
+    patch_catalog(monkeypatch)
+    flow, _entry, _store, _hass = setup_flow()
+    flow._runtime.maintenance_state.report = CleanupRunReport(
+        mode="manual",
+        completed_at="2026-07-17T18:00:00+00:00",
+        age_threshold_days=180,
+        server_deleted=4,
+        server_failed=1,
+        skipped_active=2,
+        next_run_at=None,
+    )
+    result = await flow.async_step_last_cleanup_run()
+    placeholders = result["description_placeholders"]
+    assert placeholders["run_at"] == "17.07.2026 20:00"
+    assert placeholders["mode"] == "Manuell"
+    assert placeholders["age"] == "180 Tage"
+    assert placeholders["next_run"] == "Kein Lauf geplant"
+    _assert_form_serializable(result)
