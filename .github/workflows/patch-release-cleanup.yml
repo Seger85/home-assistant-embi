@@ -1,0 +1,66 @@
+name: Patch stable release cleanup
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/patch-release-cleanup.yml"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Replace release branch cleanup with verified git deletion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path(".github/workflows/publish-stable-request.yml")
+          text = workflow.read_text(encoding="utf-8")
+          start = text.index("      - name: Remove temporary release branches\n")
+          end = text.index("      - name: Report stable release result\n", start)
+          replacement = '''      - name: Remove temporary release branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            "release/0.9.1"
+            "release/v0.9.1"
+            "fix/publish-v0.9.1"
+            "fix/retrigger-v0.9.1"
+            "fix/release-workflow-v0.9.1"
+            "fix/observe-release-v0.9.1"
+            "fix/publish-v0.9.1-validation"
+            "fix/cleanup-v0.9.1-branches"
+          )
+          for branch in "${branches[@]}"; do
+            if git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null 2>&1; then
+              git push origin --delete "${branch}"
+            fi
+            if git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null 2>&1; then
+              echo "::error::Temporary branch ${branch} still exists."
+              exit 1
+            fi
+          done
+
+'''
+          workflow.write_text(text[:start] + replacement + text[end:], encoding="utf-8")
+          Path(".github/workflows/patch-release-cleanup.yml").unlink()
+          PY
+
+      - name: Commit the surgical workflow correction
+        run: |
+          git config user.name "Seger"
+          git config user.email "35084198+Seger85@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: delete temporary release branches through git"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
