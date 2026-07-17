@@ -18,7 +18,7 @@ Dadurch ist klar, ob du nur eine App-Variante ausblendest, einen Home-Assistant-
 
 ## Home-Assistant-Player
 
-Der Bereich **Home-Assistant-Player** beginnt mit den globalen Einstellungen:
+Der in 0.9.0 noch **Geräte & Player** genannte Bereich heißt in 0.9.1 **Home-Assistant-Player** und beginnt mit den globalen Einstellungen:
 
 - Player nur während Wiedergabe oder Pause anzeigen
 - neue Player automatisch hinzufügen
@@ -78,13 +78,15 @@ Die Kandidatenauswahl ist die Vorschau. Danach folgt genau eine eindeutig bezeic
 
 Eine Serverlöschung ändert Sichtbarkeitsregeln nicht automatisch.
 
-## Home-Assistant-Player entfernen und wiederherstellen
+## Home-Assistant-Player entfernen
 
 Nicht spielende EMBi-Player können im Playerbereich aus Home Assistant entfernt werden, ohne die Emby-Serverhistorie zu löschen.
 
 EMBi speichert zuerst die exakte Hidden-Regel, validiert die Registry-Zuordnung erneut, lädt die Integration neu und bestätigt den Erfolg erst, wenn der Player nicht zurückgekehrt ist. `playing`, `paused` und unklare Wiedergabezustände bleiben geschützt.
 
 Registry-Einträge ohne aktuellen Emby-Datensatz heißen **Nicht mehr vom Emby-Server gemeldet**. Dieser Zustand ist nicht automatisch ein Home-Assistant-Orphan. Deaktivierte, aber gültige Entities bleiben ebenfalls gültige Entities.
+
+### Player wiederherstellen
 
 Beim Wiederherstellen entfernt EMBi die passende Regel, lädt neu und prüft die entstandene Entity. Eine neu angelegte Entity kann anschließend erneute Zuordnungen in Dashboards, Automationen, HomeKit oder Siri erfordern.
 
