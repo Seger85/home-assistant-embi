@@ -1,30 +1,33 @@
-name: Inspect EMBi 0.9.2 CI
+name: Repair EMBi 0.9.2 generated source
 
 on:
   pull_request:
     paths:
+      - "scripts/fix_092_ci.py"
       - ".github/workflows/inspect-092-ci.yml"
 
 permissions:
-  actions: read
-  contents: read
+  contents: write
+  pull-requests: read
 
 jobs:
-  inspect:
+  repair:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Extract current Quality and Hassfest errors
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Apply source correction
+        run: python scripts/fix_092_ci.py
+      - name: Commit corrected source
         run: |
-          set -euo pipefail
-          for run_id in 29612807960 29612807959; do
-            echo "=== RUN ${run_id} ==="
-            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" \
-              --jq '.jobs[] | select(.conclusion == "failure") | .id' |
-            while read -r job_id; do
-              [[ -n "${job_id}" ]] || continue
-              gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > "job-${job_id}.log"
-              grep -n -A12 -B8 -Ei 'SyntaxError|Error compiling|##\[error\]|fatal|failed|Invalid|Traceback' "job-${job_id}.log" | tail -n 180 || true
-            done
-          done
+          git config user.name "Seger"
+          git config user.email "35084198+Seger85@users.noreply.github.com"
+          git add custom_components/emby/options_flow.py
+          git commit -m "fix: repair 0.9.2 options review rendering"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
