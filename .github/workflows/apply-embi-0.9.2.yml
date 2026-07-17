@@ -30,9 +30,7 @@ jobs:
           git config user.name "Seger"
           git config user.email "35084198+Seger85@users.noreply.github.com"
           git add -A -- \
-            ':!.github/workflows/apply-embi-0.9.2.yml' \
-            ':!.github/workflows/inspect-092-generator.yml' \
-            ':!.github/workflows/publish-stable-request.yml' \
+            ':!.github/workflows/**' \
             ':!scripts/apply_092_patch.py'
           git commit -m "fix: repair EMBi 0.9.2 options flow"
           git push origin "HEAD:${GITHUB_HEAD_REF}"
