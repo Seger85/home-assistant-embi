@@ -12,7 +12,7 @@ def test_manifest_points_to_canonical_repository() -> None:
 
     assert manifest["domain"] == "emby"
     assert manifest["name"] == "Emby Integration - EMBi"
-    assert manifest["version"] == "0.9.0"
+    assert manifest["version"] == "0.9.1"
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["documentation"].endswith("Seger85/home-assistant-embi")
     assert manifest["issue_tracker"].endswith("Seger85/home-assistant-embi/issues")
@@ -81,6 +81,8 @@ def test_diagnostics_redact_identity_options_and_expose_aggregate_evidence() -> 
     assert '"last_player_action"' in diagnostics
     assert '"last_restore"' in diagnostics
     assert '"migration"' in diagnostics
+    assert '"server_missing_entities"' in diagnostics
+    assert '"home_assistant_orphans"' in diagnostics
     for forbidden_report_field in (
         "record_id",
         "reported_device_id",
@@ -136,7 +138,9 @@ def test_release_assets_are_zip_and_checksum_only() -> None:
     assert "BUILD_COMMIT" not in publish_block
     assert "cmp dist/embi.zip verify-release/embi.zip" in workflow
     assert "origin/main" in workflow
-    assert "origin/develop" in workflow
+    assert 'tags:\n      - "v*"\n      - "[0-9]*"' in workflow
+    assert "prerelease: false" in workflow
+    assert "make_latest: true" in workflow
 
 
 def test_test_package_is_bound_to_exact_source_commit() -> None:
@@ -147,4 +151,4 @@ def test_test_package_is_bound_to_exact_source_commit() -> None:
     assert '--commit "${BUILD_COMMIT_SHA}"' in workflow
     assert 'test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"' in workflow
     assert "embi-test-${{ env.BUILD_COMMIT_SHA }}" in workflow
-    assert "--expected-version 0.9.0" in workflow
+    assert "--expected-version 0.9.1" in workflow
