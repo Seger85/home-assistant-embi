@@ -47,6 +47,12 @@ jobs:
           PY
       - name: Compile Python
         run: python -m compileall -q custom_components/emby scripts tests
+      - name: Static type check
+        run: >-
+          mypy --ignore-missing-imports --follow-imports=skip
+          custom_components/emby/options_model.py
+          custom_components/emby/player_context.py
+          custom_components/emby/options_runtime.py
       - name: Capture Ruff lint result
         id: ruff
         shell: bash
@@ -98,6 +104,6 @@ jobs:
       - name: Build and verify release-equivalent asset
         run: |
           rm -rf dist
-          python scripts/build_package.py --output-dir dist --expected-version 0.9.0 --commit "${GITHUB_SHA}"
+          python scripts/build_package.py --output-dir dist --expected-version 0.9.1 --commit "${GITHUB_SHA}"
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
