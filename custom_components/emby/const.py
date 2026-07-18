@@ -2,7 +2,7 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.5"
+VERSION = "0.9.6"
 PLATFORMS = ["media_player"]
 
 CONFIG_ENTRY_VERSION = 4
@@ -64,6 +64,10 @@ REVIEW_ACTION_BACK = "back_to_init"
 PLAYER_PAGE_SIZE = 12
 CONF_ONLY_DURING_PLAYBACK = "only_during_playback"
 CONF_SEARCH_QUERY = "search_query"
+CONF_PLAYER_SORT_ORDER = "player_sort_order"
+PLAYER_SORT_OLDEST = "oldest_first"
+PLAYER_SORT_NEWEST = "newest_first"
+PLAYER_SORT_ORDERS = {PLAYER_SORT_OLDEST, PLAYER_SORT_NEWEST}
 CONF_SELECTED_GROUP = "selected_group"
 CONF_VISIBLE_PLAYER_KEYS = "visible_player_keys"
 CONF_ENABLE_ENTITY_IDS = "enable_entity_ids"

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.6
+
+- Close the Options Flow immediately after the final apply instead of re-entering the root page after a synchronous reload.
+- Run reload, exact registry reconciliation, and immediate automatic cleanup as a tracked post-apply task.
+- Replace redundant Save actions on non-destructive subpages with a single Back action that preserves the in-memory draft.
+- Show player rows as compact two-line labels with local last-access timestamps and no entity IDs.
+- Add transient oldest-first/newest-first sorting; oldest-first is the default for identifying stale clients.
+- Apply the existing search query to players inside the selected group.
+- Add regression tests for prompt flow completion, post-apply scheduling, Back-only draft navigation, timestamp labels, and sorting.
+
 ## [0.9.5] - 2026-07-18
 
 ### Registry convergence and release reliability

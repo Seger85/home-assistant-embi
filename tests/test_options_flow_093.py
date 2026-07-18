@@ -70,9 +70,9 @@ def test_automatic_path_cannot_bypass_age_contract_source() -> None:
 def test_apply_returns_root_and_group_uses_boolean_switches_source() -> None:
     flow = Path("custom_components/emby/options_flow.py").read_text(encoding="utf-8")
     devices = Path("custom_components/emby/options_devices.py").read_text(encoding="utf-8")
-    assert "return await self.async_step_init()" in flow
     apply_tail = flow.split("async def async_step_apply_changes", 1)[1]
-    assert 'reason="apply_complete"' not in apply_tail
+    assert 'return self.async_abort(reason="apply_complete")' in apply_tail
+    assert "await self.hass.config_entries.async_reload" not in apply_tail
     group = devices.split("async def async_step_player_group", 1)[1].split(
         "async def async_step_player_exceptions", 1
     )[0]

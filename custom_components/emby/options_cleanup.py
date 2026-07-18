@@ -183,14 +183,11 @@ class CleanupOptionsMixin:
                 ),
             )
         ] = selector.BooleanSelector()
-        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+        fields[vol.Required(CONF_FLOW_ACTION, default="back")] = navigation_selector(
             german=self._is_de(),
-            primary_label="Speichern & zurück" if self._is_de() else "Save & back",
         )
 
         if user_input is not None:
-            if back_requested(user_input):
-                return await self.async_step_server_cleanup()
             try:
                 submitted_auto = _resolve(user_input, _AUTO_PRESET, _AUTO_CUSTOM)
             except (KeyError, TypeError, ValueError):
@@ -300,14 +297,14 @@ class CleanupOptionsMixin:
                     ).items()
                 ]
             )
-        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+        fields[vol.Required(CONF_FLOW_ACTION, default="back")] = navigation_selector(
             german=self._is_de(),
-            primary_label="Speichern & zurück" if self._is_de() else "Save & back",
+            primary_label=("Auswahl prüfen" if self._is_de() else "Review selection")
+            if candidates
+            else None,
         )
 
         if user_input is not None:
-            if back_requested(user_input):
-                return await self.async_step_server_cleanup()
             selected = [str(value) for value in user_input.get(CONF_DELETE_DEVICE_RECORD_IDS, [])]
             if selected and not errors:
                 if any(record_id not in candidates for record_id in selected):
@@ -319,6 +316,7 @@ class CleanupOptionsMixin:
                     self._pending_cleanup_age_days = age_days
                     self._pending_cleanup_ignore_age = ignore_age
                     return await self.async_step_confirm_server_deletion()
+            return await self.async_step_server_cleanup()
 
         return self.async_show_form(
             step_id="server_history_check",

@@ -56,7 +56,8 @@
           "technical_access_visibility": "Show technical access as players",
           "search_query": "Search user, device, app or entity ID",
           "selected_group": "Open group",
-          "flow_action": "Action"
+          "flow_action": "Action",
+          "player_sort_order": "Sort order"
         },
         "data_description": {
           "only_during_playback": "When enabled, players appear only while playing or paused.",
@@ -67,7 +68,7 @@
       },
       "player_group": {
         "title": "{group}",
-        "description": "{count} players belong to this group. On exposes the player in Home Assistant. Off marks it for safe removal when changes are finally applied. Playing, paused, or unclear playback remains protected. The switched-off record remains available while it still exists on the Emby server.",
+        "description": "{count} players belong to this group. Each switch is copied to the draft when going back. Last access is shown on the second line; nothing is persisted until Review changes.",
         "data": {
           "show_user_players": "Show all players for this user",
           "flow_action": "Action"
@@ -185,7 +186,7 @@
       "unsaved_changes": "Apply or discard the current draft before starting a destructive action."
     },
     "abort": {
-      "apply_complete": "Changes applied. Restored: {restored}. Enabled: {enabled}. Protected: {protected}. Failed: {failed}.",
+      "apply_complete": "Changes saved. EMBi is completing reload, registry reconciliation, and any immediate cleanup in the background. The result is then available in EMBi diagnostics and the last cleanup report.",
       "server_cleanup_complete": "Server cleanup completed. Deleted: {server_deleted}. Failed: {server_failed}.",
       "ha_player_removal_complete": "Home Assistant player removal completed. Requested: {requested}. Removed: {removed}. Protected: {protected}. Failed: {failed}.",
       "ha_player_restore_complete": "Home Assistant player restoration completed. Requested: {requested}. Restored: {restored}. Failed: {failed}."
