@@ -64,8 +64,7 @@
           "auto_show_new_players": "Deaktiviert: Aktuell sichtbare Player bleiben erhalten; neue Player werden erst nach Auswahl angezeigt.",
           "technical_access_visibility": "Dieser Schalter betrifft nur explizit technische oder API-only Clients.",
           "selected_group": "Gruppen werden kurz mit Name und Playeranzahl dargestellt.",
-          "player_action": "Home-Assistant-Player werden ausschließlich in diesem Bereich entfernt oder wiederhergestellt.",
-          "back": "Kehrt zurück, ohne den gesamten Dialog zu schließen. Der Entwurf bleibt erhalten."
+          "player_action": "Home-Assistant-Player werden ausschließlich in diesem Bereich entfernt oder wiederhergestellt."
         }
       },
       "player_group": {

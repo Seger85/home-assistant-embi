@@ -64,8 +64,7 @@
           "auto_show_new_players": "When disabled, current visible players remain allowed and new players stay hidden until selected.",
           "technical_access_visibility": "Only explicitly technical or API-only clients are controlled by this setting.",
           "selected_group": "Groups use short names and a player count.",
-          "player_action": "Remove or restore Home Assistant players in this player area.",
-          "back": "Return without closing the complete dialog. The current draft is preserved."
+          "player_action": "Remove or restore Home Assistant players in this player area."
         }
       },
       "player_group": {
