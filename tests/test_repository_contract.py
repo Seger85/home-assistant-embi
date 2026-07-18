@@ -11,7 +11,7 @@ def test_manifest_points_to_canonical_repository() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text())
     assert manifest["domain"] == "emby"
     assert manifest["name"] == "Emby Integration - EMBi"
-    assert manifest["version"] == "0.9.1"
+    assert manifest["version"] == "0.9.2"
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["documentation"].endswith("Seger85/home-assistant-embi")
     assert manifest["issue_tracker"].endswith("Seger85/home-assistant-embi/issues")
@@ -144,4 +144,4 @@ def test_test_package_is_bound_to_exact_source_commit() -> None:
     assert '--commit "${BUILD_COMMIT_SHA}"' in workflow
     assert 'test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"' in workflow
     assert "embi-test-${{ env.BUILD_COMMIT_SHA }}" in workflow
-    assert "--expected-version 0.9.1" in workflow
+    assert "--expected-version 0.9.2" in workflow

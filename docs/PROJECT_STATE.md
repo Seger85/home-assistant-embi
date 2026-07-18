@@ -2,9 +2,9 @@
 
 ## Veröffentlichte Linie
 
-- aktuelle Produktversion: `0.9.1`
+- aktuelle Produktversion: `0.9.2`
 - Stable-Branch: `main`
-- Stable-Tag: `v0.9.1`
+- Stable-Tag: `v0.9.2`
 - Verteilung: regulärer GitHub-Release mit `embi.zip` und `embi.zip.sha256`
 - HACS verwendet ausschließlich veröffentlichte Releaseassets; der Default-Branch-Fallback ist ausgeblendet
 - zusätzliche EMBi-Wartungsentity: keine
@@ -12,7 +12,7 @@
 
 Dieses Dokument enthält keine privaten Geräteidentitäten, Zugangsdaten, Netzwerkadressen oder Config-Entry-IDs.
 
-## Produktumfang 0.9.1
+## Produktumfang 0.9.2
 
 ### Home-Assistant-Player
 
@@ -60,7 +60,7 @@ Dieses Dokument enthält keine privaten Geräteidentitäten, Zugangsdaten, Netzw
 
 ## Migration
 
-Die Migration von 0.9.0 auf 0.9.1 ist idempotent und verändert keine wirksame Sichtbarkeit. Erhalten bleiben:
+Die Migration von 0.9.0 auf 0.9.2 ist idempotent und verändert keine wirksame Sichtbarkeit. Erhalten bleiben:
 
 - Config Entry
 - Entity-IDs und Unique IDs
@@ -73,7 +73,7 @@ Die Migration von 0.9.0 auf 0.9.1 ist idempotent und verändert keine wirksame S
 
 Nicht eindeutig auflösbare ältere Regeln werden sichtbar erhalten und nicht still neu klassifiziert.
 
-Historische Einordnung: 0.9.0 führte den Bereich **Geräte & Player** ein. 0.9.1 ersetzt dessen Navigation durch **Home-Assistant-Player**. Frühere private Abnahmeartefakte sind keine Installationsquelle; produktiv wird ausschließlich der reguläre Stable-Release verwendet.
+Historische Einordnung: 0.9.0 führte den Bereich **Geräte & Player** ein. 0.9.2 ersetzt dessen Navigation durch **Home-Assistant-Player**. Frühere private Abnahmeartefakte sind keine Installationsquelle; produktiv wird ausschließlich der reguläre Stable-Release verwendet.
 
 ## Persistenz und Datenschutz
 

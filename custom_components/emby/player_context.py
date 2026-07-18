@@ -30,6 +30,23 @@ GROUP_TECHNICAL = "technical"
 GROUP_UNKNOWN = "unknown"
 GROUP_USER_PREFIX = "user::"
 
+_EXPLICIT_TECHNICAL_APPS = {
+    "embi",
+    "home assistant",
+    "home-assistant",
+    "homarr",
+    "homarr dashboard",
+    "windmill",
+}
+_EXPLICIT_TECHNICAL_CAPABILITIES = {
+    "api",
+    "api_only",
+    "automation",
+    "dashboard",
+    "integration",
+    "service",
+    "webhook",
+}
 _EXPLICIT_TECHNICAL_TYPES = {
     "api",
     "api_only",
@@ -195,13 +212,23 @@ def _latest_record(records: list[EmbyDeviceRecord]) -> EmbyDeviceRecord | None:
     )
 
 
+def _technical_app_metadata(records: Iterable[EmbyDeviceRecord]) -> bool:
+    for record in records:
+        app = str(record.app_name or "").strip().casefold()
+        if app in _EXPLICIT_TECHNICAL_APPS:
+            return True
+        if any(app.startswith(f"{name} ") for name in _EXPLICIT_TECHNICAL_APPS):
+            return True
+    return False
+
+
 def classify_client(
     records: Iterable[EmbyDeviceRecord],
     *,
     runtime_state: str | None = None,
     registry_backed: bool = False,
 ) -> tuple[str, str]:
-    """Classify from explicit capability/behavior metadata, never product names alone."""
+    """Classify from capability, behavior, app and registry/session evidence."""
     items = list(records)
     if runtime_state in ACTIVE_PLAYBACK_STATES:
         return CLIENT_CLASS_PLAYBACK, "observed_active_playback"
@@ -214,10 +241,16 @@ def classify_client(
         for record in items
     ):
         return CLIENT_CLASS_TECHNICAL, "explicit_client_type"
-    if registry_backed and items:
-        return CLIENT_CLASS_PLAYBACK, "registry_backed_server_player"
+    if any(_EXPLICIT_TECHNICAL_CAPABILITIES & set(record.capabilities) for record in items):
+        return CLIENT_CLASS_TECHNICAL, "explicit_technical_capability"
 
     users = _record_users(items)
+    no_playback_evidence = not any(
+        record.playback_observed or record.supports_playback is True for record in items
+    )
+    if items and not users and no_playback_evidence and _technical_app_metadata(items):
+        return CLIENT_CLASS_TECHNICAL, "technical_app_without_playback"
+
     repeated_explicit_non_playback = (
         len(items) >= 2
         and not users
@@ -226,6 +259,8 @@ def classify_client(
     )
     if repeated_explicit_non_playback:
         return CLIENT_CLASS_TECHNICAL, "repeated_non_playback_api_behavior"
+    if registry_backed and items:
+        return CLIENT_CLASS_PLAYBACK, "registry_backed_server_player"
     return CLIENT_CLASS_UNKNOWN, "insufficient_evidence"
 
 
@@ -236,6 +271,7 @@ def _playback_state(
     registry_present: bool,
     registry_enabled: bool,
     emby_present: bool,
+    client_class: str,
 ) -> str:
     for value in (runtime_state, pyemby_state):
         if value == PLAYBACK_PLAYING:
@@ -244,6 +280,8 @@ def _playback_state(
             return PLAYBACK_PAUSED
         if value in {"idle", "off", "standby", "unavailable"}:
             return PLAYBACK_NON_PLAYING
+    if client_class == CLIENT_CLASS_TECHNICAL:
+        return PLAYBACK_NON_PLAYING
     if registry_present and not registry_enabled and emby_present:
         return PLAYBACK_NON_PLAYING
     if registry_present and not emby_present:
@@ -331,6 +369,7 @@ def build_player_catalog(
             registry_present=registry_present,
             registry_enabled=registry_enabled,
             emby_present=emby_present,
+            client_class=client_class,
         )
         visible = _is_visible(
             player_key=key,

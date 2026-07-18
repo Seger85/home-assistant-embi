@@ -18,7 +18,7 @@ Dadurch ist klar, ob du nur eine App-Variante ausblendest, einen Home-Assistant-
 
 ## Home-Assistant-Player
 
-Der in 0.9.0 noch **Geräte & Player** genannte Bereich heißt in 0.9.1 **Home-Assistant-Player** und beginnt mit den globalen Einstellungen:
+Der in 0.9.0 noch **Geräte & Player** genannte Bereich heißt in 0.9.2 **Home-Assistant-Player** und beginnt mit den globalen Einstellungen:
 
 - Player nur während Wiedergabe oder Pause anzeigen
 - neue Player automatisch hinzufügen
@@ -100,7 +100,7 @@ Beim Wiederherstellen entfernt EMBi die passende Regel, lädt neu und prüft die
 
 EMBi wird ausschließlich über reguläre GitHub-Releases bereitgestellt. Das HACS-Paket heißt `embi.zip`; die zugehörige Prüfsumme liegt im Releaseasset `embi.zip.sha256`.
 
-## Upgrade auf 0.9.1
+## Upgrade auf 0.9.2
 
 Die Migration ist idempotent und erhält insbesondere:
 

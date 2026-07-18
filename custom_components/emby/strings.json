@@ -57,15 +57,14 @@
           "search_query": "Search user, device, app or entity ID",
           "selected_group": "Open group",
           "player_action": "Player management",
-          "back": "‹ Back"
+          "flow_action": "Action"
         },
         "data_description": {
           "only_during_playback": "When enabled, players appear only while playing or paused.",
           "auto_show_new_players": "When disabled, current visible players remain allowed and new players stay hidden until selected.",
           "technical_access_visibility": "Only explicitly technical or API-only clients are controlled by this setting.",
           "selected_group": "Groups use short names and a player count.",
-          "player_action": "Remove or restore Home Assistant players in this player area.",
-          "back": "Return without closing the complete dialog. The current draft is preserved."
+          "player_action": "Remove or restore Home Assistant players in this player area."
         }
       },
       "player_group": {
@@ -74,7 +73,7 @@
         "data": {
           "show_user_players": "Show all players for this user",
           "player_action": "Open",
-          "back": "‹ Back"
+          "flow_action": "Action"
         }
       },
       "player_exceptions": {
@@ -85,7 +84,7 @@
           "page": "Page",
           "hidden_page_player_keys": "Hide these players as exceptions",
           "enable_entity_ids": "Enable disabled Home Assistant entities",
-          "back": "‹ Back"
+          "flow_action": "Action"
         }
       },
       "player_details": {
@@ -93,16 +92,13 @@
         "description": "Technical details are shown only on this dedicated page.\n\n{details}",
         "data": {
           "selected_player_key": "Player",
-          "back": "‹ Back"
+          "flow_action": "Action"
         }
       },
       "server_cleanup": {
         "title": "Clean up Emby server",
-        "menu_options": {
-          "automatic_cleanup": "Automatic cleanup",
-          "server_history_check": "Check for old records now",
-          "last_cleanup_run": "Last cleanup run",
-          "back_to_init": "‹ Back"
+        "data": {
+          "flow_action": "Action"
         }
       },
       "automatic_cleanup": {
@@ -112,8 +108,11 @@
           "server_auto_cleanup_enabled": "Automatic cleanup",
           "automatic_age_preset": "Age limit",
           "automatic_custom_age_days": "Custom number of days",
-          "server_auto_cleanup_remove_ha_entities": "Also remove the related Home Assistant player after successful server deletion",
-          "back": "‹ Back"
+          "server_auto_cleanup_remove_ha_entities": "Also remove matching Home Assistant players",
+          "flow_action": "Action"
+        },
+        "data_description": {
+          "server_auto_cleanup_remove_ha_entities": "A matching Home Assistant player is removed only after successful server deletion and fresh identity, config-entry, platform, unique-ID, remaining-history and playback validation."
         }
       },
       "server_history_check": {
@@ -122,23 +121,22 @@
         "data": {
           "manual_age_preset": "Manual age limit",
           "manual_custom_age_days": "Custom number of days",
-          "delete_device_record_ids": "Emby records to delete",
-          "back": "‹ Back"
+          "delete_device_record_ids": "Selectable Emby records",
+          "flow_action": "Action"
         }
       },
       "confirm_server_deletion": {
         "title": "Delete {count} Emby records?",
-        "description": "Candidates are refreshed and validated again immediately before execution. Users, media, libraries and playback history are not deleted.",
-        "menu_options": {
-          "execute_server_deletion": "Delete {count} Emby records",
-          "back_to_server_history_check": "‹ Back"
+        "description": "Candidates are refreshed and validated again immediately before execution. Users, media, libraries and playback history are not deleted.\n\n{details}",
+        "data": {
+          "flow_action": "Action"
         }
       },
       "last_cleanup_run": {
         "title": "Last cleanup run",
-        "description": "Status: {status}\nDeleted: {deleted}\nProtected: {protected}\nFailed: {failed}\nNext scheduled run: {next_run}",
-        "menu_options": {
-          "back_to_server_cleanup": "‹ Back"
+        "description": "Time: {run_at}\nMode: {mode}\nAge limit: {age}\nDeleted: {deleted}\nProtected: {protected}\nFailed: {failed}\nNext run: {next_run}",
+        "data": {
+          "flow_action": "Action"
         }
       },
       "manage_ha_players": {
@@ -148,15 +146,14 @@
           "search_query": "Search",
           "page": "Page",
           "selected_ha_entity_ids": "Home Assistant players to remove",
-          "back": "‹ Back"
+          "flow_action": "Action"
         }
       },
       "confirm_ha_removal": {
         "title": "Remove {count} Home Assistant players?",
         "description": "The selected players are hidden in EMBi and removed from the registry only after fresh ownership, platform, config-entry, unique-ID and playback validation.",
-        "menu_options": {
-          "execute_ha_removal": "Remove {count} Home Assistant players",
-          "back_to_manage_ha_players": "‹ Back"
+        "data": {
+          "flow_action": "Action"
         }
       },
       "restore_ha_players": {
@@ -166,16 +163,14 @@
           "search_query": "Search",
           "page": "Page",
           "selected_restore_player_keys": "Players to restore",
-          "back": "‹ Back"
+          "flow_action": "Action"
         }
       },
       "review_changes": {
         "title": "Review changes",
         "description": "{count_text} pending. Nothing has been written yet.\n\n{changes}\n\n{error}",
-        "menu_options": {
-          "apply_changes": "Apply changes",
-          "discard_changes": "Discard changes",
-          "back_to_init": "‹ Back"
+        "data": {
+          "flow_action": "Action"
         }
       },
       "older_rules": {
@@ -183,7 +178,7 @@
         "description": "{count} older rules could not be assigned safely during migration. They remain preserved and inactive until reviewed.",
         "data": {
           "kept_rules": "Preserved older rules",
-          "back": "‹ Back"
+          "flow_action": "Action"
         }
       }
     },

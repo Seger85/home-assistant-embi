@@ -8,7 +8,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-EXPECTED_VERSION = "0.9.1"
+EXPECTED_VERSION = "0.9.2"
 
 
 def require(condition: bool, message: str) -> None:
@@ -75,15 +75,15 @@ def main() -> None:
     for workflow in (quality, package, release):
         require("python scripts/build_package.py" in workflow, "Shared package builder missing")
         require("embi.zip.sha256" in workflow, "Checksum validation missing")
-    require("--expected-version 0.9.1" in quality, "Quality package version differs")
-    require("--expected-version 0.9.1" in package, "Test package version differs")
+    require("--expected-version 0.9.2" in quality, "Quality package version differs")
+    require("--expected-version 0.9.2" in package, "Test package version differs")
     require("origin/main" in release, "Stable source constraint missing")
     require("prerelease: false" in release, "Stable prerelease setting differs")
     require("make_latest: true" in release, "Stable latest setting differs")
     require("gh release download" in release, "Published asset verification missing")
     require("cmp dist/embi.zip verify-release/embi.zip" in release, "ZIP comparison missing")
 
-    print("Stable 0.9.1 repository contract passed")
+    print("Stable 0.9.2 repository contract passed")
 
 
 if __name__ == "__main__":
