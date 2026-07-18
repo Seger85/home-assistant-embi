@@ -1,51 +1,75 @@
-name: Stable release
+name: Publish stable release after merge
 
 on:
-  push:
-    tags:
-      - "v*"
+  pull_request:
+    types:
+      - closed
+  workflow_dispatch:
 
 concurrency:
-  group: stable-release-${{ github.ref }}
+  group: stable-release
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate-package:
-    name: Validate and package
+  publish:
+    name: Validate, publish and verify merged release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       startsWith(github.event.pull_request.head.ref, 'release/'))
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.identity.outputs.version }}
-      tag: ${{ steps.identity.outputs.tag }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out exact release commit
+        uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || 'main' }}
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+
+      - name: Resolve immutable release identity without importing Home Assistant
+        id: identity
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          version="$(python scripts/read_version.py)"
+          tag="v${version}"
+          release_sha="${GITHUB_SHA}"
+
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            test "${release_sha}" = "${MERGE_SHA}"
+            test "${HEAD_BRANCH}" = "release/${version}"
+          fi
+
+          [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "${release_sha}" FETCH_HEAD
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::Tag ${tag} already exists."
+            exit 1
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "release_sha=${release_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: requirements_test.txt
-      - name: Resolve immutable release identity
-        id: identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          version="${tag#v}"
-          manifest_version="$(python -c 'import json; print(json.load(open("custom_components/emby/manifest.json"))["version"])')"
-          internal_version="$(python -c 'from custom_components.emby.const import VERSION; print(VERSION)')"
-          test "${version}" = "${manifest_version}"
-          test "${version}" = "${internal_version}"
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          git merge-base --is-ancestor "${GITHUB_SHA}" origin/main
-          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
       - name: Install validation dependencies
         run: python -m pip install -q --upgrade pip -r requirements_test.txt
+
       - name: Run complete quality and contract validation
         run: |
           python -m json.tool custom_components/emby/manifest.json >/dev/null
@@ -65,73 +89,52 @@ jobs:
           mypy --ignore-missing-imports --follow-imports=skip \
             custom_components/emby/options_model.py \
             custom_components/emby/player_context.py \
-            custom_components/emby/options_runtime.py
+            custom_components/emby/options_runtime.py \
+            custom_components/emby/registry_state.py
           ruff check .
           ruff format --check .
           pytest -q
           python scripts/validate_spec_contract.py
           python scripts/validate_stable_contract.py
           python scripts/secret_scan.py
-      - name: Build and verify immutable assets
-        run: |
-          rm -rf dist
-          python scripts/build_package.py \
-            --output-dir dist \
-            --expected-version "${{ steps.identity.outputs.version }}" \
-            --commit "${GITHUB_SHA}"
-          (cd dist && sha256sum --check embi.zip.sha256)
-          test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: stable-assets-${{ github.sha }}
-          path: |
-            dist/embi.zip
-            dist/embi.zip.sha256
-            dist/BUILD_COMMIT
-          if-no-files-found: error
-          retention-days: 1
 
-  hacs:
-    name: HACS validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: hacs/action@main
+      - name: HACS validation
+        uses: hacs/action@main
         with:
           category: integration
           comment: false
           ignore: brands description license topics
 
-  hassfest:
-    name: Hassfest
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: home-assistant/actions/hassfest@master
+      - name: Hassfest
+        uses: home-assistant/actions/hassfest@master
 
-  release:
-    name: Publish and verify stable release
-    needs: [validate-package, hacs, hassfest]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: actions/download-artifact@v5
-        with:
-          name: stable-assets-${{ github.sha }}
-          path: dist
-      - name: Reverify downloaded package
+      - name: Build and verify exact release assets
         run: |
+          rm -rf dist
+          python scripts/build_package.py \
+            --output-dir dist \
+            --expected-version "${{ steps.identity.outputs.version }}" \
+            --commit "${{ steps.identity.outputs.release_sha }}"
           (cd dist && sha256sum --check embi.zip.sha256)
-          test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
+          test "$(cat dist/BUILD_COMMIT)" = "${{ steps.identity.outputs.release_sha }}"
+
+      - name: Create immutable tag
+        env:
+          RELEASE_TAG: ${{ steps.identity.outputs.tag }}
+          RELEASE_SHA: ${{ steps.identity.outputs.release_sha }}
+          RELEASE_VERSION: ${{ steps.identity.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${RELEASE_TAG}" "${RELEASE_SHA}" -m "EMBi ${RELEASE_VERSION}"
+          git push origin "refs/tags/${RELEASE_TAG}"
+
       - name: Publish stable release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.validate-package.outputs.tag }}
-          name: EMBi ${{ needs.validate-package.outputs.version }}
+          tag_name: ${{ steps.identity.outputs.tag }}
+          name: EMBi ${{ steps.identity.outputs.version }}
           files: |
             dist/embi.zip
             dist/embi.zip.sha256
@@ -140,11 +143,13 @@ jobs:
           prerelease: false
           draft: false
           make_latest: true
+
       - name: Verify release, assets and provenance
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ needs.validate-package.outputs.tag }}
-          RELEASE_VERSION: ${{ needs.validate-package.outputs.version }}
+          RELEASE_TAG: ${{ steps.identity.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.identity.outputs.version }}
+          RELEASE_SHA: ${{ steps.identity.outputs.release_sha }}
         run: |
           set -euo pipefail
           json="$(gh release view "${RELEASE_TAG}" --json tagName,name,isDraft,isPrerelease,assets)"
@@ -160,4 +165,10 @@ jobs:
           cmp dist/embi.zip.sha256 verify-release/embi.zip.sha256
           test "$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)" = "${RELEASE_TAG}"
           git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
-          test "$(git rev-list -n 1 "${RELEASE_TAG}")" = "${GITHUB_SHA}"
+          test "$(git rev-list -n 1 "${RELEASE_TAG}")" = "${RELEASE_SHA}"
+
+      - name: Remove implementation branch after verified release
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: git push origin --delete "${HEAD_BRANCH}" || true

@@ -87,7 +87,21 @@ def main() -> None:
         "manifest.json" in package and "--expected-version" in package,
         "Test package version is not dynamic",
     )
-    require("origin/main" in release, "Stable source constraint missing")
+    require("pull_request:" in release and "closed" in release, "Merged-PR release trigger missing")
+    require("workflow_dispatch:" in release, "Manual recovery trigger missing")
+    require("scripts/read_version.py" in release, "Dependency-free version reader missing")
+    require(
+        "from custom_components.emby.const import VERSION" not in release,
+        "Release imports the HA package before dependencies",
+    )
+    require(
+        "FETCH_HEAD" in release and "origin/main" not in release,
+        "Fresh main identity check differs",
+    )
+    require(
+        "git tag -a" in release and "refs/tags/${RELEASE_TAG}" in release,
+        "Immutable tag creation missing",
+    )
     require("prerelease: false" in release, "Stable prerelease setting differs")
     require("make_latest: true" in release, "Stable latest setting differs")
     require("gh release download" in release, "Published asset verification missing")

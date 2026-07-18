@@ -11,6 +11,7 @@ from .api import EmbyDeviceRecord
 from .const import DOMAIN
 from .maintenance_registry_queue import _classify_unbound_exact_matches
 from .models import PendingRegistryTarget, RegistryCleanupResult
+from .registry_state import state_blocks_registry_removal
 
 
 @dataclass(slots=True, frozen=True)
@@ -78,7 +79,7 @@ def evaluate_registry_targets(
             continue
 
         matched += 1
-        if states.get(entity.entity_id) is not None:
+        if state_blocks_registry_removal(states.get(entity.entity_id)):
             state_still_present += 1
             continue
         removable_entity_ids.append(entity.entity_id)

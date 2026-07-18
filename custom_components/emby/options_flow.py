@@ -65,7 +65,7 @@ class EmbyOptionsFlow(
     HomeAssistantCleanupOptionsMixin,
     config_entries.OptionsFlow,
 ):
-    """EMBi 0.9.4 Options Flow with a preserved in-memory draft."""
+    """EMBi 0.9.5 Options Flow with a preserved in-memory draft."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry

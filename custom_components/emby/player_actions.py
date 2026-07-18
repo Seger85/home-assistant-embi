@@ -19,6 +19,7 @@ from .player_context import (
     PlayerContext,
     build_player_catalog,
 )
+from .registry_state import state_blocks_registry_removal
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -233,7 +234,9 @@ async def async_remove_ha_players(
                             )
                         )
                         continue
-                    if entity is not None and hass.states.get(entity.entity_id) is not None:
+                    if entity is not None and state_blocks_registry_removal(
+                        hass.states.get(entity.entity_id)
+                    ):
                         failed.append(
                             PlayerActionItem(
                                 entity.entity_id,
@@ -259,7 +262,7 @@ async def async_remove_ha_players(
                         for candidate in registry.entities.values()
                     )
                     still_loaded = any(
-                        state is not None
+                        state_blocks_registry_removal(state)
                         for state in (
                             hass.states.get(context.entity_id) if context.entity_id else None,
                         )
@@ -480,7 +483,7 @@ async def async_remove_hidden_player_entities(
                     )
                 )
                 continue
-            if hass.states.get(entity.entity_id) is not None:
+            if state_blocks_registry_removal(hass.states.get(entity.entity_id)):
                 failed.append(
                     PlayerActionItem(
                         entity.entity_id,
@@ -524,3 +527,26 @@ async def async_remove_hidden_player_entities(
         len(result.failed),
     )
     return result
+
+
+async def async_reconcile_invisible_player_entities(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> PlayerActionResult:
+    """Reconcile pre-0.9.5 invisible registry entities once after startup."""
+    catalog = await _fresh_catalog(hass, entry)
+    invisible = [
+        player for player in catalog if player.registry_present and not player.visible_in_embi
+    ]
+    if not invisible:
+        return PlayerActionResult("reconcile", 0, (), (), ())
+    prevalidated = {
+        player.player_key
+        for player in invisible
+        if player.playback not in ACTIVE_PLAYBACK_STATES and player.playback != PLAYBACK_UNKNOWN
+    }
+    return await async_remove_hidden_player_entities(
+        hass,
+        entry,
+        (player.player_key for player in invisible),
+        prevalidated_non_playing_keys=prevalidated,
+    )

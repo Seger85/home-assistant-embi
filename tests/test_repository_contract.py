@@ -117,27 +117,32 @@ def test_registry_removal_requires_exact_post_delete_revalidation() -> None:
     assert "remaining = await client.async_get_devices()" in execution
     assert "plan_registry_followup" in execution
     assert "remaining_player_keys" in evaluator
-    assert "states.get(entity.entity_id) is not None" in evaluator
+    assert "state_blocks_registry_removal(states.get(entity.entity_id))" in evaluator
     assert "entity.config_entry_id != entry.entry_id" in evaluator
     assert "str(entity.unique_id) != key" in evaluator
     assert "apply_exact_registry_removals" in committer
 
 
-def test_release_assets_and_request_branch_contract() -> None:
+def test_release_assets_and_merged_pr_contract() -> None:
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text()
     publish_block = workflow.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[0]
     assert "dist/embi.zip" in publish_block
     assert "dist/embi.zip.sha256" in publish_block
     assert "BUILD_COMMIT" not in publish_block
     assert "cmp dist/embi.zip verify-release/embi.zip" in workflow
-    assert "origin/main" in workflow
-    assert 'tags:\n      - "v*"' in workflow
-    assert 'branches:\n      - "release/v*"' not in workflow
-    assert '"[0-9]*"' not in workflow
-    assert "^v[0-9]+" in workflow
-    assert "stable-assets-${{ github.sha }}" in workflow
+    assert "pull_request:" in workflow and "closed" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "release/${version}" in workflow
+    assert "FETCH_HEAD" in workflow
+    assert "origin/main" not in workflow
+    assert "from custom_components.emby.const import VERSION" not in workflow
+    assert "python scripts/read_version.py" in workflow
+    assert "git tag -a" in workflow
+    assert 'git push origin "refs/tags/${RELEASE_TAG}"' in workflow
     assert "prerelease: false" in workflow
     assert "make_latest: true" in workflow
+    assert not (ROOT / ".github" / "workflows" / "publish-stable-request.yml").exists()
+    assert not (ROOT / ".github" / "workflows" / "finalize-stable-release.yml").exists()
 
 
 def test_test_package_is_bound_to_exact_source_commit() -> None:

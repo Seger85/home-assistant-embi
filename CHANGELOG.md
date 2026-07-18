@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.5] - 2026-07-18
+
+### Registry convergence and release reliability
+
+- Treat Home Assistant `stale_restored` states as removable registry remnants while continuing to protect every live, playing, paused or unclear player.
+- Run a one-time, retry-safe startup reconciliation for player switches that were already off before 0.9.5; exact entity ownership and Unique IDs remain mandatory.
+- Record the reconciliation result and expose privacy-safe stale-restored and migration counters in diagnostics.
+- Publish Stable releases directly after a merged internal `release/X.Y.Z` pull request, eliminating the separate tag-trigger or operations-PR chain.
+- Resolve versions with a dependency-free AST/JSON reader and validate the merge commit against freshly fetched `FETCH_HEAD`, preventing the recurring pre-dependency import and missing remote-tracking-ref failures.
+
 ## [0.9.4] - 2026-07-18
 
 ### Player lifecycle and UX
