@@ -14,16 +14,21 @@ BUILD_PACKAGE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BUILD_PACKAGE)
 
 
+EXPECTED_VERSION = json.loads(
+    (ROOT / "custom_components/emby/manifest.json").read_text(encoding="utf-8")
+)["version"]
+
+
 def test_release_archive_is_deterministic_and_installable(tmp_path: Path) -> None:
     first = tmp_path / "first.zip"
     second = tmp_path / "second.zip"
 
     BUILD_PACKAGE.build_archive(first)
     BUILD_PACKAGE.build_archive(second)
-    BUILD_PACKAGE.verify_archive(first, "0.9.3")
-    BUILD_PACKAGE.verify_archive(second, "0.9.3")
+    BUILD_PACKAGE.verify_archive(first, EXPECTED_VERSION)
+    BUILD_PACKAGE.verify_archive(second, EXPECTED_VERSION)
 
-    assert BUILD_PACKAGE.source_version() == "0.9.3"
+    assert BUILD_PACKAGE.source_version() == EXPECTED_VERSION
     assert first.read_bytes() == second.read_bytes()
     assert BUILD_PACKAGE.sha256(first) == BUILD_PACKAGE.sha256(second)
 
@@ -31,7 +36,7 @@ def test_release_archive_is_deterministic_and_installable(tmp_path: Path) -> Non
         names = set(archive.namelist())
         manifest = json.loads(archive.read("manifest.json"))
 
-    assert manifest["version"] == "0.9.3"
+    assert manifest["version"] == EXPECTED_VERSION
     assert {
         "__init__.py",
         "manifest.json",

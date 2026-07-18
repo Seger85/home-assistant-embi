@@ -8,7 +8,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-EXPECTED_VERSION = "0.9.3"
+EXPECTED_VERSION = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))["version"]
 
 
 def require(condition: bool, message: str) -> None:
@@ -68,7 +68,9 @@ def main() -> None:
     require("selector.BooleanSelector()" in devices, "Direct player switches missing")
     require("execute_server_deletion" in cleanup, "Server execution step missing")
     require("MANUAL_CLEANUP_SCOPE_ALL_SAFE" in cleanup, "Manual all-safe scope missing")
-    require("execute_ha_removal" in ha_cleanup, "Player execution step missing")
+    require(
+        "async_remove_hidden_player_entities" in actions, "Direct hidden-player transaction missing"
+    )
     require("CONF_CONFIRM_SERVER_DELETION" not in cleanup, "Duplicate server confirmation remains")
     require("CONF_CONFIRM_HA_REMOVAL" not in ha_cleanup, "Duplicate player confirmation remains")
     require("async_remove_ha_players" in actions, "Player removal transaction missing")
@@ -77,15 +79,21 @@ def main() -> None:
     for workflow in (quality, package, release):
         require("python scripts/build_package.py" in workflow, "Shared package builder missing")
         require("embi.zip.sha256" in workflow, "Checksum validation missing")
-    require("--expected-version 0.9.3" in quality, "Quality package version differs")
-    require("--expected-version 0.9.3" in package, "Test package version differs")
+    require(
+        "manifest.json" in quality and "--expected-version" in quality,
+        "Quality package version is not dynamic",
+    )
+    require(
+        "manifest.json" in package and "--expected-version" in package,
+        "Test package version is not dynamic",
+    )
     require("origin/main" in release, "Stable source constraint missing")
     require("prerelease: false" in release, "Stable prerelease setting differs")
     require("make_latest: true" in release, "Stable latest setting differs")
     require("gh release download" in release, "Published asset verification missing")
     require("cmp dist/embi.zip verify-release/embi.zip" in release, "ZIP comparison missing")
 
-    print("Stable 0.9.3 repository contract passed")
+    print(f"Stable {EXPECTED_VERSION} repository contract passed")
 
 
 if __name__ == "__main__":

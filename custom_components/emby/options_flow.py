@@ -14,13 +14,17 @@ from .const import (
     CONF_AUTO_SHOW_NEW_PLAYERS,
     CONF_FLOW_ACTION,
     CONF_HIDDEN_EXACT_PLAYERS,
+    CONF_HIDDEN_WHOLE_DEVICES,
+    CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
+    CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
     CONF_TECHNICAL_ACCESS_VISIBILITY,
     CONF_USER_MASTER_VISIBILITY,
     FLOW_ACTION_APPLY,
     FLOW_ACTION_BACK,
     FLOW_ACTION_DISCARD,
 )
+from .maintenance import async_run_automatic_cleanup
 from .models import EmbiRuntimeData
 from .options_cleanup import CleanupOptionsMixin
 from .options_devices import DevicesOptionsMixin
@@ -29,9 +33,15 @@ from .options_ha_cleanup import HomeAssistantCleanupOptionsMixin
 from .options_model import migrate_options_090
 from .options_navigation import action_selector
 from .options_review import semantic_changes
-from .options_runtime import fresh_catalog, player_label_map
+from .options_runtime import fresh_catalog, player_label_map, registry_entries
 from .player_action_common import owned_exact
-from .player_context import ACTIVE_PLAYBACK_STATES, CLIENT_CLASS_TECHNICAL
+from .player_actions import async_remove_hidden_player_entities
+from .player_context import (
+    ACTIVE_PLAYBACK_STATES,
+    CLIENT_CLASS_TECHNICAL,
+    PLAYBACK_UNKNOWN,
+    build_player_catalog,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +65,7 @@ class EmbyOptionsFlow(
     HomeAssistantCleanupOptionsMixin,
     config_entries.OptionsFlow,
 ):
-    """EMBi 0.9.3 Options Flow with a preserved in-memory draft."""
+    """EMBi 0.9.4 Options Flow with a preserved in-memory draft."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
@@ -141,6 +151,11 @@ class EmbyOptionsFlow(
         if self._dirty:
             menu_options.append("review_changes")
         auto_status = bool(self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
+        auto_age = int(self._draft_options.get(CONF_SERVER_AUTO_CLEANUP_AGE_DAYS, 365))
+        next_run = self._format_report_time(
+            self._runtime.maintenance_state.report.next_run_at,
+            empty="Kein Lauf geplant" if self._is_de() else "No run scheduled",
+        )
         return self.async_show_menu(
             step_id="init",
             menu_options=menu_options,
@@ -150,6 +165,8 @@ class EmbyOptionsFlow(
                 "protected": str(stats.protected_playback if stats else 0),
                 "server_missing": str(stats.server_missing if stats else 0),
                 "automatic_cleanup": self._on_off(auto_status),
+                "automatic_age": str(auto_age),
+                "next_run": next_run,
                 "review_count": str(count),
                 "apply_notice": self._apply_notice,
             },
@@ -239,72 +256,120 @@ class EmbyOptionsFlow(
 
         updated, _ = migrate_options_090(self._draft_options, devices)
         original, _ = migrate_options_090(self._original_options, devices)
-        try:
-            players, _stats = await fresh_catalog(self)
-        except Exception:
-            _LOGGER.exception("Failed to refresh EMBi players before applying options")
-            self._review_error = "cannot_connect"
-            return await self.async_step_review_changes()
 
-        before_hidden = {str(value) for value in original.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
-        after_hidden = {str(value) for value in updated.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
-        hide_keys = after_hidden - before_hidden
-        restore_keys = before_hidden - after_hidden
+        def _catalog(options: dict[str, Any]):
+            return build_player_catalog(
+                devices,
+                registry_entries=registry_entries(self.hass),
+                states=self.hass.states,
+                entry_id=self._entry.entry_id,
+                options=options,
+                pyemby_devices=getattr(self._runtime.pyemby, "devices", None),
+            )
+
+        original_players = _catalog(original)
+        intended_players = _catalog(updated)
+        intended_invisible = {
+            player.player_key for player in intended_players if not player.visible_in_embi
+        }
         protected_keys = {
             player.player_key
-            for player in players
-            if player.player_key in hide_keys and player.playback in ACTIVE_PLAYBACK_STATES
+            for player in intended_players
+            if player.registry_present
+            and not player.visible_in_embi
+            and (player.playback in ACTIVE_PLAYBACK_STATES or player.playback == PLAYBACK_UNKNOWN)
         }
 
-        original_technical = bool(original.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
-        updated_technical = bool(updated.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
-        protected_technical = {
-            player.player_key
-            for player in players
-            if player.client_class == CLIENT_CLASS_TECHNICAL
-            and player.playback in ACTIVE_PLAYBACK_STATES
-        }
-        if original_technical and not updated_technical and protected_technical:
-            updated[CONF_TECHNICAL_ACCESS_VISIBILITY] = True
-            protected_keys.update(protected_technical)
+        if protected_keys:
+            hidden = {str(value) for value in updated.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
+            hidden_devices = {str(value) for value in updated.get(CONF_HIDDEN_WHOLE_DEVICES, [])}
+            user_visibility = updated.get(CONF_USER_MASTER_VISIBILITY, {})
+            if not isinstance(user_visibility, dict):
+                user_visibility = {}
+            user_visibility = dict(user_visibility)
 
-        original_user_visibility = original.get(CONF_USER_MASTER_VISIBILITY, {})
-        if not isinstance(original_user_visibility, dict):
-            original_user_visibility = {}
-        user_visibility = updated.get(CONF_USER_MASTER_VISIBILITY, {})
-        if not isinstance(user_visibility, dict):
-            user_visibility = {}
-        user_visibility = dict(user_visibility)
-        for player in players:
-            if len(player.users) != 1 or player.playback not in ACTIVE_PLAYBACK_STATES:
-                continue
-            user_name = player.users[0]
-            if (
-                original_user_visibility.get(user_name, True)
-                and user_visibility.get(user_name, True) is False
+            for player in intended_players:
+                if player.player_key not in protected_keys:
+                    continue
+                hidden.discard(player.player_key)
+                if player.reported_device_id and player.reported_device_id in hidden_devices:
+                    hidden_devices.discard(player.reported_device_id)
+                    hidden.update(
+                        other.player_key
+                        for other in intended_players
+                        if other.player_key in intended_invisible
+                        and other.player_key not in protected_keys
+                        and other.reported_device_id == player.reported_device_id
+                    )
+                if len(player.users) == 1 and user_visibility.get(player.users[0]) is False:
+                    user_visibility[player.users[0]] = True
+                    hidden.update(
+                        other.player_key
+                        for other in intended_players
+                        if other.player_key in intended_invisible
+                        and other.player_key not in protected_keys
+                        and other.users == player.users
+                    )
+
+            if not bool(updated.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)) and any(
+                player.player_key in protected_keys
+                and player.client_class == CLIENT_CLASS_TECHNICAL
+                for player in intended_players
             ):
-                user_visibility[user_name] = True
-                protected_keys.add(player.player_key)
-        updated[CONF_USER_MASTER_VISIBILITY] = user_visibility
+                updated[CONF_TECHNICAL_ACCESS_VISIBILITY] = True
+                hidden.update(
+                    player.player_key
+                    for player in intended_players
+                    if player.player_key in intended_invisible
+                    and player.player_key not in protected_keys
+                    and player.client_class == CLIENT_CLASS_TECHNICAL
+                )
+
+            updated[CONF_HIDDEN_EXACT_PLAYERS] = sorted(hidden)
+            updated[CONF_HIDDEN_WHOLE_DEVICES] = sorted(hidden_devices)
+            updated[CONF_USER_MASTER_VISIBILITY] = user_visibility
 
         if bool(original.get(CONF_AUTO_SHOW_NEW_PLAYERS, True)) and not bool(
             updated.get(CONF_AUTO_SHOW_NEW_PLAYERS, True)
         ):
             allowed = {str(value) for value in updated.get(CONF_ALLOWED_DEVICE_IDS, [])}
-            allowed.update(player.player_key for player in players if player.visible_in_embi)
+            allowed.update(
+                player.player_key for player in original_players if player.visible_in_embi
+            )
             updated[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
 
-        if protected_keys:
-            after_hidden -= protected_keys
-            updated[CONF_HIDDEN_EXACT_PLAYERS] = sorted(after_hidden)
+        final_players = _catalog(updated)
+        original_by_key = {player.player_key: player for player in original_players}
+        final_by_key = {player.player_key: player for player in final_players}
+        remove_keys = {
+            player.player_key
+            for player in final_players
+            if player.registry_present
+            and not player.visible_in_embi
+            and player.player_key not in protected_keys
+            and player.playback not in ACTIVE_PLAYBACK_STATES
+            and player.playback != PLAYBACK_UNKNOWN
+        }
+        restore_keys = {
+            key
+            for key, player in final_by_key.items()
+            if player.visible_in_embi
+            and key in original_by_key
+            and not original_by_key[key].visible_in_embi
+        }
 
-        original_auto = bool(original.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
+        cleanup_keys = (
+            CONF_SERVER_AUTO_CLEANUP_ENABLED,
+            CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
+            CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
+        )
+        cleanup_changed = any(original.get(key) != updated.get(key) for key in cleanup_keys)
         updated_auto = bool(updated.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
-        if original_auto != updated_auto:
+        if cleanup_changed:
             state = deepcopy(self._runtime.maintenance_state)
+            state.report.next_run_at = None
             if updated_auto:
                 state.initial_run_completed = False
-            state.report.next_run_at = None
             try:
                 await self._runtime.maintenance_store.async_save(state)
             except Exception:
@@ -325,24 +390,43 @@ class EmbyOptionsFlow(
         finally:
             self._runtime.suppress_update_listener = False
 
+        try:
+            await self.hass.config_entries.async_reload(self._entry.entry_id)
+        except Exception:
+            _LOGGER.exception("Failed to reload EMBi after applying options")
+            self._review_error = "save_failed"
+            return await self.async_step_review_changes()
+
+        current_entry = (
+            self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+        )
+        blocker = getattr(self.hass, "async_block_till_done", None)
+        if blocker is not None:
+            await blocker()
+
+        removed = removal_protected = removal_failed = 0
+        if remove_keys:
+            removal = await async_remove_hidden_player_entities(
+                self.hass,
+                current_entry,
+                sorted(remove_keys),
+                prevalidated_non_playing_keys=remove_keys,
+            )
+            removed = len(removal.succeeded)
+            removal_protected = len(removal.protected)
+            removal_failed = len(removal.failed)
+
         enabled = failed = 0
         registry = er.async_get(self.hass)
         for entity_id in sorted(self._pending_enable_entity_ids):
             entity = registry.async_get(entity_id)
             player_key = str(getattr(entity, "unique_id", ""))
-            if not owned_exact(entity, self._entry, player_key):
+            if not owned_exact(entity, current_entry, player_key):
                 failed += 1
                 continue
             registry.async_update_entity(entity_id, disabled_by=None)
             enabled += 1
 
-        try:
-            await self.hass.config_entries.async_reload(self._entry.entry_id)
-        except Exception:
-            failed += len(restore_keys)
-        current_entry = (
-            self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
-        )
         registry = er.async_get(self.hass)
         restored = sum(
             any(
@@ -351,7 +435,21 @@ class EmbyOptionsFlow(
             )
             for player_key in restore_keys
         )
-        failed += max(0, len(restore_keys) - restored)
+        failed += max(0, len(restore_keys) - restored) + removal_failed
+
+        cleanup_deleted = cleanup_failed = 0
+        if cleanup_changed and updated_auto:
+            try:
+                reload_needed = await async_run_automatic_cleanup(self.hass, current_entry)
+                report = current_entry.runtime_data.maintenance_state.report
+                cleanup_deleted = report.server_deleted
+                cleanup_failed = report.server_failed
+                if reload_needed:
+                    await self.hass.config_entries.async_reload(current_entry.entry_id)
+            except Exception:
+                _LOGGER.exception("Immediate EMBi automatic cleanup after apply failed")
+                cleanup_failed += 1
+                failed += 1
 
         self._draft = OptionsDraft.from_options(updated)
         self._original_options = self._draft.original
@@ -368,16 +466,31 @@ class EmbyOptionsFlow(
         self._page_by_step.clear()
         self._review_error = None
         self._section_error.clear()
+        protected_total = len(protected_keys) + removal_protected
         if self._is_de():
+            cleanup_notice = (
+                f" Automatische Prüfung sofort ausgeführt: {cleanup_deleted} gelöscht, "
+                f"{cleanup_failed} fehlgeschlagen."
+                if cleanup_changed and updated_auto
+                else ""
+            )
             self._apply_notice = (
                 "Änderungen gespeichert und EMBi neu geladen. "
-                f"Wiederhergestellt: {restored}, aktiviert: {enabled}, "
-                f"geschützt: {len(protected_keys)}, fehlgeschlagen: {failed}."
+                f"Aus Home Assistant entfernt: {removed}, wiederhergestellt: {restored}, "
+                f"aktiviert: {enabled}, geschützt: {protected_total}, fehlgeschlagen: {failed}."
+                f"{cleanup_notice}"
             )
         else:
+            cleanup_notice = (
+                f" Automatic check ran immediately: {cleanup_deleted} deleted, "
+                f"{cleanup_failed} failed."
+                if cleanup_changed and updated_auto
+                else ""
+            )
             self._apply_notice = (
                 "Changes saved and EMBi reloaded. "
-                f"Restored: {restored}, enabled: {enabled}, "
-                f"protected: {len(protected_keys)}, failed: {failed}."
+                f"Removed from Home Assistant: {removed}, restored: {restored}, "
+                f"enabled: {enabled}, protected: {protected_total}, failed: {failed}."
+                f"{cleanup_notice}"
             )
         return await self.async_step_init()

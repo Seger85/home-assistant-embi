@@ -65,6 +65,7 @@ class FakeHass:
         self.config = SimpleNamespace(language="de", time_zone="Europe/Berlin")
         self.config_entries = FakeConfigEntries()
         self.data = {}
+        self.notifications = []
         self.states = SimpleNamespace(get=lambda _entity_id: None)
         self.registry = SimpleNamespace(
             entities={},
@@ -238,9 +239,10 @@ async def test_auto_cleanup_change_resets_deadline_on_apply(monkeypatch) -> None
     result = await flow.async_step_apply_changes()
     assert result["type"] == "menu"
     assert result["step_id"] == "init"
-    assert len(store.saved) == 1
-    assert store.saved[0].initial_run_completed is False
-    assert store.saved[0].report.next_run_at is None
+    assert len(store.saved) >= 2
+    assert flow._runtime.maintenance_state.initial_run_completed is True
+    assert flow._runtime.maintenance_state.report.mode == "automatic"
+    assert flow._runtime.maintenance_state.report.next_run_at is not None
     assert entry.options[CONF_SERVER_AUTO_CLEANUP_ENABLED] is True
     assert hass.config_entries.reloads == [entry.entry_id]
 

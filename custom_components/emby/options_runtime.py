@@ -100,12 +100,20 @@ def group_options(players: list[PlayerContext], *, german: bool) -> list[dict[st
 
 def _compact_options(players: list[PlayerContext], *, value_getter) -> list[dict[str, str]]:
     base_counts = Counter(player.selector_label for player in players)
+    seen: Counter[str] = Counter()
     options: list[dict[str, str]] = []
     for player in players:
         value = value_getter(player)
         if not value:
             continue
-        label = player.compact_label(include_user=base_counts[player.selector_label] > 1)
+        base = player.compact_label(include_user=base_counts[player.selector_label] > 1)
+        seen[base] += 1
+        label = base
+        if base_counts[player.selector_label] > 1 and not player.users:
+            if player.last_activity is not None:
+                label = f"{base} · {player.last_activity.date().isoformat()}"
+            if seen[base] > 1 or any(option["label"] == label for option in options):
+                label = f"{label} ({seen[base]})"
         options.append({"value": str(value), "label": label})
     return options
 

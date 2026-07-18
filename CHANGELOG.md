@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.9.4] - 2026-07-18
+
+### Player lifecycle and UX
+
+- Make every group switch authoritative: after **Apply changes**, safely inactive switched-off players are removed from the Home Assistant entity registry while their Emby record remains available for restoration.
+- Reconcile already hidden 0.9.3 players during the next settings apply, without changing server history.
+- Remove the nested Home Assistant player remove/restore selector from the normal player workflow and remove the mismatched detail selector.
+- Improve duplicate and server-missing player labels using meaningful Home Assistant names, users and activity dates.
+- Classify technical registry-only identities such as Home Assistant, EMBi, Homarr, Windmill and MCP correctly even when no current Emby record remains.
+
+### Cleanup and release operations
+
+- Run a changed and enabled automatic-cleanup configuration immediately after Apply changes, then retain the normal 24-hour schedule.
+- Show the automatic age threshold and next run directly in the EMBi root summary.
+- Replace the release-request branch chain with one tag-only stable workflow after the implementation PR has passed CI and merged.
+- Resolve package versions dynamically from `manifest.json` in quality and artifact workflows to remove per-release hard-coded CI edits.
+
 ## [0.9.3] - 2026-07-18
 
 - Return to the EMBi main menu after applying settings and show a clear saved/reloaded confirmation.
