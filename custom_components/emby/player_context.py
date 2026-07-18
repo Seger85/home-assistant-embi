@@ -213,12 +213,29 @@ def _latest_record(records: list[EmbyDeviceRecord]) -> EmbyDeviceRecord | None:
 
 
 def _technical_app_metadata(records: Iterable[EmbyDeviceRecord]) -> bool:
+    """Recognize explicit technical app or device identities without using user names."""
+    phrases = {
+        *(_EXPLICIT_TECHNICAL_APPS),
+        "home assistant player",
+        "homeassistant player",
+        "ha mcp",
+        "mcp server",
+    }
     for record in records:
-        app = str(record.app_name or "").strip().casefold()
-        if app in _EXPLICIT_TECHNICAL_APPS:
-            return True
-        if any(app.startswith(f"{name} ") for name in _EXPLICIT_TECHNICAL_APPS):
-            return True
+        values = (record.app_name, record.name)
+        for value in values:
+            normalized = str(value or "").strip().casefold()
+            if not normalized:
+                continue
+            if normalized in phrases:
+                return True
+            if any(
+                normalized.startswith(f"{phrase} ")
+                or normalized.endswith(f" {phrase}")
+                or f" {phrase} " in normalized
+                for phrase in phrases
+            ):
+                return True
     return False
 
 
@@ -232,8 +249,6 @@ def classify_client(
     items = list(records)
     if runtime_state in ACTIVE_PLAYBACK_STATES:
         return CLIENT_CLASS_PLAYBACK, "observed_active_playback"
-    if any(record.playback_observed or record.supports_playback is True for record in items):
-        return CLIENT_CLASS_PLAYBACK, "explicit_or_observed_playback"
     if any(record.api_only is True for record in items):
         return CLIENT_CLASS_TECHNICAL, "explicit_api_only"
     if any(
@@ -244,13 +259,13 @@ def classify_client(
     if any(_EXPLICIT_TECHNICAL_CAPABILITIES & set(record.capabilities) for record in items):
         return CLIENT_CLASS_TECHNICAL, "explicit_technical_capability"
 
-    users = _record_users(items)
-    no_playback_evidence = not any(
-        record.playback_observed or record.supports_playback is True for record in items
-    )
-    if items and not users and no_playback_evidence and _technical_app_metadata(items):
-        return CLIENT_CLASS_TECHNICAL, "technical_app_without_playback"
+    no_observed_playback = not any(record.playback_observed for record in items)
+    if items and no_observed_playback and _technical_app_metadata(items):
+        return CLIENT_CLASS_TECHNICAL, "explicit_technical_identity"
+    if any(record.playback_observed or record.supports_playback is True for record in items):
+        return CLIENT_CLASS_PLAYBACK, "explicit_or_observed_playback"
 
+    users = _record_users(items)
     repeated_explicit_non_playback = (
         len(items) >= 2
         and not users

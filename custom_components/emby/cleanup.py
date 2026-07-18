@@ -48,6 +48,7 @@ def plan_device_cleanup(
     now: datetime,
     age_days: int,
     active_player_keys: Iterable[str] = (),
+    ignore_age: bool = False,
 ) -> DeviceCleanupPlan:
     """Return all expired records without applying any per-run deletion cap."""
     normalized_now = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
@@ -65,7 +66,7 @@ def plan_device_cleanup(
             skipped_without_activity.append(record)
         elif record.player_key in active:
             skipped_active.append(record)
-        elif activity < cutoff:
+        elif ignore_age or activity < cutoff:
             candidates.append(record)
         else:
             skipped_recent.append(record)

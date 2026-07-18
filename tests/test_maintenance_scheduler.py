@@ -70,7 +70,7 @@ def setup(*, state=ConfigEntryState.LOADED, maintenance_state=None):
 
 
 @pytest.mark.asyncio
-async def test_rc3_migration_schedules_once_after_120_seconds_and_persists(
+async def test_migration_schedules_once_after_10_seconds_and_persists(
     monkeypatch,
 ) -> None:
     now = datetime(2026, 7, 14, 12, 0, tzinfo=UTC)
@@ -92,7 +92,7 @@ async def test_rc3_migration_schedules_once_after_120_seconds_and_persists(
     )
     await async_schedule_automatic_cleanup(hass, entry)
     assert len(scheduled) == 1
-    assert scheduled[0][1] == now + timedelta(seconds=120)
+    assert scheduled[0][1] == now + timedelta(seconds=10)
     assert entry.runtime_data.maintenance_state.report.next_run_at == utc_iso(scheduled[0][1])
     assert entry.runtime_data.auto_cleanup_scheduled is True
     assert store.saves == 1
@@ -170,7 +170,7 @@ async def test_deactivation_during_grace_prevents_run(monkeypatch) -> None:
     )
     await async_schedule_automatic_cleanup(hass, entry)
     entry.options[CONF_SERVER_AUTO_CLEANUP_ENABLED] = False
-    await scheduled[0](now + timedelta(seconds=120))
+    await scheduled[0](now + timedelta(seconds=10))
     assert runs == 0
 
 
@@ -287,12 +287,12 @@ async def test_locked_callback_reschedules_without_starting_second_series(
     await async_schedule_automatic_cleanup(hass, entry)
     await entry.runtime_data.cleanup_lock.acquire()
     try:
-        await callbacks[0](now + timedelta(seconds=120))
+        await callbacks[0](now + timedelta(seconds=10))
     finally:
         entry.runtime_data.cleanup_lock.release()
     assert runs == 0
     assert len(points) == 2
-    assert points[1] == now + timedelta(seconds=120)
+    assert points[1] == now + timedelta(seconds=10)
 
 
 @pytest.mark.asyncio
@@ -342,7 +342,7 @@ async def test_unloading_runtime_neither_registers_nor_executes(monkeypatch) -> 
 
     await async_schedule_automatic_cleanup(hass, entry)
     entry.runtime_data.unloading = True
-    await callbacks[0](now + timedelta(seconds=120))
+    await callbacks[0](now + timedelta(seconds=10))
     assert runs == 0
     assert entry.runtime_data.auto_cleanup_scheduled is False
 

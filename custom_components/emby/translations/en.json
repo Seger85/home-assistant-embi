@@ -40,7 +40,7 @@
     "step": {
       "init": {
         "title": "Manage EMBi",
-        "description": "Manage Home Assistant players and clean up old Emby server records in clearly separated areas.\n\n{server_history} records in Emby server history\n{ha_players} registered Home Assistant players\n{protected} playing or paused\n{server_missing} no longer reported by the Emby server\nAutomatic cleanup: {automatic_cleanup}",
+        "description": "Manage Home Assistant players and clean up old Emby server records in clearly separated areas.\n\n{server_history} records in Emby server history\n{ha_players} registered Home Assistant players\n{protected} playing or paused\n{server_missing} no longer reported by the Emby server\nAutomatic cleanup: {automatic_cleanup}\n\n{apply_notice}",
         "menu_options": {
           "ha_players": "Home Assistant players",
           "server_cleanup": "Clean up Emby server",
@@ -69,7 +69,7 @@
       },
       "player_group": {
         "title": "{group}",
-        "description": "{count} players are assigned to this group. User groups provide one master switch. Individual players are changed only under Manage exceptions.",
+        "description": "{count} players belong to this group. Each player can be switched on or off directly. Playing or paused sessions remain protected. A detail view can optionally be opened below.",
         "data": {
           "show_user_players": "Show all players for this user",
           "player_action": "Open",
@@ -117,7 +117,7 @@
       },
       "server_history_check": {
         "title": "Check for old Emby records now",
-        "description": "{total} records checked\n{candidates} older than {age_days} days and eligible\n{active} protected by active playback\n{recent} too recent\n{without_activity} without a valid activity timestamp\n\nSelecting records is the preview. The next page contains exactly one clearly named execution action.",
+        "description": "{total} records checked\n{candidates} are safely selectable in “{scope}” mode\n{active} are protected by active playback\n{recent} do not meet the age rule\n{without_activity} have no valid activity timestamp\n\n“All safe records” also allows younger records to be selected manually. Active, paused, or ambiguous records always remain protected.",
         "data": {
           "manual_age_preset": "Manual age limit",
           "manual_custom_age_days": "Custom number of days",
@@ -127,7 +127,7 @@
       },
       "confirm_server_deletion": {
         "title": "Delete {count} Emby records?",
-        "description": "Candidates are refreshed and validated again immediately before execution. Users, media, libraries and playback history are not deleted.\n\n{details}",
+        "description": "{count} records were selected. Scope: {scope}. Identity, activity, and playback state are revalidated before deletion.\n\n{details}",
         "data": {
           "flow_action": "Action"
         }
