@@ -9,27 +9,20 @@ import voluptuous as vol
 from homeassistant.helpers import selector
 from homeassistant.util import dt as dt_util
 
-from .api import EmbyApiError, EmbyDeviceRecord
+from .api import EmbyApiError
 from .cleanup import plan_device_cleanup
 from .const import (
     AGE_PRESET_CUSTOM,
     AGE_PRESETS,
     CONF_DELETE_DEVICE_RECORD_IDS,
     CONF_FLOW_ACTION,
-    CONF_MANUAL_CLEANUP_SCOPE,
     CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
-    CONF_SERVER_CLEANUP_AGE_DAYS,
     DEFAULT_REMOVE_HA_ENTITIES,
     DEFAULT_SERVER_CLEANUP_AGE_DAYS,
     FLOW_ACTION_BACK,
     FLOW_ACTION_EXECUTE,
-    FLOW_ACTION_OPEN_AUTOMATIC,
-    FLOW_ACTION_OPEN_HISTORY,
-    FLOW_ACTION_OPEN_LAST_RUN,
-    MANUAL_CLEANUP_SCOPE_AGE,
-    MANUAL_CLEANUP_SCOPE_ALL_SAFE,
     MAX_SERVER_CLEANUP_AGE_DAYS,
     MIN_SERVER_CLEANUP_AGE_DAYS,
 )
@@ -40,13 +33,10 @@ from .helpers import (
     server_device_selector_options,
 )
 from .maintenance import active_player_keys, async_run_manual_cleanup
-from .options_navigation import action_selector, back_requested, navigation_selector
+from .options_navigation import action_selector
 
-_MANUAL_PRESET = "manual_age_preset"
-_MANUAL_CUSTOM = "manual_custom_age_days"
 _AUTO_PRESET = "automatic_age_preset"
 _AUTO_CUSTOM = "automatic_custom_age_days"
-_MANUAL_SCOPE = CONF_MANUAL_CLEANUP_SCOPE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,66 +81,69 @@ def _resolve(user_input: dict[str, Any], preset_key: str, custom_key: str) -> in
 
 
 class CleanupOptionsMixin:
-    """Separated Emby-server cleanup settings, preview and status pages."""
+    """Direct automatic and manual Emby-server cleanup pages."""
 
     async def async_step_server_cleanup(self, user_input: dict[str, Any] | None = None):
-        if user_input is not None:
-            action = user_input.get(CONF_FLOW_ACTION)
-            if action == FLOW_ACTION_OPEN_AUTOMATIC:
-                return await self.async_step_automatic_cleanup()
-            if action == FLOW_ACTION_OPEN_HISTORY:
-                return await self.async_step_server_history_check()
-            if action == FLOW_ACTION_OPEN_LAST_RUN:
-                return await self.async_step_last_cleanup_run()
-            if action == FLOW_ACTION_BACK:
-                return await self.async_step_init()
-        return self.async_show_form(
-            step_id="server_cleanup",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_FLOW_ACTION): action_selector(
-                        [
-                            {
-                                "value": FLOW_ACTION_OPEN_AUTOMATIC,
-                                "label": (
-                                    "Automatische Bereinigung"
-                                    if self._is_de()
-                                    else "Automatic cleanup"
-                                ),
-                            },
-                            {
-                                "value": FLOW_ACTION_OPEN_HISTORY,
-                                "label": (
-                                    "Jetzt auf alte Einträge prüfen"
-                                    if self._is_de()
-                                    else "Check for old records now"
-                                ),
-                            },
-                            {
-                                "value": FLOW_ACTION_OPEN_LAST_RUN,
-                                "label": (
-                                    "Letzter Bereinigungslauf"
-                                    if self._is_de()
-                                    else "Last cleanup run"
-                                ),
-                            },
-                            {
-                                "value": FLOW_ACTION_BACK,
-                                "label": "\u2039 Zurück" if self._is_de() else "\u2039 Back",
-                            },
-                        ]
-                    )
-                }
-            ),
-        )
+        """Compatibility redirect for installations that still reference the old menu."""
+        return await self.async_step_init()
 
     async def async_step_back_to_server_cleanup(self, user_input: dict[str, Any] | None = None):
+        self._clear_pending_server_cleanup()
+        return await self.async_step_init()
+
+    def _clear_pending_server_cleanup(self) -> None:
         self._pending_cleanup_records = {}
         self._pending_cleanup_age_days = None
         self._pending_cleanup_ignore_age = False
-        return await self.async_step_server_cleanup()
+
+    def _format_report_time(self, value: str | None, *, empty: str) -> str:
+        if not value:
+            return empty
+        try:
+            normalized = value.replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(normalized)
+            try:
+                zone = ZoneInfo(self.hass.config.time_zone)
+            except ZoneInfoNotFoundError:
+                zone = ZoneInfo("UTC")
+            local = parsed.astimezone(zone)
+        except (TypeError, ValueError):
+            _LOGGER.warning("Invalid persisted EMBi maintenance timestamp: %r", value)
+            return "Unbekannt" if self._is_de() else "Unknown"
+        return local.strftime("%d.%m.%Y %H:%M" if self._is_de() else "%Y-%m-%d %H:%M")
+
+    def _cleanup_report_placeholders(self) -> dict[str, str]:
+        report = self._runtime.maintenance_state.report
+        never = "Noch nicht ausgeführt" if self._is_de() else "Not run yet"
+        no_schedule = "Kein Lauf geplant" if self._is_de() else "No run scheduled"
+        mode = {
+            "manual": "Manuell" if self._is_de() else "Manual",
+            "automatic": "Automatisch" if self._is_de() else "Automatic",
+        }.get(report.mode, never)
+        age = (
+            f"{report.age_threshold_days} Tage"
+            if self._is_de() and report.age_threshold_days is not None
+            else (
+                f"{report.age_threshold_days} days"
+                if report.age_threshold_days is not None
+                else "-"
+            )
+        )
+        return {
+            "run_at": self._format_report_time(
+                report.completed_at or report.started_at,
+                empty=never,
+            ),
+            "mode": mode,
+            "age": age,
+            "deleted": str(report.server_deleted),
+            "protected": str(report.skipped_active + report.registry_entities_protected),
+            "failed": str(report.server_failed),
+            "next_run": self._format_report_time(report.next_run_at, empty=no_schedule),
+        }
 
     async def async_step_automatic_cleanup(self, user_input: dict[str, Any] | None = None):
+        """Edit automatic cleanup in the draft and show the persisted run status."""
         automatic_days = int(
             self._draft_options.get(
                 CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
@@ -183,9 +176,6 @@ class CleanupOptionsMixin:
                 ),
             )
         ] = selector.BooleanSelector()
-        fields[vol.Required(CONF_FLOW_ACTION, default="back")] = navigation_selector(
-            german=self._is_de(),
-        )
 
         if user_input is not None:
             try:
@@ -204,31 +194,18 @@ class CleanupOptionsMixin:
                     )
                 )
                 self._automatic_age_preset = age_preset_for_days(submitted_auto)
-                return await self.async_step_server_cleanup()
+                return await self.async_step_init()
 
         return self.async_show_form(
             step_id="automatic_cleanup",
             data_schema=vol.Schema(fields),
             errors=errors,
+            description_placeholders=self._cleanup_report_placeholders(),
         )
 
     async def async_step_server_history_check(self, user_input: dict[str, Any] | None = None):
-        manual_days = int(
-            self._draft_options.get(
-                CONF_SERVER_CLEANUP_AGE_DAYS,
-                DEFAULT_SERVER_CLEANUP_AGE_DAYS,
-            )
-        )
-        preset = self._manual_age_preset or age_preset_for_days(manual_days)
-        if user_input and user_input.get(_MANUAL_PRESET):
-            preset = str(user_input[_MANUAL_PRESET])
-            self._manual_age_preset = preset
-
+        """Offer every unequivocally safe inactive record, independent of age."""
         errors: dict[str, str] = {}
-        scope = MANUAL_CLEANUP_SCOPE_AGE
-        if user_input is not None:
-            scope = str(user_input.get(_MANUAL_SCOPE, MANUAL_CLEANUP_SCOPE_AGE))
-        ignore_age = scope == MANUAL_CLEANUP_SCOPE_ALL_SAFE
         try:
             devices = await self._devices()
         except EmbyApiError:
@@ -236,56 +213,22 @@ class CleanupOptionsMixin:
             devices = []
             errors["base"] = "cannot_connect"
 
-        age_days = manual_days
-        if user_input is not None and not back_requested(user_input) and not ignore_age:
-            try:
-                age_days = _resolve(user_input, _MANUAL_PRESET, _MANUAL_CUSTOM)
-            except (KeyError, TypeError, ValueError):
-                errors["base"] = "invalid_age"
-            else:
-                self._draft_options[CONF_SERVER_CLEANUP_AGE_DAYS] = age_days
-                self._manual_age_preset = age_preset_for_days(age_days)
-
+        automatic_days = int(
+            self._draft_options.get(
+                CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
+                DEFAULT_SERVER_CLEANUP_AGE_DAYS,
+            )
+        )
         plan = plan_device_cleanup(
             devices,
             now=dt_util.utcnow(),
-            age_days=age_days,
+            age_days=automatic_days,
             active_player_keys=active_player_keys(self.hass, self._entry),
-            ignore_age=ignore_age,
+            ignore_age=True,
         )
-        candidates: dict[str, EmbyDeviceRecord] = {
-            device.record_id: device for device in plan.candidates
-        }
+        candidates = {device.record_id: device for device in plan.candidates}
 
-        fields: dict[Any, Any] = {
-            vol.Required(_MANUAL_SCOPE, default=scope): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {
-                            "value": MANUAL_CLEANUP_SCOPE_AGE,
-                            "label": (
-                                "Nur Einträge außerhalb der Altersgrenze"
-                                if self._is_de()
-                                else "Only records beyond the age threshold"
-                            ),
-                        },
-                        {
-                            "value": MANUAL_CLEANUP_SCOPE_ALL_SAFE,
-                            "label": (
-                                "Alle sicheren Einträge - unabhängig vom Alter"
-                                if self._is_de()
-                                else "All safe records - regardless of age"
-                            ),
-                        },
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
-            )
-        }
-        if not ignore_age:
-            fields[vol.Required(_MANUAL_PRESET, default=preset)] = _age_preset()
-            if preset == AGE_PRESET_CUSTOM:
-                fields[vol.Required(_MANUAL_CUSTOM, default=age_days)] = _number()
+        fields: dict[Any, Any] = {}
         if candidates:
             fields[vol.Optional(CONF_DELETE_DEVICE_RECORD_IDS, default=[])] = _multi(
                 [
@@ -297,26 +240,41 @@ class CleanupOptionsMixin:
                     ).items()
                 ]
             )
-        fields[vol.Required(CONF_FLOW_ACTION, default="back")] = navigation_selector(
-            german=self._is_de(),
-            primary_label=("Auswahl prüfen" if self._is_de() else "Review selection")
-            if candidates
-            else None,
-        )
+        if candidates:
+            fields[vol.Required(CONF_FLOW_ACTION, default=FLOW_ACTION_BACK)] = action_selector(
+                [
+                    {
+                        "value": "review",
+                        "label": "Auswahl prüfen" if self._is_de() else "Review selection",
+                    },
+                    {
+                        "value": FLOW_ACTION_BACK,
+                        "label": "\u2039 Zurück" if self._is_de() else "\u2039 Back",
+                    },
+                ]
+            )
 
         if user_input is not None:
+            if not candidates:
+                self._clear_pending_server_cleanup()
+                return await self.async_step_init()
+            action = user_input.get(CONF_FLOW_ACTION)
+            if action == FLOW_ACTION_BACK:
+                self._clear_pending_server_cleanup()
+                return await self.async_step_init()
             selected = [str(value) for value in user_input.get(CONF_DELETE_DEVICE_RECORD_IDS, [])]
-            if selected and not errors:
+            if action == "review" and not selected:
+                errors["base"] = "invalid_selection"
+            elif selected and not errors:
                 if any(record_id not in candidates for record_id in selected):
                     errors["base"] = "invalid_selection"
                 else:
                     self._pending_cleanup_records = {
                         record_id: candidates[record_id] for record_id in selected
                     }
-                    self._pending_cleanup_age_days = age_days
-                    self._pending_cleanup_ignore_age = ignore_age
+                    self._pending_cleanup_age_days = automatic_days
+                    self._pending_cleanup_ignore_age = True
                     return await self.async_step_confirm_server_deletion()
-            return await self.async_step_server_cleanup()
 
         return self.async_show_form(
             step_id="server_history_check",
@@ -325,13 +283,8 @@ class CleanupOptionsMixin:
             description_placeholders={
                 "total": str(len(devices)),
                 "candidates": str(len(plan.candidates)),
-                "age_days": str(age_days),
                 "active": str(len(plan.skipped_active)),
-                "recent": str(len(plan.skipped_recent)),
                 "without_activity": str(len(plan.skipped_without_activity)),
-                "scope": ("Alle sicheren Einträge" if self._is_de() else "All safe records")
-                if ignore_age
-                else ("Altersgrenze" if self._is_de() else "Age threshold"),
             },
         )
 
@@ -369,13 +322,7 @@ class CleanupOptionsMixin:
             ),
             description_placeholders={
                 "count": str(count),
-                "scope": ("Unabhängig vom Alter" if self._is_de() else "Regardless of age")
-                if self._pending_cleanup_ignore_age
-                else (
-                    f"Älter als {self._pending_cleanup_age_days} Tage"
-                    if self._is_de()
-                    else f"Older than {self._pending_cleanup_age_days} days"
-                ),
+                "scope": "Unabhängig vom Alter" if self._is_de() else "Regardless of age",
                 "details": server_device_confirmation_details(
                     self._pending_cleanup_records.values(),
                     time_zone=self.hass.config.time_zone,
@@ -387,8 +334,7 @@ class CleanupOptionsMixin:
     async def async_step_back_to_server_history_check(
         self, user_input: dict[str, Any] | None = None
     ):
-        self._pending_cleanup_records = {}
-        self._pending_cleanup_age_days = None
+        self._clear_pending_server_cleanup()
         return await self.async_step_server_history_check()
 
     async def async_step_execute_server_deletion(self, user_input: dict[str, Any] | None = None):
@@ -401,16 +347,14 @@ class CleanupOptionsMixin:
             age_days=int(
                 self._pending_cleanup_age_days
                 or self._entry.options.get(
-                    CONF_SERVER_CLEANUP_AGE_DAYS,
+                    CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
                     DEFAULT_SERVER_CLEANUP_AGE_DAYS,
                 )
             ),
-            remove_ha_entities=False,
-            ignore_age=self._pending_cleanup_ignore_age,
+            remove_ha_entities=True,
+            ignore_age=True,
         )
-        self._pending_cleanup_records = {}
-        self._pending_cleanup_age_days = None
-        self._pending_cleanup_ignore_age = False
+        self._clear_pending_server_cleanup()
         if reload_needed:
             self.hass.async_create_task(
                 self.hass.config_entries.async_reload(self._entry.entry_id),
@@ -424,57 +368,6 @@ class CleanupOptionsMixin:
             },
         )
 
-    def _format_report_time(self, value: str | None, *, empty: str) -> str:
-        if not value:
-            return empty
-        try:
-            normalized = value.replace("Z", "+00:00")
-            parsed = datetime.fromisoformat(normalized)
-            try:
-                zone = ZoneInfo(self.hass.config.time_zone)
-            except ZoneInfoNotFoundError:
-                zone = ZoneInfo("UTC")
-            local = parsed.astimezone(zone)
-        except (TypeError, ValueError):
-            _LOGGER.warning("Invalid persisted EMBi maintenance timestamp: %r", value)
-            return "Unbekannt" if self._is_de() else "Unknown"
-        return local.strftime("%d.%m.%Y %H:%M" if self._is_de() else "%Y-%m-%d %H:%M")
-
     async def async_step_last_cleanup_run(self, user_input: dict[str, Any] | None = None):
-        if user_input is not None:
-            return await self.async_step_server_cleanup()
-        report = self._runtime.maintenance_state.report
-        never = "Noch nicht ausgeführt" if self._is_de() else "Not run yet"
-        no_schedule = "Kein Lauf geplant" if self._is_de() else "No run scheduled"
-        mode = {
-            "manual": "Manuell" if self._is_de() else "Manual",
-            "automatic": "Automatisch" if self._is_de() else "Automatic",
-        }.get(report.mode, never)
-        age = (
-            f"{report.age_threshold_days} Tage"
-            if self._is_de() and report.age_threshold_days is not None
-            else (
-                f"{report.age_threshold_days} days"
-                if report.age_threshold_days is not None
-                else "-"
-            )
-        )
-        return self.async_show_form(
-            step_id="last_cleanup_run",
-            data_schema=vol.Schema({}),
-            description_placeholders={
-                "run_at": self._format_report_time(
-                    report.completed_at or report.started_at,
-                    empty=never,
-                ),
-                "mode": mode,
-                "age": age,
-                "deleted": str(report.server_deleted),
-                "protected": str(report.skipped_active + report.registry_entities_protected),
-                "failed": str(report.server_failed),
-                "next_run": self._format_report_time(
-                    report.next_run_at,
-                    empty=no_schedule,
-                ),
-            },
-        )
+        """Compatibility redirect; status now lives on automatic cleanup."""
+        return await self.async_step_automatic_cleanup()

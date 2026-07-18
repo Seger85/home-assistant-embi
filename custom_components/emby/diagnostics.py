@@ -79,6 +79,8 @@ async def async_get_config_entry_diagnostics(
         },
         "migration": runtime.maintenance_state.migration.as_dict(),
         "runtime": {
+            "options_flow_contract": "0.9.7",
+            "manual_cleanup_policy": "all_safe_inactive_age_independent",
             "server_history_records": stats.server_history_records,
             "home_assistant_players": stats.ha_players,
             "playing_or_paused": stats.protected_playback,

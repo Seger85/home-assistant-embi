@@ -22,6 +22,7 @@ from .const import (
 )
 from .helpers import ACTIVE_STATES
 from .models import CleanupRunReport, EmbiRuntimeData
+from .registry_state import state_is_restored
 from .reporting import log_level_for_report, notification_required
 from .scheduling import next_regular_run, parse_utc, utc_iso
 
@@ -36,13 +37,14 @@ def cleanup_lock(hass: HomeAssistant, entry_id: str) -> asyncio.Lock:
 
 
 def active_player_keys(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
-    """Return exact EMBi player keys that are currently playing or paused."""
-    active: set[str] = set()
-    runtime = getattr(entry, "runtime_data", None)
-    pyemby = getattr(runtime, "pyemby", None)
-    for device_id, device in getattr(pyemby, "devices", {}).items():
-        if str(getattr(device, "state", "")).casefold() in ACTIVE_STATES:
-            active.add(str(device_id))
+    """Return exact live player keys that are active or cannot be rated safely."""
+    protected: set[str] = set()
+    runtime: EmbiRuntimeData = entry.runtime_data
+
+    for player_key, device in getattr(runtime.pyemby, "devices", {}).items():
+        state = str(getattr(device, "state", "")).casefold()
+        if state in ACTIVE_STATES or state in {"", "unknown", "unavailable"}:
+            protected.add(str(player_key))
 
     registry = er.async_get(hass)
     for entity in registry.entities.values():
@@ -53,9 +55,17 @@ def active_player_keys(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
         ):
             continue
         state = hass.states.get(entity.entity_id)
-        if state is not None and str(state.state).casefold() in ACTIVE_STATES:
-            active.add(str(entity.unique_id))
-    return active
+        if state_is_restored(state):
+            continue
+        state_value = str(getattr(state, "state", "")).casefold()
+        if (
+            state is None
+            or state_value in ACTIVE_STATES
+            or state_value in {"", "unknown", "unavailable"}
+        ):
+            protected.add(str(entity.unique_id))
+
+    return protected
 
 
 def _notification_id(entry: ConfigEntry) -> str:
@@ -173,6 +183,6 @@ async def _async_finish_without_registry(
             hass,
             entry,
             "Die EMBi-Bereinigung wurde nur teilweise abgeschlossen. "
-            "Details stehen unter Letzter Bereinigungslauf und in den Diagnosedaten.",
+            "Details stehen im aktuellen Bereinigungsstatus und in den Diagnosedaten.",
         )
     return True

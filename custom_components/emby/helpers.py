@@ -113,7 +113,9 @@ def device_selector_options(devices: Iterable[EmbyDeviceRecord]) -> dict[str, st
     return {device.player_key: device.label for device in devices}
 
 
-def reported_device_selector_options(devices: Iterable[EmbyDeviceRecord]) -> dict[str, str]:
+def reported_device_selector_options(
+    devices: Iterable[EmbyDeviceRecord],
+) -> dict[str, str]:
     """Return one human-readable selector option per raw client identity."""
     options: dict[str, str] = {}
     grouped: dict[str, list[EmbyDeviceRecord]] = {}
@@ -175,7 +177,14 @@ def server_device_selector_options(
     options: dict[str, str] = {}
     for device in sorted(
         records,
-        key=lambda item: (base_by_id[item.record_id].casefold(), item.record_id),
+        key=lambda item: (
+            item.last_activity_datetime is None,
+            item.last_activity_datetime.timestamp()
+            if item.last_activity_datetime is not None
+            else 0,
+            base_by_id[item.record_id].casefold(),
+            item.record_id,
+        ),
     ):
         base = base_by_id[device.record_id]
         ordinals[base] += 1

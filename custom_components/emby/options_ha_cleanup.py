@@ -10,7 +10,6 @@ from .const import (
     CONF_FLOW_ACTION,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_PAGE,
-    CONF_SEARCH_QUERY,
     CONF_SELECTED_HA_ENTITY_IDS,
     CONF_SELECTED_RESTORE_KEYS,
     FLOW_ACTION_BACK,
@@ -60,14 +59,11 @@ class HomeAssistantCleanupOptionsMixin:
             stats = None
             errors["base"] = "cannot_connect"
 
-        query = self._search_query.casefold()
         removable = [
             player
             for player in players
             if player.registry_present and player.removable and player.entity_id
         ]
-        if query:
-            removable = [player for player in removable if query in player.search_text]
         if self._dirty and "base" not in errors:
             errors["base"] = "unsaved_changes"
 
@@ -79,11 +75,7 @@ class HomeAssistantCleanupOptionsMixin:
         )
         self._page_by_step["manage_ha_players"] = page
 
-        fields: dict[Any, Any] = {
-            vol.Optional(CONF_SEARCH_QUERY, default=self._search_query): selector.TextSelector(
-                selector.TextSelectorConfig()
-            )
-        }
+        fields: dict[Any, Any] = {}
         if total_pages > 1:
             fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(total_pages)
         if page_players and not self._dirty:
@@ -98,7 +90,6 @@ class HomeAssistantCleanupOptionsMixin:
         if user_input is not None:
             if back_requested(user_input):
                 return await self.async_step_ha_players()
-            self._search_query = str(user_input.get(CONF_SEARCH_QUERY, self._search_query)).strip()
             if not errors:
                 selected = [str(value) for value in user_input.get(CONF_SELECTED_HA_ENTITY_IDS, [])]
                 allowed = {player.entity_id for player in page_players}
@@ -196,9 +187,6 @@ class HomeAssistantCleanupOptionsMixin:
 
         hidden = {str(value) for value in self._entry.options.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
         candidates = [player for player in players if player.player_key in hidden]
-        query = self._search_query.casefold()
-        if query:
-            candidates = [player for player in candidates if query in player.search_text]
         requested_page = self._page_by_step.get("restore_ha_players", 1)
         if user_input and user_input.get(CONF_PAGE):
             requested_page = int(user_input[CONF_PAGE])
@@ -207,11 +195,7 @@ class HomeAssistantCleanupOptionsMixin:
         )
         self._page_by_step["restore_ha_players"] = page
 
-        fields: dict[Any, Any] = {
-            vol.Optional(CONF_SEARCH_QUERY, default=self._search_query): selector.TextSelector(
-                selector.TextSelectorConfig()
-            )
-        }
+        fields: dict[Any, Any] = {}
         if total_pages > 1:
             fields[vol.Optional(CONF_PAGE, default=str(page))] = _page_selector(total_pages)
         if page_players and not self._dirty:
@@ -226,7 +210,6 @@ class HomeAssistantCleanupOptionsMixin:
         if user_input is not None:
             if back_requested(user_input):
                 return await self.async_step_ha_players()
-            self._search_query = str(user_input.get(CONF_SEARCH_QUERY, self._search_query)).strip()
             if not errors:
                 selected = [str(value) for value in user_input.get(CONF_SELECTED_RESTORE_KEYS, [])]
                 allowed = {player.player_key for player in page_players}

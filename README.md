@@ -1,109 +1,68 @@
 # EMBi – Emby in Home Assistant, ohne Gerätefriedhof
 
-**EMBi ist die Emby-Integration für alle, die irgendwann mehr Geräte in der Liste haben als im Haus.**
-
-Sie verbindet deinen lokalen Emby-Server mit Home Assistant, übernimmt bestehende Media-Player und gibt dir Kontrolle über sichtbare Player, historische Servereinträge und technische Zugriffe.
-
-Kurz gesagt: **weniger Gerätechaos, mehr Kontrolle – mit Sicherheitsprüfungen vor jeder dauerhaften Aktion.**
-
-## Was EMBi trennt
-
-EMBi behandelt drei Dinge bewusst getrennt:
-
-- **Emby-Serverhistorie:** historische Gerätedatensätze auf dem Emby-Server
-- **Home-Assistant-Player:** registrierte `media_player`-Entities
-- **Sichtbarkeitsregeln:** welche Player EMBi bereitstellt oder verborgen hält
-
-Dadurch ist klar, ob du nur eine App-Variante ausblendest, einen Home-Assistant-Player entfernst oder einen alten Serverdatensatz löschst.
+**EMBi verbindet einen lokalen Emby-Server mit Home Assistant und trennt dabei Player-Sichtbarkeit, Home-Assistant-Entities und historische Emby-Servereinträge sauber voneinander.**
 
 ## Home-Assistant-Player
 
-Der Bereich **Home-Assistant-Player** beginnt mit den globalen Einstellungen:
+Der Bereich **Home-Assistant-Player** enthält ausschließlich die globalen Schalter und die Gruppenauswahl:
 
 - Player nur während Wiedergabe oder Pause anzeigen
 - neue Player automatisch hinzufügen
 - technische Zugriffe als Player anzeigen
+- Gruppe öffnen
 
-Danach navigierst du über kurze Gruppen mit Anzahl:
+Innerhalb einer Gruppe besitzt jeder Player einen direkten Ein-/Aus-Schalter. Die Zeilen bleiben kompakt:
 
-- bekannte Emby-Benutzer
-- **Gemeinsam genutzt** für Geräte mit mehreren bekannten Benutzern
-- **Ohne Benutzerzuordnung**
-- **Technische Zugriffe**
-- **Unklare Clients**
+> Wohnzimmer · Emby TV  
+> Zuletzt: 18.07.2026 14:30
 
-Normale Playerzeilen bleiben kompakt, beispielsweise:
+Bekannte Zugriffe sind immer **älteste zuerst** sortiert. Unbekannte Zeitpunkte stehen am Ende. Suchfeld und Sortierauswahl gibt es nicht mehr.
 
-> Wohnzimmer · Emby TV
+Laufende, pausierte und nicht eindeutig bewertbare Player bleiben geschützt. Ein sicher inaktiver, ausgeschalteter Player wird erst nach **Änderungen prüfen → Änderungen übernehmen** aus der Home-Assistant-Registry entfernt. Der Emby-Servereintrag bleibt dabei bestehen und der Player kann über EMBi wiederhergestellt werden.
 
-Interne Schlüssel, Unique IDs und Rohstatus erscheinen nicht in Auswahlfeldern. Home-Assistant-Anzeigename, Entity-ID und weitere technische Angaben stehen nur in der Detailansicht.
+## Entwurf und Navigation
 
-### Benutzergruppen und direkte Player-Schalter
+Nicht destruktive Unterseiten verwenden den normalen Home-Assistant-OK-Submit:
 
-Innerhalb einer Benutzer- oder Clientgruppe besitzt jeder Player direkt einen Ein-/Aus-Schalter. Damit lassen sich einzelne Player ohne zusätzliche Ausnahmenseite ein- oder ausblenden.
-
-Der Gruppenstatus wird aus den gewählten Playern abgeleitet. Laufende und pausierte Wiedergaben bleiben geschützt. Optional kann weiterhin eine technische Detailansicht für einen einzelnen Player geöffnet werden.
-
-## Änderungen prüfen
-
-Normale Einstellungen werden zunächst nur im geöffneten Dialog gesammelt.
-
-- **‹ Zurück** wechselt die Seite und behält den Entwurf.
-- **Änderungen prüfen** zeigt eine verständliche Zusammenfassung.
-- **Änderungen übernehmen** schreibt genau einmal, lädt EMBi höchstens einmal neu und führt anschließend sichtbar zur Hauptseite zurück.
-- Eine Bestätigung auf der Hauptseite zeigt, dass die Einstellungen gespeichert und EMBi neu geladen wurden.
-- **Änderungen verwerfen** setzt den Entwurf ohne Speicherung zurück.
+- OK übernimmt sichtbare Werte nur in den In-Memory-Entwurf und führt eine Ebene zurück.
+- **Änderungen prüfen** zeigt den semantischen Unterschied zum gespeicherten Stand.
+- **Änderungen übernehmen** speichert genau einmal und schließt den Options Flow sofort.
+- Reload, Registry-Abgleich und gegebenenfalls sofort fällige automatische Bereinigung laufen anschließend als nachgelagerter Task.
+- **Änderungen verwerfen** verwirft den Entwurf.
 - Schließen über **X** speichert nichts.
 
-Normale Fehler bleiben als Hinweis auf der aktuellen Seite. Sie beenden den Options Flow nicht.
+## Direkte Hauptnavigation
 
-## Emby-Server bereinigen
+1. **Home-Assistant-Player**
+2. **Automatische Serverbereinigung**
+3. **Einzelne Emby-Servereinträge löschen**
+4. **Änderungen prüfen** – nur bei offenem Entwurf
 
-Der Bereich **Emby-Server bereinigen** enthält:
+Ein zusätzliches Bereinigungs-Zwischenmenü gibt es nicht mehr.
 
-1. **Automatische Bereinigung**
-2. **Jetzt auf alte Einträge prüfen**
-3. **Letzter Bereinigungslauf**
-4. **‹ Zurück**
+## Automatische Serverbereinigung
 
-Manuelle und automatische Altersgrenzen bleiben getrennt. Die Presets 7, 30, 90, 180 und 365 Tage sowie benutzerdefinierte Werte werden unterstützt. Bestehende exakte Werte wie `364` bleiben unverändert.
+Die automatische Bereinigung behält die vorhandene Altersgrenze, Zeitplanung und Sicherheitslogik. Auf derselben Seite stehen:
 
-### Automatische Bereinigung
+- letzter Lauf und Modus
+- verwendete Altersgrenze
+- gelöschte, geschützte und fehlgeschlagene Einträge
+- nächster geplanter Lauf
 
-Die automatische Bereinigung hält immer an der gespeicherten Altersgrenze fest. Nach dem Aktivieren registriert EMBi den persistenten Scheduler und führt einen fälligen ersten Lauf nach einer kurzen Grace Period aus. Weitere Läufe werden jeweils 24 Stunden nach Abschluss des vorherigen Laufversuchs geplant.
+Änderungen werden auch hier zunächst nur in den Entwurf übernommen.
 
-### Manuelle Bereinigung
+## Einzelne Emby-Servereinträge löschen
 
-Bei der manuellen Prüfung stehen zwei Geltungsbereiche zur Verfügung:
+Die manuelle Auswahl zeigt immer alle eindeutig sicheren inaktiven Servereinträge **unabhängig vom Alter** und fest **älteste zuerst**. Es gibt keine manuelle Altersgrenze und keinen Scope-Selektor. Die automatische Altersgrenze bleibt unverändert.
 
-- **Nur Einträge außerhalb der Altersgrenze**
-- **Alle sicheren Einträge – unabhängig vom Alter**
+Geschützt bleiben:
 
-Damit können bewusst auch jüngere historische Datensätze ausgewählt werden, ohne die automatische Altersregel zu verändern.
+- `playing`
+- `paused`
+- unklare Wiedergabe- oder Identitätszustände
+- Einträge ohne verlässlichen Aktivitätszeitpunkt
 
-Vor jeder Serverlöschung prüft EMBi erneut:
-
-- der Datensatz gehört weiterhin eindeutig zum ausgewählten Servereintrag
-- ein gültiger Aktivitätszeitpunkt ist vorhanden
-- der zugehörige Player spielt nicht und ist nicht pausiert
-- Server, Config Entry, Plattform und Identität sind weiterhin eindeutig
-- bei automatischen Läufen und manueller Altersprüfung ist die konfigurierte Altersgrenze erfüllt
-
-Die Kandidatenauswahl ist die Vorschau. Danach folgt genau eine eindeutig bezeichnete Ausführung, beispielsweise **3 Emby-Einträge löschen**.
-
-Eine Serverlöschung ändert Sichtbarkeitsregeln nicht automatisch.
-
-## Home-Assistant-Player entfernen
-
-Nicht spielende EMBi-Player können im Playerbereich aus Home Assistant entfernt werden, ohne die Emby-Serverhistorie zu löschen.
-
-EMBi speichert zuerst die exakte Hidden-Regel, validiert die Registry-Zuordnung erneut, lädt die Integration neu und bestätigt den Erfolg erst, wenn der Player nicht zurückgekehrt ist. `playing`, `paused` und unklare Wiedergabezustände bleiben geschützt.
-
-Registry-Einträge ohne aktuellen Emby-Datensatz heißen **Nicht mehr vom Emby-Server gemeldet**. Dieser Zustand ist nicht automatisch ein Home-Assistant-Orphan. Deaktivierte, aber gültige Entities bleiben ebenfalls gültige Entities.
-
-### Player wiederherstellen
-
-Beim Wiederherstellen entfernt EMBi die passende Regel, lädt neu und prüft die entstandene Entity. Eine neu angelegte Entity kann anschließend erneute Zuordnungen in Dashboards, Automationen, HomeKit oder Siri erfordern.
+Nach Auswahl folgen Vorschau und eindeutige Bestätigung. Erst nach erfolgreicher Serverlöschung darf eine exakt zugeordnete Home-Assistant-Entity entfernt werden. Config Entry, Domain, Plattform, Entity-ID, Unique-ID, verbleibende Serverhistorie und Wiedergabestatus werden frisch geprüft. Eine pauschale Registry-Bereinigung findet nicht statt.
 
 ## Installation über HACS
 
@@ -111,43 +70,32 @@ Beim Wiederherstellen entfernt EMBi die passende Regel, lädt neu und prüft die
 2. `Seger85/home-assistant-embi` als benutzerdefiniertes Integrations-Repository hinzufügen.
 3. **Emby Integration - EMBi** installieren oder aktualisieren.
 4. Home Assistant neu starten.
-5. Unter **Einstellungen → Geräte & Dienste** EMBi hinzufügen oder die bestehenden Optionen öffnen.
+5. EMBi unter **Einstellungen → Geräte & Dienste** konfigurieren.
 
-EMBi wird ausschließlich über reguläre GitHub-Releases bereitgestellt. Das HACS-Paket heißt `embi.zip`; die zugehörige Prüfsumme liegt im Releaseasset `embi.zip.sha256`.
+EMBi wird ausschließlich über reguläre GitHub-Releases bereitgestellt. Das HACS-Paket heißt `embi.zip`; die Prüfsumme liegt in `embi.zip.sha256`.
 
-## Upgrade auf 0.9.3
+## Upgrade auf 0.9.7
 
-Die Migration ist idempotent und erhält insbesondere:
+Die Migration erhält:
 
-- Config Entry und bestehende Entity-IDs
-- Unique IDs und individuelle Namen
-- Aliase, Areas, Labels und deaktivierten Registry-Zustand
-- wirksame Sichtbarkeitsentscheidungen
-- Status der automatischen Bereinigung
-- manuelle und automatische Alterswerte
+- Config Entry und Verbindung
+- bestehende Entity-IDs und Unique-IDs
+- individuelle Namen, Aliase, Areas und Labels
+- deaktivierten Registry-Zustand
+- bestehende Sichtbarkeitsregeln
+- automatische Bereinigung einschließlich exakter Alterswerte
 - Scheduler- und Laufstatus
 
-Nicht eindeutig auflösbare ältere Regeln werden sichtbar erhalten und nicht still verworfen. Ein vollständiges Home-Assistant-Backup vor dem Update bleibt empfohlen. Direkte Änderungen an `.storage` sind weder erforderlich noch unterstützt.
-
-## Datenschutz und Sicherheit
-
-- lokale Kommunikation mit dem Emby-Server
-- redigierte Diagnostics ohne API-Schlüssel oder vollständige private Clientidentitäten
-- unterstützte Home-Assistant-APIs statt direkter `.storage`-Bearbeitung
-- exakte Registry-Prüfung nach Domain, Plattform, Config Entry und Unique ID
-- frische Revalidierung unmittelbar vor dauerhaften Aktionen
-- gemeinsamer Lock gegen parallele Wartungsläufe
-- persistenter Scheduler und persistenter Laufbericht
+Die bisherige manuelle Altersoption bleibt migrationssicher in gespeicherten Optionen erhalten, wird aber nicht mehr als UI-Steuerung verwendet. Vor dem Update bleibt ein vollständiges Home-Assistant-Backup empfohlen. Direkte Änderungen an `.storage` sind nicht erforderlich und nicht unterstützt.
 
 ## Dokumentation
 
 - [Konfiguration](docs/configuration.md)
-- [Bereinigung](docs/server-cleanup.md)
+- [Serverbereinigung](docs/server-cleanup.md)
 - [Architektur](docs/architecture.md)
 - [Sicherheit](docs/security.md)
 - [Fehlerbehebung](docs/troubleshooting.md)
 - [UI-Qualitätssicherung](docs/ui-qa.md)
-- [Roadmap](ROADMAP.md)
 
 ## Credits
 

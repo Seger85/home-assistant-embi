@@ -25,7 +25,6 @@ from .const import (
     FLOW_ACTION_APPLY,
     FLOW_ACTION_BACK,
     FLOW_ACTION_DISCARD,
-    PLAYER_SORT_OLDEST,
 )
 from .maintenance import async_run_automatic_cleanup
 from .models import EmbiRuntimeData
@@ -68,7 +67,7 @@ class EmbyOptionsFlow(
     HomeAssistantCleanupOptionsMixin,
     config_entries.OptionsFlow,
 ):
-    """EMBi 0.9.5 Options Flow with a preserved in-memory draft."""
+    """EMBi 0.9.7 Options Flow with a preserved in-memory draft."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
@@ -83,12 +82,9 @@ class EmbyOptionsFlow(
         self._pending_enable_entity_ids: set[str] = set()
         self._selected_group: str | None = None
         self._selected_player_key: str | None = None
-        self._search_query = ""
-        self._player_sort_order = PLAYER_SORT_OLDEST
         self._page_by_step: dict[str, int] = {}
         self._review_error: str | None = None
         self._section_error: dict[str, str] = {}
-        self._manual_age_preset: str | None = None
         self._automatic_age_preset: str | None = None
         self._apply_notice = ""
 
@@ -150,7 +146,7 @@ class EmbyOptionsFlow(
         except Exception:
             _LOGGER.exception("Failed to build EMBi root-menu statistics")
             stats = None
-        menu_options = ["ha_players", "server_cleanup"]
+        menu_options = ["ha_players", "automatic_cleanup", "server_history_check"]
         _lines, count = await self._review_lines()
         if self._dirty:
             menu_options.append("review_changes")
@@ -241,7 +237,6 @@ class EmbyOptionsFlow(
         self._pending_enable_entity_ids.clear()
         self._selected_group = None
         self._selected_player_key = None
-        self._search_query = ""
         self._page_by_step.clear()
         self._review_error = None
         self._section_error.clear()

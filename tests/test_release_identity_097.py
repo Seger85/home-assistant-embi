@@ -12,8 +12,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 def test_dependency_free_version_reader_matches_repository() -> None:
-    assert MODULE.manifest_version() == "0.9.6"
-    assert MODULE.constant_version() == "0.9.6"
+    assert MODULE.manifest_version() == "0.9.7"
+    assert MODULE.constant_version() == "0.9.7"
 
 
 def test_stable_workflow_avoids_known_release_failures() -> None:
