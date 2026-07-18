@@ -9,7 +9,7 @@ from .const import CONF_FLOW_ACTION, FLOW_ACTION_BACK, FLOW_ACTION_SAVE
 
 
 def action_selector(options: Iterable[Mapping[str, str]]) -> selector.SelectSelector:
-    """Return a frontend-serializable native list selector for flow actions."""
+    """Return a frontend-serializable native dropdown for flow actions."""
     normalized = [
         {"value": str(option["value"]), "label": str(option["label"])} for option in options
     ]
@@ -17,7 +17,7 @@ def action_selector(options: Iterable[Mapping[str, str]]) -> selector.SelectSele
         selector.SelectSelectorConfig(
             options=normalized,
             multiple=False,
-            mode=selector.SelectSelectorMode.LIST,
+            mode=selector.SelectSelectorMode.DROPDOWN,
         )
     )
 
