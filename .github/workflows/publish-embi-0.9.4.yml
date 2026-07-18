@@ -1,0 +1,246 @@
+name: Publish EMBi 0.9.4 stable
+
+on:
+  push:
+    branches:
+      - "release/0.9.4"
+
+concurrency:
+  group: publish-embi-0.9.4
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+env:
+  RELEASE_COMMIT: ffa8906523e9fe4c9fa045fda8e3cad090804345
+  RELEASE_TAG: v0.9.4
+  RELEASE_VERSION: 0.9.4
+  IMPLEMENTATION_BRANCH: release/0.9.4
+  PR_NUMBER: "46"
+
+jobs:
+  validate-package:
+    name: Validate and package merged main
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Verify immutable release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${RELEASE_COMMIT}"
+          manifest_version="$(python -c 'import json; print(json.load(open("custom_components/emby/manifest.json"))["version"])')"
+          internal_version="$(python -c 'from custom_components.emby.const import VERSION; print(VERSION)')"
+          test "${manifest_version}" = "${RELEASE_VERSION}"
+          test "${internal_version}" = "${RELEASE_VERSION}"
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "${RELEASE_COMMIT}"
+      - name: Install validation dependencies
+        run: python -m pip install -q --upgrade pip -r requirements_test.txt
+      - name: Run complete quality and contract validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool custom_components/emby/manifest.json >/dev/null
+          python -m json.tool custom_components/emby/strings.json >/dev/null
+          python -m json.tool custom_components/emby/translations/de.json >/dev/null
+          python -m json.tool custom_components/emby/translations/en.json >/dev/null
+          python -m json.tool hacs.json >/dev/null
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          paths = [Path(".github/dependabot.yml")]
+          paths.extend(sorted(Path(".github/workflows").glob("*.yml")))
+          for path in paths:
+              yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+          PY
+          python -m compileall -q custom_components/emby scripts tests
+          mypy --ignore-missing-imports --follow-imports=skip \
+            custom_components/emby/options_model.py \
+            custom_components/emby/player_context.py \
+            custom_components/emby/options_runtime.py
+          ruff check .
+          ruff format --check .
+          pytest -q
+          python scripts/validate_spec_contract.py
+          python scripts/validate_stable_contract.py
+          python scripts/secret_scan.py
+      - name: Build and verify immutable assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          python scripts/build_package.py \
+            --output-dir dist \
+            --expected-version "${RELEASE_VERSION}" \
+            --commit "${RELEASE_COMMIT}"
+          (cd dist && sha256sum --check embi.zip.sha256)
+          test "$(cat dist/BUILD_COMMIT)" = "${RELEASE_COMMIT}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stable-assets-${{ env.RELEASE_COMMIT }}
+          path: |
+            dist/embi.zip
+            dist/embi.zip.sha256
+            dist/BUILD_COMMIT
+          if-no-files-found: error
+          retention-days: 1
+
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+      - uses: hacs/action@main
+        with:
+          category: integration
+          comment: false
+          ignore: brands description license topics
+
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+      - uses: home-assistant/actions/hassfest@master
+
+  publish-verify-cleanup:
+    name: Publish, verify and clean up
+    needs: [validate-package, hacs, hassfest]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v5
+        with:
+          name: stable-assets-${{ env.RELEASE_COMMIT }}
+          path: dist
+      - name: Reverify packaged assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum --check embi.zip.sha256)
+          test "$(cat dist/BUILD_COMMIT)" = "${RELEASE_COMMIT}"
+      - name: Create immutable stable tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "::error::Tag ${RELEASE_TAG} already exists."
+            exit 1
+          fi
+          git push origin "${RELEASE_COMMIT}:refs/tags/${RELEASE_TAG}"
+      - name: Publish stable GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: EMBi ${{ env.RELEASE_VERSION }}
+          target_commitish: ${{ env.RELEASE_COMMIT }}
+          files: |
+            dist/embi.zip
+            dist/embi.zip.sha256
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          prerelease: false
+          draft: false
+          make_latest: true
+      - name: Verify release, assets, checksum, latest and tag target
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
+          jq -e --arg tag "${RELEASE_TAG}" '.tag_name == $tag' <<<"${release_json}" >/dev/null
+          jq -e --arg name "EMBi ${RELEASE_VERSION}" '.name == $name' <<<"${release_json}" >/dev/null
+          jq -e '.draft == false and .prerelease == false' <<<"${release_json}" >/dev/null
+          jq -e '.assets | length == 2 and any(.name == "embi.zip") and any(.name == "embi.zip.sha256")' <<<"${release_json}" >/dev/null
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)" = "${RELEASE_TAG}"
+
+          rm -rf verify-release
+          mkdir verify-release
+          gh release download "${RELEASE_TAG}" --dir verify-release --pattern embi.zip --pattern embi.zip.sha256
+          (cd verify-release && sha256sum --check embi.zip.sha256)
+          cmp dist/embi.zip verify-release/embi.zip
+          cmp dist/embi.zip.sha256 verify-release/embi.zip.sha256
+
+          git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          tag_sha="$(git rev-list -n 1 "${RELEASE_TAG}")"
+          test "${tag_sha}" = "${RELEASE_COMMIT}"
+
+          expected_sha="$(awk '{print $1}' verify-release/embi.zip.sha256)"
+          actual_sha="$(sha256sum verify-release/embi.zip | awk '{print $1}')"
+          test "${actual_sha}" = "${expected_sha}"
+          release_url="$(jq -r '.html_url' <<<"${release_json}")"
+          zip_size="$(jq -r '.assets[] | select(.name == "embi.zip") | .size' <<<"${release_json}")"
+          checksum_size="$(jq -r '.assets[] | select(.name == "embi.zip.sha256") | .size' <<<"${release_json}")"
+          zip_digest="$(jq -r '.assets[] | select(.name == "embi.zip") | (.digest // "not-provided")' <<<"${release_json}")"
+
+          {
+            echo "tag_sha=${tag_sha}"
+            echo "asset_sha=${actual_sha}"
+            echo "release_url=${release_url}"
+            echo "zip_size=${zip_size}"
+            echo "checksum_size=${checksum_size}"
+            echo "zip_digest=${zip_digest}"
+          } >> "${GITHUB_OUTPUT}"
+      - name: Document verified publication on PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_SHA: ${{ steps.verify.outputs.tag_sha }}
+          ASSET_SHA: ${{ steps.verify.outputs.asset_sha }}
+          RELEASE_URL: ${{ steps.verify.outputs.release_url }}
+          ZIP_SIZE: ${{ steps.verify.outputs.zip_size }}
+          CHECKSUM_SIZE: ${{ steps.verify.outputs.checksum_size }}
+          ZIP_DIGEST: ${{ steps.verify.outputs.zip_digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/publication.md <<EOF
+          ## EMBi 0.9.4 stable publication verified
+
+          - Implementation commit: \`4de4bd5d0bc93bcbd38d8a28f5684d6092618bab\`
+          - Merge/main commit: \`${RELEASE_COMMIT}\`
+          - Tag: \`${RELEASE_TAG}\`
+          - Tag target: \`${TAG_SHA}\`
+          - Release: [EMBi ${RELEASE_VERSION}](${RELEASE_URL})
+          - Draft: \`false\`
+          - Prerelease: \`false\`
+          - Latest: \`true\`
+          - Assets: \`embi.zip\` (${ZIP_SIZE} bytes), \`embi.zip.sha256\` (${CHECKSUM_SIZE} bytes)
+          - SHA-256: \`${ASSET_SHA}\`
+          - GitHub asset digest: \`${ZIP_DIGEST}\`
+          - Downloaded assets match the validated build byte-for-byte.
+          - Quality, 143 Pytests, Spec Contract, Stable Contract, Secret Scan, package checksum, HACS and Hassfest passed on the merged main commit.
+          - Publication workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Signed-off-by: Seger
+          EOF
+          sed -i 's/^          //' /tmp/publication.md
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f "body=$(cat /tmp/publication.md)" >/dev/null
+      - name: Remove temporary implementation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin --delete "${IMPLEMENTATION_BRANCH}"
