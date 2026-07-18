@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - "release/0.9.4"
+  pull_request:
+    branches:
+      - main
 
 concurrency:
   group: publish-embi-0.9.4
@@ -12,16 +15,18 @@ concurrency:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 env:
   RELEASE_COMMIT: ffa8906523e9fe4c9fa045fda8e3cad090804345
   RELEASE_TAG: v0.9.4
   RELEASE_VERSION: 0.9.4
   IMPLEMENTATION_BRANCH: release/0.9.4
-  PR_NUMBER: "46"
+  IMPLEMENTATION_PR: "46"
 
 jobs:
   validate-package:
+    if: ${{ github.event_name == 'push' || github.head_ref == 'release/0.9.4' }}
     name: Validate and package merged main
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -98,6 +103,7 @@ jobs:
           retention-days: 1
 
   hacs:
+    if: ${{ github.event_name == 'push' || github.head_ref == 'release/0.9.4' }}
     name: HACS validation
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -112,6 +118,7 @@ jobs:
           ignore: brands description license topics
 
   hassfest:
+    if: ${{ github.event_name == 'push' || github.head_ref == 'release/0.9.4' }}
     name: Hassfest
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -122,6 +129,7 @@ jobs:
       - uses: home-assistant/actions/hassfest@master
 
   publish-verify-cleanup:
+    if: ${{ github.event_name == 'push' || github.head_ref == 'release/0.9.4' }}
     name: Publish, verify and clean up
     needs: [validate-package, hacs, hassfest]
     runs-on: ubuntu-latest
@@ -205,7 +213,7 @@ jobs:
             echo "checksum_size=${checksum_size}"
             echo "zip_digest=${zip_digest}"
           } >> "${GITHUB_OUTPUT}"
-      - name: Document verified publication on PR
+      - name: Document verified publication on implementation PR
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_SHA: ${{ steps.verify.outputs.tag_sha }}
@@ -238,7 +246,14 @@ jobs:
           Signed-off-by: Seger
           EOF
           sed -i 's/^          //' /tmp/publication.md
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" -f "body=$(cat /tmp/publication.md)" >/dev/null
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${IMPLEMENTATION_PR}/comments" -f "body=$(cat /tmp/publication.md)" >/dev/null
+      - name: Close release-operations PR
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPERATIONS_PR: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: gh api --method PATCH "repos/${GITHUB_REPOSITORY}/pulls/${OPERATIONS_PR}" -f state=closed >/dev/null
       - name: Remove temporary implementation branch
         shell: bash
         run: |
