@@ -200,7 +200,7 @@ async def test_unchanged_apply_stays_inline(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, _entry, store, hass = setup_flow()
     result = await flow.async_step_apply_changes()
-    assert result["type"] == "menu"
+    assert result["type"] == "form"
     assert result["step_id"] == "review_changes"
     assert "keine ungespeicherten Änderungen" in result["description_placeholders"]["error"]
     assert hass.config_entries.updates == []
