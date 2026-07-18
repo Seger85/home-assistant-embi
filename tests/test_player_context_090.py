@@ -257,7 +257,6 @@ def test_selector_label_is_compact_and_details_are_separate() -> None:
     assert filter_player_catalog([player], "media_player.wohnzimmer") == [player]
 
 
-
 def test_known_technical_apps_use_combined_non_playback_evidence() -> None:
     for app in ("Home Assistant", "EMBi", "Windmill", "Homarr Dashboard"):
         item = record(

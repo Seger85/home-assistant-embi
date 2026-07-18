@@ -9,18 +9,17 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_FLOW_ACTION,
     CONF_HIDDEN_EXACT_PLAYERS,
-    FLOW_ACTION_BACK,
-    FLOW_ACTION_EXECUTE,
     CONF_PAGE,
     CONF_SEARCH_QUERY,
     CONF_SELECTED_HA_ENTITY_IDS,
     CONF_SELECTED_RESTORE_KEYS,
+    FLOW_ACTION_BACK,
+    FLOW_ACTION_EXECUTE,
     PLAYER_PAGE_SIZE,
 )
 from .options_navigation import action_selector, back_requested, navigation_selector
 from .options_runtime import entity_options, fresh_catalog, page_slice, player_options
 from .player_actions import async_remove_ha_players, async_restore_players
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -152,7 +151,7 @@ class HomeAssistantCleanupOptionsMixin:
                             },
                             {
                                 "value": FLOW_ACTION_BACK,
-                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                                "label": "\u2039 Zurück" if self._is_de() else "\u2039 Back",
                             },
                         ]
                     )

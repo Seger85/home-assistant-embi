@@ -278,7 +278,6 @@ async def test_update_listener_reloads_once() -> None:
     assert hass.config_entries.reloads == [entry.entry_id]
 
 
-
 def _realistic_player_fixture():
     from custom_components.emby.player_context import build_player_catalog, catalog_stats
 

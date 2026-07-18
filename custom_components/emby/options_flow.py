@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import logging
+from copy import deepcopy
 from typing import Any
 
 import voluptuous as vol
@@ -14,12 +14,12 @@ from .const import (
     CONF_AUTO_SHOW_NEW_PLAYERS,
     CONF_FLOW_ACTION,
     CONF_HIDDEN_EXACT_PLAYERS,
-    FLOW_ACTION_APPLY,
-    FLOW_ACTION_BACK,
-    FLOW_ACTION_DISCARD,
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_TECHNICAL_ACCESS_VISIBILITY,
     CONF_USER_MASTER_VISIBILITY,
+    FLOW_ACTION_APPLY,
+    FLOW_ACTION_BACK,
+    FLOW_ACTION_DISCARD,
 )
 from .models import EmbiRuntimeData
 from .options_cleanup import CleanupOptionsMixin
@@ -182,22 +182,18 @@ class EmbyOptionsFlow(
                             {
                                 "value": FLOW_ACTION_APPLY,
                                 "label": (
-                                    "Änderungen übernehmen"
-                                    if self._is_de()
-                                    else "Apply changes"
+                                    "Änderungen übernehmen" if self._is_de() else "Apply changes"
                                 ),
                             },
                             {
                                 "value": FLOW_ACTION_DISCARD,
                                 "label": (
-                                    "Änderungen verwerfen"
-                                    if self._is_de()
-                                    else "Discard changes"
+                                    "Änderungen verwerfen" if self._is_de() else "Discard changes"
                                 ),
                             },
                             {
                                 "value": FLOW_ACTION_BACK,
-                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                                "label": "\u2039 Zurück" if self._is_de() else "\u2039 Back",
                             },
                         ]
                     )

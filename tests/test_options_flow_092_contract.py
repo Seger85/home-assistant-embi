@@ -69,9 +69,7 @@ def _key_paths(value, prefix=()):
 
 
 def test_translation_structures_remain_identical() -> None:
-    strings = json.loads(
-        (ROOT / "custom_components/emby/strings.json").read_text(encoding="utf-8")
-    )
+    strings = json.loads((ROOT / "custom_components/emby/strings.json").read_text(encoding="utf-8"))
     english = json.loads(
         (ROOT / "custom_components/emby/translations/en.json").read_text(encoding="utf-8")
     )

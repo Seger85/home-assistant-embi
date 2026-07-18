@@ -16,17 +16,17 @@ from .const import (
     AGE_PRESETS,
     CONF_DELETE_DEVICE_RECORD_IDS,
     CONF_FLOW_ACTION,
-    FLOW_ACTION_BACK,
-    FLOW_ACTION_EXECUTE,
-    FLOW_ACTION_OPEN_AUTOMATIC,
-    FLOW_ACTION_OPEN_HISTORY,
-    FLOW_ACTION_OPEN_LAST_RUN,
     CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
     CONF_SERVER_CLEANUP_AGE_DAYS,
     DEFAULT_REMOVE_HA_ENTITIES,
     DEFAULT_SERVER_CLEANUP_AGE_DAYS,
+    FLOW_ACTION_BACK,
+    FLOW_ACTION_EXECUTE,
+    FLOW_ACTION_OPEN_AUTOMATIC,
+    FLOW_ACTION_OPEN_HISTORY,
+    FLOW_ACTION_OPEN_LAST_RUN,
     MAX_SERVER_CLEANUP_AGE_DAYS,
     MIN_SERVER_CLEANUP_AGE_DAYS,
 )
@@ -132,7 +132,7 @@ class CleanupOptionsMixin:
                             },
                             {
                                 "value": FLOW_ACTION_BACK,
-                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                                "label": "\u2039 Zurück" if self._is_de() else "\u2039 Back",
                             },
                         ]
                     )
@@ -317,9 +317,7 @@ class CleanupOptionsMixin:
             },
         )
 
-    async def async_step_confirm_server_deletion(
-        self, user_input: dict[str, Any] | None = None
-    ):
+    async def async_step_confirm_server_deletion(self, user_input: dict[str, Any] | None = None):
         if not self._pending_cleanup_records:
             return await self.async_step_server_history_check()
         if user_input is not None:
@@ -345,7 +343,7 @@ class CleanupOptionsMixin:
                             },
                             {
                                 "value": FLOW_ACTION_BACK,
-                                "label": "‹ Zurück" if self._is_de() else "‹ Back",
+                                "label": "\u2039 Zurück" if self._is_de() else "\u2039 Back",
                             },
                         ]
                     )
@@ -451,9 +449,7 @@ class CleanupOptionsMixin:
                 "mode": mode,
                 "age": age,
                 "deleted": str(report.server_deleted),
-                "protected": str(
-                    report.skipped_active + report.registry_entities_protected
-                ),
+                "protected": str(report.skipped_active + report.registry_entities_protected),
                 "failed": str(report.server_failed),
                 "next_run": self._format_report_time(
                     report.next_run_at,
