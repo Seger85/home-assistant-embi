@@ -1,0 +1,39 @@
+name: Fix EMBi 0.9.2 Hassfest once
+
+on:
+  pull_request:
+    paths:
+      - "scripts/fix_092_hassfest.py"
+      - ".github/workflows/fix-092-hassfest-once.yml"
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Repair translation schema
+        run: python scripts/fix_092_hassfest.py
+      - name: Remove temporary helpers and commit
+        run: |
+          set -euo pipefail
+          git config user.name "Seger"
+          git config user.email "35084198+Seger85@users.noreply.github.com"
+          git rm -f scripts/fix_092_hassfest.py \
+                    .github/workflows/fix-092-hassfest-once.yml \
+                    .github/workflows/inspect-092-hassfest.yml
+          git add custom_components/emby/strings.json \
+                  custom_components/emby/translations/en.json \
+                  custom_components/emby/translations/de.json
+          git commit -m "fix: align 0.9.2 translation schema"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
