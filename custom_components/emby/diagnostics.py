@@ -12,6 +12,7 @@ from .const import (
     CONF_ALLOWED_DEVICE_IDS,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_HIDDEN_WHOLE_DEVICES,
+    CONF_REGISTRY_RECONCILIATION_VERSION,
     CONF_UNRESOLVED_LEGACY_RULES,
     CONF_USER_MASTER_VISIBILITY,
     NAME,
@@ -19,6 +20,7 @@ from .const import (
 )
 from .models import EmbiRuntimeData
 from .player_context import build_player_catalog, catalog_stats
+from .registry_state import state_is_restored
 
 _OPTION_IDENTITIES = {
     CONF_ALLOWED_DEVICE_IDS,
@@ -54,6 +56,11 @@ async def async_get_config_entry_diagnostics(
         visibility = "visible" if player.visible_in_embi else "hidden"
         visibility_counts[visibility] = visibility_counts.get(visibility, 0) + 1
 
+    stale_restored = sum(
+        bool(player.entity_id) and state_is_restored(hass.states.get(player.entity_id))
+        for player in players
+    )
+
     issues = sorted(
         {
             player.protected_reason
@@ -83,6 +90,10 @@ async def async_get_config_entry_diagnostics(
             "pyemby_initialized": runtime.pyemby is not None,
             "maintenance_storage_available": runtime.maintenance_storage_available,
             "automatic_cleanup_scheduled": runtime.auto_cleanup_scheduled,
+            "stale_restored_registry_entities": stale_restored,
+            "registry_reconciliation_version": int(
+                entry.options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0
+            ),
         },
         "classification": class_counts,
         "user_groups": group_counts,

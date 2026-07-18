@@ -42,11 +42,13 @@ def test_apply_reconciles_hidden_entities_and_runs_changed_auto_cleanup_immediat
     assert "cleanup_changed and updated_auto" in apply
 
 
-def test_release_is_tag_only_and_package_version_is_dynamic() -> None:
+def test_release_after_merge_and_package_version_is_dynamic() -> None:
     release = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
     quality = Path(".github/workflows/quality.yml").read_text(encoding="utf-8")
     package = Path(".github/workflows/test-artifact.yml").read_text(encoding="utf-8")
-    assert 'tags:\n      - "v*"' in release
-    assert 'branches:\n      - "release/v*"' not in release
+    assert "pull_request:" in release and "closed" in release
+    assert "workflow_dispatch:" in release
+    assert "FETCH_HEAD" in release
+    assert "origin/main" not in release
     assert "manifest.json" in quality and '--expected-version "${VERSION}"' in quality
     assert "manifest.json" in package and '--expected-version "${VERSION}"' in package

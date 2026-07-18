@@ -2,7 +2,7 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.4"
+VERSION = "0.9.5"
 PLATFORMS = ["media_player"]
 
 CONFIG_ENTRY_VERSION = 4
@@ -78,6 +78,8 @@ CONF_CONFIRM_HA_REMOVAL = "confirm_ha_removal"
 CONF_CONFIRM_SERVER_DELETION = "confirm_server_deletion"
 
 CONF_MAINTENANCE_STORE_INITIALIZED = "maintenance_store_initialized"
+CONF_REGISTRY_RECONCILIATION_VERSION = "registry_reconciliation_version"
+REGISTRY_RECONCILIATION_VERSION = 1
 CONF_CLEANUP_ENTITY_IDS = "cleanup_entity_ids"
 CONF_CONFIRM_CLEANUP = "confirm_cleanup"
 CONF_CONFIRM_BULK = "confirm_bulk"
