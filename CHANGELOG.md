@@ -1,7 +1,6 @@
 # Changelog
 
-
-## 0.9.3
+## [0.9.3] - 2026-07-18
 
 - Return to the EMBi main menu after applying settings and show a clear saved/reloaded confirmation.
 - Replace group exception multi-selects with direct native on/off switches for every player.
@@ -9,7 +8,6 @@
 - Add an explicit manual cleanup scope that can safely select recent server-history records while preserving playback, activity and identity revalidation.
 - Start newly enabled automatic cleanup through the persistent scheduler after a short ten-second grace period.
 - Replace the last-run Back dropdown with the native OK action.
-
 
 Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das Projekt folgt Semantic Versioning.
 
