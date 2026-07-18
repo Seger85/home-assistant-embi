@@ -21,4 +21,4 @@ jobs:
           run_id=29632177372
           job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n1)"
           gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > job.log
-          tail -n 100 job.log
+          tail -n 45 job.log
