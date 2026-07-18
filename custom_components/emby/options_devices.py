@@ -36,6 +36,7 @@ from .options_runtime import (
 from .player_context import (
     ACTIVE_PLAYBACK_STATES,
     CLIENT_CLASS_TECHNICAL,
+    GROUP_TECHNICAL,
     GROUP_USER_PREFIX,
     group_player_catalog,
 )

@@ -275,9 +275,9 @@ class CleanupOptionsMixin:
                         {
                             "value": MANUAL_CLEANUP_SCOPE_ALL_SAFE,
                             "label": (
-                                "Alle sicheren Einträge – unabhängig vom Alter"
+                                "Alle sicheren Einträge - unabhängig vom Alter"
                                 if self._is_de()
-                                else "All safe records – regardless of age"
+                                else "All safe records - regardless of age"
                             ),
                         },
                     ],

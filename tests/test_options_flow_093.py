@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 from custom_components.emby.api import EmbyDeviceRecord
 from custom_components.emby.cleanup import plan_device_cleanup
@@ -62,13 +63,13 @@ def test_active_technical_identity_remains_playback_protected() -> None:
 
 
 def test_automatic_path_cannot_bypass_age_contract_source() -> None:
-    source = open("custom_components/emby/maintenance_cycle_execute.py", encoding="utf-8").read()
+    source = Path("custom_components/emby/maintenance_cycle_execute.py").read_text(encoding="utf-8")
     assert "ignore_age=ignore_age if mode != RUN_MODE_AUTOMATIC else False" in source
 
 
 def test_apply_returns_root_and_group_uses_boolean_switches_source() -> None:
-    flow = open("custom_components/emby/options_flow.py", encoding="utf-8").read()
-    devices = open("custom_components/emby/options_devices.py", encoding="utf-8").read()
+    flow = Path("custom_components/emby/options_flow.py").read_text(encoding="utf-8")
+    devices = Path("custom_components/emby/options_devices.py").read_text(encoding="utf-8")
     assert "return await self.async_step_init()" in flow
     apply_tail = flow.split("async def async_step_apply_changes", 1)[1]
     assert 'reason="apply_complete"' not in apply_tail
