@@ -1,164 +1,62 @@
 # Changelog
 
-## 0.9.6
+## [0.9.7] - 2026-07-18
 
-- Close the Options Flow immediately after the final apply instead of re-entering the root page after a synchronous reload.
-- Run reload, exact registry reconciliation, and immediate automatic cleanup as a tracked post-apply task.
-- Replace redundant Save actions on non-destructive subpages with a single Back action that preserves the in-memory draft.
-- Show player rows as compact two-line labels with local last-access timestamps and no entity IDs.
-- Add transient oldest-first/newest-first sorting; oldest-first is the default for identifying stale clients.
-- Apply the existing search query to players inside the selected group.
-- Add regression tests for prompt flow completion, post-apply scheduling, Back-only draft navigation, timestamp labels, and sorting.
+### Player UX and draft navigation
+
+- Remove the player search field and transient sort selector; player groups are always sorted oldest-known access first with unknown timestamps at the end.
+- Reduce the Home Assistant player page to global switches and group navigation while retaining direct per-player switches inside each group.
+- Use compact two-line player labels with `Device · App` and localized last access.
+- Replace Back-only action dropdowns on non-destructive pages with the native OK submit, which updates only the in-memory draft and returns one level.
+- Keep permanent storage exclusively behind Review changes → Apply changes; closing the flow still saves nothing.
+
+### Server cleanup and lifecycle
+
+- Replace the server-cleanup intermediate menu with direct root entries for automatic cleanup and individual server-record deletion.
+- Show last run, result, protected counts and next run directly on the automatic-cleanup page.
+- Make manual cleanup always age-independent, oldest-first and limited to unequivocally safe inactive records; remove the manual age and scope controls without changing the automatic age threshold.
+- Remove an exact matching Home Assistant entity only after successful manual server deletion and fresh remaining-history, ownership, platform, Unique-ID and playback revalidation.
+- Continue protecting playing, paused and unclear players and preserve strict `stale_restored` ownership checks without blanket registry cleanup.
+
+### Quality
+
+- Update German and English translations, documentation, diagnostics, manifest and runtime identity to 0.9.7.
+- Add regression contracts for direct navigation, draft-only submits, fixed sorting, manual cleanup and lifecycle safety.
+
+## [0.9.6] - 2026-07-18
+
+- Close the Options Flow immediately after final apply and run reload, exact registry reconciliation and immediate automatic cleanup as a tracked post-apply task.
+- Replace redundant Save actions on non-destructive subpages with Back-only draft navigation.
+- Show compact two-line player labels with local last-access timestamps.
+- Add transient oldest/newest sorting and group search.
 
 ## [0.9.5] - 2026-07-18
 
-### Registry convergence and release reliability
-
-- Treat Home Assistant `stale_restored` states as removable registry remnants while continuing to protect every live, playing, paused or unclear player.
-- Run a one-time, retry-safe startup reconciliation for player switches that were already off before 0.9.5; exact entity ownership and Unique IDs remain mandatory.
-- Record the reconciliation result and expose privacy-safe stale-restored and migration counters in diagnostics.
-- Publish Stable releases directly after a merged internal `release/X.Y.Z` pull request, eliminating the separate tag-trigger or operations-PR chain.
-- Resolve versions with a dependency-free AST/JSON reader and validate the merge commit against freshly fetched `FETCH_HEAD`, preventing the recurring pre-dependency import and missing remote-tracking-ref failures.
+- Reconcile exact stale-restored Registry remnants while protecting live, playing, paused and unclear players.
+- Add retry-safe startup reconciliation and privacy-safe diagnostics.
+- Publish Stable releases directly after a merged internal release PR.
 
 ## [0.9.4] - 2026-07-18
 
-### Player lifecycle and UX
-
-- Make every group switch authoritative: after **Apply changes**, safely inactive switched-off players are removed from the Home Assistant entity registry while their Emby record remains available for restoration.
-- Reconcile already hidden 0.9.3 players during the next settings apply, without changing server history.
-- Remove the nested Home Assistant player remove/restore selector from the normal player workflow and remove the mismatched detail selector.
-- Improve duplicate and server-missing player labels using meaningful Home Assistant names, users and activity dates.
-- Classify technical registry-only identities such as Home Assistant, EMBi, Homarr, Windmill and MCP correctly even when no current Emby record remains.
-
-### Cleanup and release operations
-
-- Run a changed and enabled automatic-cleanup configuration immediately after Apply changes, then retain the normal 24-hour schedule.
-- Show the automatic age threshold and next run directly in the EMBi root summary.
-- Replace the release-request branch chain with one tag-only stable workflow after the implementation PR has passed CI and merged.
-- Resolve package versions dynamically from `manifest.json` in quality and artifact workflows to remove per-release hard-coded CI edits.
+- Make group switches authoritative while retaining exact entity identities and Emby history for restoration.
+- Run changed automatic cleanup immediately after Apply changes.
+- Introduce dynamic package-version resolution in CI.
 
 ## [0.9.3] - 2026-07-18
 
-- Return to the EMBi main menu after applying settings and show a clear saved/reloaded confirmation.
-- Replace group exception multi-selects with direct native on/off switches for every player.
-- Recognize Home Assistant, EMBi, Homarr, Windmill and other explicit API-only identities as technical clients even when an administrator user is attached.
-- Add an explicit manual cleanup scope that can safely select recent server-history records while preserving playback, activity and identity revalidation.
-- Start newly enabled automatic cleanup through the persistent scheduler after a short ten-second grace period.
-- Replace the last-run Back dropdown with the native OK action.
-
-Alle wesentlichen Änderungen an EMBi werden in dieser Datei dokumentiert. Das Projekt folgt Semantic Versioning.
+- Add direct native player switches, corrected technical-client classification and explicit safe manual cleanup.
+- Improve scheduler catch-up and cleanup reporting.
 
 ## [0.9.2] - 2026-07-17
 
-### Fixed
+- Repair frontend-serializable selectors, mobile labels, navigation and technical-client safety tests.
 
-- Repaired the Home Assistant player Options Flow for Home Assistant 2026.7.2 by emitting only frontend-serializable selector configuration.
-- Replaced toggle and chevron-based Back entries with non-persistent native form actions that preserve the complete draft.
-- Added a compact localized cleanup-run report and mobile-safe old-record labels without versions, UTC or internal identifiers.
-- Shortened the matching Home Assistant player cleanup label while retaining the full safety contract in its description.
-- Improved technical-client classification using capability, playback, app, registry and session evidence while keeping ambiguous clients protected.
+## [0.9.1] - 2026-07-17
 
-### Validation
-
-- Added realistic 69-record, 31-entity Options Flow fixtures, complete form serialization checks, navigation and translation contracts, mobile-label tests and technical-client classification coverage.
-- Kept all destructive operations behind fresh identity and playback revalidation; no migration or test deletes server history or Home Assistant entities.
-
-## [0.9.1] – 2026-07-17
-
-### UX
-
-- neues Hauptmenü mit **Home-Assistant-Player**, **Emby-Server bereinigen** und nur bei offenem Entwurf **Änderungen prüfen**
-- verlässliche Zurück-Navigation, die den aktuellen Entwurf erhält; `X` schließt weiterhin ausschließlich den gesamten Dialog
-- normale Verbindungs-, Auswahl- und Entwurfsfehler bleiben als Inline-Fehler auf der aktuellen Seite
-- kurze Player-Auswahltexte aus Gerät und App, Benutzer nur bei notwendiger Unterscheidung
-- Benutzer- und Clientgruppen als kompakte Navigation mit Playeranzahl
-- einzelne Player ausschließlich unter **Ausnahmen verwalten**, mit Suche und Seiten zu höchstens zwölf Einträgen
-- technische Entity- und Statusangaben ausschließlich in der Detailansicht
-- automatische Bereinigung, manuelle Prüfung und letzter Lauf als getrennte Unterseiten
-- benutzerdefinierte Altersangabe nur bei Auswahl von **Benutzerdefiniert**
-- Vorschau und genau eine eindeutig bezeichnete Ausführung für Server- und Home-Assistant-Bereinigung
-- vollständig lokalisierte Lauf- und Playerstatus sowie korrekte Singular-/Pluralanzeige für Änderungen
-
-### Safety und Migration
-
-- Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und Registry-Aktivierungszustand bleiben unverändert
-- Migration von 0.9.0 bleibt idempotent und erhält effektive Sichtbarkeit, automatische Bereinigung und exakte Alterswerte
-- `playing` und `paused` bleiben strikt geschützt
-- Registry-Player mit aktuellem Emby-Datensatz werden als Wiedergabe-Client-Kandidaten eingeordnet
-- Registry-Einträge ohne aktuellen Emby-Datensatz heißen **Nicht mehr vom Emby-Server gemeldet**; der Begriff `orphan` wird dafür nicht verwendet
-- keine automatische Ausblendung oder Löschung aufgrund der verfeinerten Klassifizierung
+- Introduce the product-oriented Options Flow, semantic review and stable migration contracts.
 
 ## [0.9.0]
 
-### Added
+- Add grouped player management, exact visibility rules, controlled Home Assistant Registry cleanup, server-history cleanup, diagnostics and HACS release packaging.
 
-- produktorientierter Bereich **Geräte & Player**
-- Gruppierung nach bekannten Emby-Benutzern
-- Gruppe **Gemeinsam genutzt** mit allen bekannten Benutzern
-- Gruppen **Ohne Benutzerzuordnung**, **Technische Zugriffe** und **Unklare Clients**
-- verständliche Player-Zeilen mit App, Gerät, Home-Assistant-Anzeigename, vollständiger Entity-ID und Status
-- Metadaten- und verhaltensbasierte Client-Klassifizierung ohne reine Produktnamen-Heuristik
-- kanonische Sichtbarkeitsregeln für einzelne App-Varianten, vollständige Geräte und Benutzer
-- sichtbarer Bereich für nicht eindeutig auflösbare ältere Regeln
-- gemeinsamer Bereich **Bereinigung** mit weiterhin getrennten Aktionen für Emby-Serverhistorie und Home-Assistant-Player
-- kontrolliertes Entfernen nicht spielender EMBi-Player aus Home Assistant
-- Wiederherstellung verborgener oder entfernter Player mit anschließender Entity-Prüfung
-- semantische Vorher-/Nachher-Ausgabe unter **Änderungen prüfen**
-- persistente, redigierte Zusammenfassungen von Migration, Player-Entfernung und Wiederherstellung
-- erweiterte aggregierte Diagnostics für Gruppen, Klassifizierung, Sichtbarkeit und Cleanup
-
-### Changed
-
-- Root-Navigation besteht aus **Geräte & Player**, **Bereinigung** und bei offenem Entwurf **Änderungen prüfen**
-- normale Einstellungen bleiben bis zum finalen Apply ausschließlich im Entwurf
-- normales Apply benötigt keinen zusätzlichen Bestätigungsschalter und lädt höchstens einmal neu
-- jede destruktive Aktion besitzt genau eine eigene abschließende Bestätigung
-- `playing` und `paused` sind bei Ausblenden und Entfernen geschützt
-- unklarer Wiedergabestatus arbeitet fail-safe
-- deaktivierte, weiterhin gültige Home-Assistant-Entities gelten nicht als verwaist
-- Serverhistorie und Home-Assistant-Player werden mit getrennten Zählern und Texten dargestellt
-- README ist eine produktorientierte Einführung statt einer Versionschronik
-- Manifest, Runtime und Paketvertrag verwenden `0.9.0`
-
-### Migration
-
-- Config Entry wird idempotent auf Schema 4 / Optionsschema 2 angehoben
-- Entity-IDs, Unique IDs, individuelle Namen, Aliase, Areas, Labels und deaktivierter Zustand bleiben unverändert
-- bestehende Sichtbarkeitsentscheidungen werden in exakte Player-, Geräte- und Benutzerregeln überführt
-- nicht eindeutig auflösbare Regeln bleiben sichtbar erhalten
-- automatische Bereinigung bleibt ein- oder ausgeschaltet wie zuvor
-- exakte Alterswerte wie `364` und `365` werden nicht normalisiert
-- persistenter Scheduler- und Laufstatus bleiben erhalten
-
-### Safety
-
-- normales Ausblenden verändert keine Registry-Entity
-- Home-Assistant-Player werden nur nach frischer Revalidierung, gespeichertem exaktem Hidden-Rule, Reload und exakter Registry-Zuordnung entfernt
-- Home-Assistant-Entfernung löscht keine Emby-Serverhistorie
-- Serverhistorien-Löschung entfernt keine Benutzerkonten, Medien, Bibliotheken oder Wiedergabeverläufe
-- keine direkte Bearbeitung von `.storage`
-
-## [0.3.0] – 2026-07-15
-
-### Added
-
-- versionierter, privater und atomarer Wartungsstatus über Home Assistants `Store`
-- persistenter absoluter Scheduler mit `next_run_at`
-- einmalige 120-Sekunden-Grace-Period für Erstaktivierung, überfällige Termine und rc3-Migration
-- strukturierter Laufbericht mit getrennten Server-, Registry- und Schutz-Zählern
-- zentraler Lock gegen parallele manuelle und automatische Läufe
-- zusammenhängender Options-Flow-Entwurf mit finalem Apply und Discard
-- getrennte app-spezifische und geräteweite Ignorierregeln
-- sichtbare Aufbewahrung nicht eindeutig migrierbarer Ignore-Altwerte
-- getrennte manuelle und automatische Alterswerte mit Presets 7, 30, 90, 180 und 365 Tage plus Custom
-- unveröffentlichtes releasegleiches Testartefakt mit SHA-256 und `BUILD_COMMIT`
-
-### Changed
-
-- die automatische Schedulerregistrierung ist bereits während `async_setup_entry()` zulässig und verlangt noch keinen vorzeitig gesetzten `LOADED`-Status
-- unmittelbar vor der automatischen Ausführung werden `LOADED`, aktueller Runtime-Bezug, Store, Cleanup-Schalter, Unload-Status, Lock und Fälligkeit erneut geprüft
-- Erfolg, keine Kandidaten und erwartete Schutzfälle werden als INFO protokolliert
-- Teilerfolg und unterbrochene Nachbereitung werden als WARNING protokolliert
-- vollständige technische Fehler werden als ERROR protokolliert
-- Persistent Notifications erscheinen nur bei Teilerfolg oder Fehler
-- Folgeplanung erfolgt 24 Stunden nach Abschluss des vorherigen Laufversuchs
+Older prototype history remains available through the repository tags and release notes.

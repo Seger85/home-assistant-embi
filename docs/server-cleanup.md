@@ -1,100 +1,52 @@
-# Bereinigung
+# Serverbereinigung
 
-## Getrennte Aufgaben in einem Bereich
+## Trennung der Aufgaben
 
-EMBi 0.9.0 zeigt zwei unterschiedliche Wartungsaufgaben gemeinsam an, hält ihre Daten und Sicherheitsentscheidungen jedoch strikt getrennt:
+EMBi trennt weiterhin:
 
-- **Emby-Server-Gerätehistorie:** historische Datensätze auf dem Emby-Server
-- **Home-Assistant-Player:** EMBi-Entities in Home Assistant
+- **Home-Assistant-Player:** Sichtbarkeit und Registry-Lifecycle
+- **Emby-Serverhistorie:** historische Gerätedatensätze auf dem Server
+- **Automatische Bereinigung:** altersbasierter, geplanter Wartungslauf
+- **Manuelle Bereinigung:** ausdrücklich ausgewählte sichere Einzelrecords
 
-Eine Aktion an einem Home-Assistant-Player verändert keine Serverhistorie. Eine Serverhistorien-Aktion verändert nicht automatisch die normale Player-Sichtbarkeit.
+## Automatische Bereinigung
 
-## Übersicht
+Die automatische Bereinigung bleibt altersbasiert. Bestehende Werte, Aktivierungsstatus, persistenter Scheduler und `next_run_at` bleiben erhalten. Ein geänderter und aktivierter Entwurf wird erst nach finalem Apply wirksam.
 
-Der Bereich zeigt getrennt:
+Die Einstellungsseite zeigt zugleich letzten Lauf, Modus, verwendete Altersgrenze, gelöschte/geschützte/fehlgeschlagene Einträge und nächsten Lauf. Eine separate Seite „Letzter Bereinigungslauf“ existiert nicht mehr.
 
-- Serverhistorien-Datensätze
-- Home-Assistant-Player
-- zusätzliche historische Datensätze
-- aktuell bearbeitbare Player
-- durch Wiedergabe geschützte Player
-- letzten Lauf, Ergebnis und nächsten Termin
+## Manuelle Bereinigung
 
-## Alterswerte
+Die manuelle Auswahl ist ab 0.9.7 immer:
 
-Manuelle und automatische Alterswerte sind getrennt. Verfügbar sind 7, 30, 90, 180 und 365 Tage sowie ein benutzerdefinierter Wert.
+- unabhängig vom Alter
+- fest älteste bekannte Aktivität zuerst
+- ohne manuelle Altersgrenze
+- ohne Scope-Selektor
+- ohne Änderung der automatischen Altersgrenze
 
-Der numerische Wert bleibt die Quelle der Wahrheit. Ein vorhandener Wert `364` bleibt `364`; `365` bleibt `365`.
+Einträge ohne verlässlichen Aktivitätszeitpunkt werden nicht angeboten. Aktive, pausierte und nicht eindeutig bewertbare Player bleiben geschützt.
 
-## Schutzregeln
+## Ablauf einer manuellen Löschung
 
-Serverrecords und Home-Assistant-Player bleiben geschützt, wenn:
+1. Serverdaten und Home-Assistant-Zustände frisch lesen.
+2. Nur eindeutig sichere Kandidaten anbieten.
+3. Auswahl als Vorschau anzeigen.
+4. Löschung ausdrücklich bestätigen.
+5. Jeden ausgewählten Serverrecord separat löschen.
+6. Nach erfolgreicher Serverlöschung verbleibende Serverhistorie erneut lesen.
+7. Einen Registry-Eintrag nur bei exakter Domain-, Plattform-, Config-Entry-, Entity-ID- und Unique-ID-Zuordnung entfernen.
+8. Aktive, unklare, `stale_restored`-mehrdeutige oder weiterhin serverseitig vorhandene Identitäten schützen.
 
-- der Player `playing` ist
-- der Player `paused` ist
-- der Wiedergabestatus nicht sicher bestimmt werden kann
-- ein Aktivitätszeitpunkt fehlt oder ungültig ist
-- die exakte Zugehörigkeit zu Config Entry, Domain, Plattform oder Unique ID nicht bestätigt werden kann
+`queued` oder `matched` bedeutet nicht automatisch `removed`. Eine pauschale Registry-Bereinigung ist ausgeschlossen.
 
-Zeitgrenzen gelten strikt als „älter als“. Exakt am Cutoff bleibt ein Datensatz geschützt.
+## Player-Lifecycle
 
-## Manuelle Serverprüfung
-
-EMBi liest die Serverdaten frisch, trennt sichere Kandidaten von geschützten Records und zeigt nur zulässige Kandidaten zur Auswahl. Gibt es keine Kandidaten, erscheint kein leerer Mehrfachselektor und es wird nichts verändert.
-
-Eine bestätigte Serveraktion betrifft keine Emby-Benutzer, Medien, Bibliotheken oder Wiedergabeverläufe. Pro destruktiver Aktion gibt es genau eine abschließende Bestätigung.
-
-## Automatische Serverbereinigung
-
-- bei Neuinstallationen standardmäßig aus
-- bestehende Stellung bleibt bei Migration erhalten
-- persistentes absolutes `next_run_at`
-- 120-Sekunden-Catch-up bei Erstaktivierung, überfälligem Termin oder Migration ohne Termin
-- danach 24 Stunden nach Abschluss des vorherigen Versuchs
-- gültiger Zukunftstermin bleibt bei Reload und Neustart unverändert
-- gemeinsamer Lock mit manuellen Wartungsaktionen
-- Store- oder Runtime-Unklarheit führt fail-safe zum Abbruch
-
-## Registry-Ergebnisse nach Serverwartung
-
-- `queued`: Identität wurde zur Prüfung vorgemerkt
-- `matched`: exakte Registry-Entity wurde gefunden
-- `removed`: Registry-Operation wurde tatsächlich ausgeführt
-- `missing`: keine passende Entity war vorhanden
-- `protected`: Änderung wurde bewusst blockiert
-
-`queued` ist niemals gleichbedeutend mit `removed`.
-
-## Home-Assistant-Player verwalten
-
-Nicht spielende EMBi-Player können unabhängig von der Serverhistorie in EMBi verborgen und anschließend kontrolliert aus Home Assistant entfernt werden.
-
-Vor einer Registry-Änderung werden aktuelle Emby-Daten, Home-Assistant-States und Registry-Metadaten erneut geprüft. Die exakte Hidden-Regel wird zuerst gespeichert. Danach werden Reload und Ergebnisprüfung durchgeführt, damit ein Player nicht unbeabsichtigt zurückkehrt.
-
-Ein zuvor verborgener oder entfernter Player kann über **Geräte & Player** wiederhergestellt werden. EMBi lädt die Integration neu und prüft die resultierende Entity.
-
-Eine deaktivierte, weiterhin gültige Entity ist kein Orphan. Beim Aktivieren bleiben Identität und Metadaten erhalten.
-
-## Referenzfall 74 → 69
-
-- 74 Serverdatensätze vor dem Test
-- fünf Kandidaten bei bewusst gewählten 364 Tagen
-- fünf erfolgreiche Serveraktionen
-- null Serverfehler
-- 69 verbleibende Datensätze
-- fünf Registry-Keys queued
-- null Matches
-- null Registry-Entfernungen
-- fünf missing
-
-Der Fall belegt Serverbereinigung und fehlende passende Registry-Entities, nicht fünf entfernte Home-Assistant-Player.
+- Ausgeschalteter, sicher inaktiver Player: nach Apply aus Home Assistant entfernt; Serverrecord bleibt und ermöglicht Wiederherstellung.
+- Manuell gelöschter Serverrecord: nach erfolgreicher Löschung und sicherer Registry-Nachbereitung dauerhaft aus EMBi verschwunden.
+- `playing`, `paused`, `unknown`: immer geschützt.
+- `stale_restored`: nur bei exakt passender Eigentümerschaft und eindeutiger Revalidierung entfernbar.
 
 ## Backup und Rollback
 
-Vor einer Live-Abnahme:
-
-- vollständiges Home-Assistant-Backup
-- Emby-Wiederherstellungsweg
-- Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und disabled state dokumentieren
-
-Primärer Rollbackweg ist die erneute Installation von `v0.3.0` oder die Wiederherstellung des vollständigen Backups. Direkte Änderungen an `.storage`-Dateien sind nicht zulässig.
+Vor Live-Abnahme ein vollständiges Home-Assistant-Backup erstellen und die installierte Vorgängerversion dokumentieren. Rollback erfolgt über HACS auf `v0.9.6` oder über das vollständige Backup, nicht durch direkte `.storage`-Änderungen.

@@ -2,163 +2,62 @@
 
 ## Verbindung
 
-EMBi benötigt pro Emby-Server genau einen Config Entry mit:
+EMBi verwendet pro Emby-Server einen Home-Assistant-Config-Entry mit Name, Host, Port, HTTPS-Einstellung und API-Schlüssel. Zugangsdaten werden in Diagnostics redigiert.
 
-- Name
-- Host oder IP-Adresse
-- Port
-- HTTPS an/aus
-- Emby-API-Schlüssel
+## Hauptnavigation ab 0.9.7
 
-Es gibt keinen zweiten Cleanup-Schlüssel. Der gespeicherte Schlüssel wird im Reconfigure-Flow nicht als Frontend-Default zurückgegeben und in Diagnostics redigiert.
+Der Options Flow bietet direkt:
 
-## Root-Navigation
+1. **Home-Assistant-Player**
+2. **Automatische Serverbereinigung**
+3. **Einzelne Emby-Servereinträge löschen**
+4. **Änderungen prüfen**, sobald der Entwurf abweicht
 
-Der Options Flow besitzt genau diese fachlichen Bereiche:
+Normale Unterseiten schreiben nicht direkt. Der normale OK-Submit übernimmt Werte nur in den In-Memory-Entwurf und führt eine Ebene zurück. Dauerhaft gespeichert wird ausschließlich über **Änderungen prüfen → Änderungen übernehmen**. Schließen über X und ein nicht angewendeter Entwurf verändern den Config Entry nicht.
 
-- **Geräte & Player**
-- **Bereinigung**
-- **Änderungen prüfen**, sobald der Entwurf vom gespeicherten Zustand abweicht
+## Home-Assistant-Player
 
-Normale Unterseiten schreiben nicht direkt. Apply schreibt Optionen einmal und lädt höchstens einmal neu. Discard und Schließen über X schreiben nichts.
+### Globale Regeln
 
-## Geräte & Player
+- **Nur während der Wiedergabe anzeigen**
+- **Neue Player automatisch anzeigen**
+- **Technische Zugriffe anzeigen**
+- **Gruppe öffnen**
 
-### Globale Darstellung
+Suchfeld und Sortierauswahl sind vollständig entfernt. Die Gruppenauswahl führt zu den direkten Schaltern der enthaltenen Player.
 
-**Nur während der Wiedergabe anzeigen**
+### Player-Zeilen
 
-- aus: ausgewählte Player bleiben dauerhaft verfügbar
-- ein: Player erscheinen nur bei `playing` oder `paused`
+- Zeile 1: `Gerät · App`
+- Zeile 2: lokalisierter letzter Zugriff
+- bekannte Zeitpunkte: immer älteste zuerst
+- unbekannte Zeitpunkte: immer am Ende
 
-**Neue Player automatisch anzeigen**
+Entity-ID, Config-Entry-ID und Unique-ID werden nicht in normalen Auswahlzeilen gezeigt.
 
-- ein: neue Wiedergabeclients werden automatisch berücksichtigt
-- aus: neue Player bleiben verborgen, bis sie im Options Flow aktiviert werden
+### Schutzlogik
 
-**Technische Zugriffe anzeigen**
+Ein Schalter darf einen Player nur dann ausblenden und nach finalem Apply aus Home Assistant entfernen, wenn der Player eindeutig zur Integration gehört und sicher inaktiv ist. `playing`, `paused` und `unknown` arbeiten fail-safe und bleiben sichtbar beziehungsweise unangetastet.
 
-Technische Zugriffe werden nur bei belastbarer Metadaten- oder Verhaltensgrundlage erkannt. Ein Produktname allein reicht nicht. Unsichere Clients verbleiben unter **Unklare Clients**.
+Die Emby-Serverhistorie wird durch Player-Sichtbarkeit nicht verändert. Solange der Servereintrag besteht, bleibt der Player in EMBi wiederherstellbar.
 
-### Gruppen
+## Automatische Serverbereinigung
 
-Reihenfolge:
+Die Seite enthält Einstellungen und Status gemeinsam:
 
-1. bekannte Emby-Benutzer
-2. **Gemeinsam genutzt** mit allen bekannten Benutzern
-3. **Ohne Benutzerzuordnung**
-4. **Technische Zugriffe**
-5. **Unklare Clients**
-6. gegebenenfalls **Ältere Regeln**
+- aktiviert/deaktiviert
+- Altersgrenze einschließlich vorhandener exakter Werte
+- passende Home-Assistant-Entities nach sicherer Serverlöschung bereinigen
+- letzter Lauf, Ergebnis, Schutzfälle und nächster Lauf
 
-Jede Player-Zeile zeigt App/Gerät, Home-Assistant-Anzeigename, vollständige Entity-ID, Benutzerkontext und Status. ReportedDeviceId, Config Entry ID und Unique ID werden in der normalen UI nicht benötigt.
+OK aktualisiert nur den Entwurf. Erst Apply schreibt Optionen und löst bei einer geänderten aktivierten Automatik den vorhandenen sicheren Nachlauf aus.
 
-### Sichtbarkeitsregeln
+## Manuelle Serverbereinigung
 
-Kanonische Regeln:
+Die manuelle Seite besitzt keine Altersgrenze und keinen Scope-Selektor. Sie listet alle eindeutig sicheren inaktiven Einträge unabhängig vom Alter, fest älteste zuerst. Die automatische Altersgrenze wird nicht verändert.
 
-- exakter logischer Player/App-Variante
-- exaktes vollständiges Gerät über alle App-Varianten
-- Master-Sichtbarkeit für Player, die ausschließlich einem Benutzer zugeordnet sind
-- nicht eindeutig migrierbare ältere Regeln
+Auswahl, Vorschau und eindeutige Löschbestätigung bleiben getrennt. Nach erfolgreicher Serverlöschung wird ein exakt passender Registry-Eintrag nur dann entfernt, wenn keine verbleibende Serverhistorie, keine aktive/unklare Wiedergabe und keine Zuordnungsabweichung vorliegt.
 
-Regeln arbeiten ausschließlich exakt. Präfix-, Wildcard- oder Teilstring-Matching ist ausgeschlossen.
+## Migration
 
-### Deaktivierte Entities
-
-Eine deaktivierte, weiterhin gültige EMBi-Entity ist kein Orphan. Sie kann gezielt wieder aktiviert werden, ohne Entity-ID, Unique ID, Namen, Alias, Area oder Labels neu zu schreiben.
-
-## Änderungen prüfen
-
-Die Review-Seite zeigt semantische Vorher-/Nachher-Angaben, zum Beispiel:
-
-- Immer verfügbar → Nur während der Wiedergabe
-- Neue Player automatisch anzeigen: Ein → Aus
-- Altersgrenze: 364 Tage → 365 Tage
-- Wohnzimmer Fernseher: In Home Assistant anzeigen → Ausgeblendet
-
-Für normales Apply und Discard gibt es keinen zusätzlichen Bestätigungsschalter.
-
-## Bereinigung
-
-Der gemeinsame Bereich zeigt getrennte Zähler für:
-
-- Emby-Server-Gerätehistorie
-- Home-Assistant-Player
-- zusätzliche historische Datensätze
-- aktuell entfernbare Player
-- durch Wiedergabe geschützte Player
-- letzten Lauf und nächsten automatischen Termin
-
-### Manuelle Serverprüfung
-
-Alterswerte:
-
-- 7 Tage
-- 30 Tage
-- 90 Tage
-- 180 Tage
-- 365 Tage
-- benutzerdefiniert
-
-Der numerische Wert ist die Quelle der Wahrheit. `364` bleibt `364`; `365` bleibt `365`.
-
-Wenn keine sicheren Kandidaten existieren, wird kein leerer Mehrfachselektor angezeigt. Es erfolgt keine Änderung.
-
-### Automatische Serverbereinigung
-
-- bei Neuinstallation aus
-- bestehende Stellung bleibt bei Migration erhalten
-- 120-Sekunden-Catch-up für Erstaktivierung, überfälligen Termin oder Migration ohne persistenten Termin
-- danach 24 Stunden nach Abschluss des vorherigen Versuchs
-- persistentes absolutes `next_run_at`
-- kein Batchlimit
-
-### Home-Assistant-Player entfernen
-
-Dies ist eine eigene destruktive Aktion und löscht keine Emby-Serverhistorie.
-
-Auswählbar sind nur EMBi-Player, die:
-
-- eindeutig zur Integration gehören
-- aktuell nicht spielen
-- nicht pausiert sind
-- einen ausreichend bekannten Wiedergabestatus besitzen
-
-Vor der Entfernung wird eine exakte Hidden-Regel gespeichert. Danach folgen Reload, Registry-Entfernung und Verifikation. Diese Aktion besitzt genau eine abschließende Bestätigung.
-
-### Wiederherstellen
-
-Ein verborgener oder entfernter Player wird unter **Geräte & Player** wieder sichtbar geschaltet. Nach Apply lädt EMBi neu und prüft die resultierende Entity. Bei einer neu angelegten Entity können manuelle Zuordnungen in Dashboards, Automationen, HomeKit oder Siri erneut nötig sein.
-
-## Migration von 0.3.0
-
-Erhalten:
-
-- Config Entry und Verbindung
-- Entity-IDs und Unique IDs
-- individuelle Namen
-- Aliase, Areas und Labels
-- disabled state
-- bestehende Sichtbarkeitsentscheidungen
-- automatische Bereinigung ein/aus
-- exakte Alterswerte
-- HA-Mitbereinigung
-- Scheduler- und Laufstatus
-
-Überführt:
-
-- alter Modus → permanenter oder Active-only-Modus
-- Allowlist → exakte sichtbare Player bei ausgeschalteter Auto-Anzeige
-- App-Ignore → exakte Hidden-Player-Regel
-- Geräte-Ignore → exakte Hidden-Geräte-Regel
-- unklare Altwerte → sichtbare **Ältere Regeln**
-
-Entfernt:
-
-- separater Cleanup-API-Schlüssel
-- Aktivierungsphrase
-- automatische Ignore-Regel nach Serverlöschung
-- obsolete rc3-Hilfswerte
-
-Vor dem Upgrade ein vollständiges Home-Assistant-Backup erstellen. Keine `.storage`-Dateien direkt bearbeiten.
+0.9.7 verändert weder Entity-IDs noch Unique-IDs. Bestehende Optionen bleiben schema- und migrationssicher erhalten, auch wenn ältere manuelle Alters-/Scope-Werte nicht mehr in der Oberfläche erscheinen. Vor dem Upgrade ein vollständiges Home-Assistant-Backup erstellen; `.storage` nicht direkt bearbeiten.

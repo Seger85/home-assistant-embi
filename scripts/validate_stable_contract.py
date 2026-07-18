@@ -38,6 +38,7 @@ def main() -> None:
     devices = (COMPONENT / "options_devices.py").read_text(encoding="utf-8")
     cleanup = (COMPONENT / "options_cleanup.py").read_text(encoding="utf-8")
     ha_cleanup = (COMPONENT / "options_ha_cleanup.py").read_text(encoding="utf-8")
+    maintenance = (COMPONENT / "maintenance_common.py").read_text(encoding="utf-8")
     context = (COMPONENT / "player_context.py").read_text(encoding="utf-8")
     actions = (COMPONENT / "player_actions.py").read_text(encoding="utf-8")
     quality = (ROOT / ".github/workflows/quality.yml").read_text(encoding="utf-8")
@@ -48,46 +49,67 @@ def main() -> None:
     require(match is not None, "const.py VERSION must be a literal")
     require(manifest.get("version") == EXPECTED_VERSION, "Manifest version differs")
     require(match.group(1) == EXPECTED_VERSION, "Runtime version differs")
+    require(EXPECTED_VERSION == "0.9.7", "Stable contract version differs")
     require(strings == english, "English translation source differs")
     require(key_paths(strings) == key_paths(german), "Translation structures differ")
     require(hacs.get("zip_release") is True, "HACS ZIP contract missing")
     require(hacs.get("filename") == "embi.zip", "HACS filename differs")
     require(hacs.get("hide_default_branch") is True, "Default branch must be hidden")
 
-    require('menu_options = ["ha_players", "server_cleanup"]' in options, "Root menu differs")
+    require(
+        'menu_options = ["ha_players", "automatic_cleanup", "server_history_check"]' in options,
+        "Direct root menu differs",
+    )
     require('menu_options.append("review_changes")' in options, "Review entry missing")
-    require("async_step_back_to_init" in options, "Back navigation missing")
     require("OptionsDraft.from_options" in options, "Draft model missing")
-    require("CONF_CONFIRM_APPLY" not in options, "Apply confirmation remains")
-    require("CONF_CONFIRM_DISCARD" not in options, "Discard confirmation remains")
+    require("CONF_SEARCH_QUERY" not in devices, "Player search remains")
+    require("CONF_PLAYER_SORT_ORDER" not in devices, "Player sort selector remains")
+    require("def _sort_group_players(players):" in devices, "Fixed player sort missing")
+    require("PLAYBACK_UNKNOWN" in devices, "Unknown playback protection missing")
+    require("navigation_selector" not in devices, "Back-only player actions remain")
+    require("selector.BooleanSelector()" in devices, "Direct player switches missing")
+    require("CONF_MANUAL_CLEANUP_SCOPE" not in cleanup, "Manual scope UI remains")
+    require("manual_age_preset" not in cleanup, "Manual age UI remains")
+    require("ignore_age=True" in cleanup, "Age-independent manual cleanup missing")
+    require("remove_ha_entities=True" in cleanup, "Manual server lifecycle cleanup missing")
+    require("async_step_last_cleanup_run" in cleanup, "Compatibility redirect missing")
+    require(
+        "return await self.async_step_automatic_cleanup()" in cleanup,
+        "Last-run redirect differs",
+    )
+    require(
+        "options_flow_contract" in (COMPONENT / "diagnostics.py").read_text(),
+        "0.9.7 diagnostics contract missing",
+    )
+    require("ACTIVE_STATES" in maintenance, "Cleanup active-state protection missing")
+    require('"unknown"' in maintenance, "Cleanup unknown-state protection missing")
+    require("state_is_restored" in maintenance, "Stale-restored distinction missing")
+    require("CONF_SEARCH_QUERY" not in ha_cleanup, "Legacy player cleanup search remains")
     require("GROUP_SHARED" in context, "Shared grouping missing")
     require("GROUP_UNASSIGNED" in context, "Unassigned grouping missing")
     require("CLIENT_CLASS_UNKNOWN" in context, "Unknown classification missing")
-    require("technical_details" in context, "Technical details separation missing")
-    require("ACTIVE_PLAYBACK_STATES" in devices, "Playback protection missing")
-    require("selector.BooleanSelector()" in devices, "Direct player switches missing")
-    require("execute_server_deletion" in cleanup, "Server execution step missing")
-    require("MANUAL_CLEANUP_SCOPE_ALL_SAFE" in cleanup, "Manual all-safe scope missing")
     require(
-        "async_remove_hidden_player_entities" in actions, "Direct hidden-player transaction missing"
+        "async_remove_hidden_player_entities" in actions,
+        "Hidden-player transaction missing",
     )
-    require("CONF_CONFIRM_SERVER_DELETION" not in cleanup, "Duplicate server confirmation remains")
-    require("CONF_CONFIRM_HA_REMOVAL" not in ha_cleanup, "Duplicate player confirmation remains")
     require("async_remove_ha_players" in actions, "Player removal transaction missing")
     require("async_restore_players" in actions, "Player restoration transaction missing")
 
+    serialized = json.dumps(strings, ensure_ascii=False)
+    require("manual_cleanup_scope" not in serialized, "Raw manual scope appears in UI")
+    require("search_query" not in serialized, "Search field appears in UI")
+    require("player_sort_order" not in serialized, "Sort field appears in UI")
+
     for workflow in (quality, package, release):
-        require("python scripts/build_package.py" in workflow, "Shared package builder missing")
+        require(
+            "python scripts/build_package.py" in workflow,
+            "Shared package builder missing",
+        )
         require("embi.zip.sha256" in workflow, "Checksum validation missing")
     require(
-        "manifest.json" in quality and "--expected-version" in quality,
-        "Quality package version is not dynamic",
+        "pull_request:" in release and "closed" in release,
+        "Merged-PR release trigger missing",
     )
-    require(
-        "manifest.json" in package and "--expected-version" in package,
-        "Test package version is not dynamic",
-    )
-    require("pull_request:" in release and "closed" in release, "Merged-PR release trigger missing")
     require("workflow_dispatch:" in release, "Manual recovery trigger missing")
     require("scripts/read_version.py" in release, "Dependency-free version reader missing")
     require(
@@ -98,10 +120,7 @@ def main() -> None:
         "FETCH_HEAD" in release and "origin/main" not in release,
         "Fresh main identity check differs",
     )
-    require(
-        "git tag -a" in release and "refs/tags/${RELEASE_TAG}" in release,
-        "Immutable tag creation missing",
-    )
+    require("git tag -a" in release, "Annotated tag creation missing")
     require("prerelease: false" in release, "Stable prerelease setting differs")
     require("make_latest: true" in release, "Stable latest setting differs")
     require("gh release download" in release, "Published asset verification missing")

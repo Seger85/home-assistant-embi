@@ -55,13 +55,12 @@ def test_temporary_implementation_workflows_are_not_committed() -> None:
 def test_readme_is_product_oriented_and_not_a_prerelease_history_page() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "mehr Geräte in der Liste haben als im Haus" in readme
+    assert "trennt dabei Player-Sichtbarkeit" in readme
     assert "Home-Assistant-Player" in readme
-    assert "direkte Player-Schalter" in readme
-    assert "Gemeinsam genutzt" in readme
-    assert "Technische Zugriffe" in readme
-    assert "Unklare Clients" in readme
-    assert "Player wiederherstellen" in readme
+    assert "direkten Ein-/Aus-Schalter" in readme
+    assert "älteste zuerst" in readme
+    assert "Einzelne Emby-Servereinträge löschen" in readme
+    assert "wiederhergestellt" in readme
     assert "Release Candidate" not in readme
     assert "0.3.0-rc" not in readme
 
@@ -70,7 +69,7 @@ def test_main_documents_share_the_product_contract() -> None:
     expected_terms = {
         "docs/PROJECT_STATE.md": ("0.9.0", "Geräte & Player", "private"),
         "docs/architecture.md": ("PlayerContext", "Gemeinsam genutzt", "Store"),
-        "docs/configuration.md": ("Änderungen prüfen", "364", "disabled"),
+        "docs/configuration.md": ("Änderungen prüfen", "älteste zuerst", "migrationssicher"),
         "docs/server-cleanup.md": ("playing", "paused", "Wiederherstellung"),
         "docs/security.md": (
             "keine direkten Änderungen an `.storage`",
@@ -88,7 +87,7 @@ def test_main_documents_share_the_product_contract() -> None:
             assert term in content, f"{relative_path} misses {term}"
 
 
-def test_translations_are_structurally_identical_and_use_091_navigation() -> None:
+def test_translations_are_structurally_identical_and_use_097_navigation() -> None:
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
     english = json.loads((COMPONENT / "translations" / "en.json").read_text(encoding="utf-8"))
     german = json.loads((COMPONENT / "translations" / "de.json").read_text(encoding="utf-8"))
@@ -105,7 +104,13 @@ def test_translations_are_structurally_identical_and_use_091_navigation() -> Non
     assert strings == english
     assert paths(english) == paths(german)
     root_menu = english["options"]["step"]["init"]["menu_options"]
-    assert set(root_menu) == {"ha_players", "server_cleanup", "review_changes"}
+    assert set(root_menu) == {
+        "ha_players",
+        "automatic_cleanup",
+        "server_history_check",
+        "review_changes",
+    }
+    assert "server_cleanup" not in root_menu
     assert "older_rules" in english["options"]["step"]
     assert "older_rules" in german["options"]["step"]
 
