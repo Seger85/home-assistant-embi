@@ -30,7 +30,7 @@ def test_active_technical_and_user_groups_cannot_be_hidden_by_normal_apply() -> 
     assert 'errors["base"] = "playback_protected"' in devices
     assert "visibility[user_name] = any_visible" in devices
     assert "not requested.get(player.player_key" in devices
-    assert "active_group" in devices
+    assert "player.playback in ACTIVE_PLAYBACK_STATES" in devices
     assert "protected_technical" in flow
     assert "user_visibility[user_name] = True" in flow
 
