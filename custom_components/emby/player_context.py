@@ -112,8 +112,18 @@ class PlayerContext:
 
     @property
     def selector_label(self) -> str:
-        """Return a compact mobile-safe selector label without internal identifiers."""
-        return f"{self.device_name} · {self.app_name}"
+        """Return a compact mobile-safe label, preferring a meaningful HA name."""
+        generic = self.device_name.strip().casefold() in {
+            "home assistant player",
+            "homeassistant player",
+        }
+        meaningful_ha_name = self.ha_name.strip().casefold() not in {
+            "home assistant player",
+            "homeassistant player",
+            "emby home assistant player",
+        }
+        device = self.ha_name if generic and meaningful_ha_name else self.device_name
+        return f"{device} · {self.app_name}"
 
     def compact_label(self, *, include_user: bool = False) -> str:
         """Return the normal selector label and add a user only for disambiguation."""
@@ -244,6 +254,8 @@ def classify_client(
     *,
     runtime_state: str | None = None,
     registry_backed: bool = False,
+    registry_name: str | None = None,
+    entity_id: str | None = None,
 ) -> tuple[str, str]:
     """Classify from capability, behavior, app and registry/session evidence."""
     items = list(records)
@@ -260,7 +272,24 @@ def classify_client(
         return CLIENT_CLASS_TECHNICAL, "explicit_technical_capability"
 
     no_observed_playback = not any(record.playback_observed for record in items)
-    if items and no_observed_playback and _technical_app_metadata(items):
+    registry_identity = " ".join(
+        value.strip().casefold().replace("_", " ").replace("-", " ")
+        for value in (registry_name or "", entity_id or "")
+        if value
+    )
+    technical_registry_identity = any(
+        phrase in registry_identity
+        for phrase in (
+            "home assistant",
+            "homeassistant",
+            "embi",
+            "homarr",
+            "windmill",
+            "ha mcp",
+            "mcp server",
+        )
+    )
+    if no_observed_playback and (_technical_app_metadata(items) or technical_registry_identity):
         return CLIENT_CLASS_TECHNICAL, "explicit_technical_identity"
     if any(record.playback_observed or record.supports_playback is True for record in items):
         return CLIENT_CLASS_PLAYBACK, "explicit_or_observed_playback"
@@ -362,11 +391,6 @@ def build_player_catalog(
         runtime_state = _state_value(states, entity_id)
         py_state = _pyemby_state(pyemby_devices, key)
         effective_state = runtime_state or py_state
-        client_class, class_reason = classify_client(
-            player_records,
-            runtime_state=effective_state,
-            registry_backed=entity is not None,
-        )
         users = _record_users(player_records)
         latest_user = latest.last_user_name if latest else None
         app_name = (latest.app_name if latest else None) or "Emby"
@@ -374,6 +398,13 @@ def build_player_catalog(
         custom_name = _entry_value(entity, "name") if entity is not None else None
         original_name = _entry_value(entity, "original_name") if entity is not None else None
         ha_name = str(custom_name or original_name or device_name or app_name)
+        client_class, class_reason = classify_client(
+            player_records,
+            runtime_state=effective_state,
+            registry_backed=entity is not None,
+            registry_name=ha_name,
+            entity_id=str(entity_id or ""),
+        )
         registry_present = entity is not None
         registry_enabled = bool(entity is not None and _entry_value(entity, "disabled_by") is None)
         registry_hidden = bool(entity is not None and _entry_value(entity, "hidden_by") is not None)

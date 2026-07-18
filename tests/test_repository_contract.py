@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,7 +12,9 @@ def test_manifest_points_to_canonical_repository() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text())
     assert manifest["domain"] == "emby"
     assert manifest["name"] == "Emby Integration - EMBi"
-    assert manifest["version"] == "0.9.3"
+    assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", manifest["version"])
+    constants = (COMPONENT / "const.py").read_text()
+    assert f'VERSION = "{manifest["version"]}"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["documentation"].endswith("Seger85/home-assistant-embi")
     assert manifest["issue_tracker"].endswith("Seger85/home-assistant-embi/issues")
@@ -129,10 +132,10 @@ def test_release_assets_and_request_branch_contract() -> None:
     assert "cmp dist/embi.zip verify-release/embi.zip" in workflow
     assert "origin/main" in workflow
     assert 'tags:\n      - "v*"' in workflow
-    assert 'branches:\n      - "release/v*"' in workflow
+    assert 'branches:\n      - "release/v*"' not in workflow
     assert '"[0-9]*"' not in workflow
     assert "^v[0-9]+" in workflow
-    assert "Remove verified release request branch" in workflow
+    assert "stable-assets-${{ github.sha }}" in workflow
     assert "prerelease: false" in workflow
     assert "make_latest: true" in workflow
 
@@ -144,4 +147,4 @@ def test_test_package_is_bound_to_exact_source_commit() -> None:
     assert '--commit "${BUILD_COMMIT_SHA}"' in workflow
     assert 'test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"' in workflow
     assert "embi-test-${{ env.BUILD_COMMIT_SHA }}" in workflow
-    assert "--expected-version 0.9.3" in workflow
+    assert "manifest.json" in workflow and "--expected-version" in workflow

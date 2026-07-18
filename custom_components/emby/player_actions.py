@@ -13,7 +13,12 @@ from homeassistant.util import dt as dt_util
 from .const import CONF_HIDDEN_EXACT_PLAYERS, DOMAIN
 from .maintenance_common import _async_save_state
 from .models import EmbiRuntimeData, MaintenanceActionSummary
-from .player_context import ACTIVE_PLAYBACK_STATES, PlayerContext, build_player_catalog
+from .player_context import (
+    ACTIVE_PLAYBACK_STATES,
+    PLAYBACK_UNKNOWN,
+    PlayerContext,
+    build_player_catalog,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -394,4 +399,128 @@ async def async_enable_ha_entities(
             await hass.config_entries.async_reload(entry.entry_id)
     result = PlayerActionResult("enable", len(ids), tuple(succeeded), (), tuple(failed))
     await _record_action(hass, entry, action="enable", started_at=started_at, result=result)
+    return result
+
+
+async def async_remove_hidden_player_entities(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    player_keys: Iterable[str],
+    *,
+    prevalidated_non_playing_keys: Iterable[str] = (),
+) -> PlayerActionResult:
+    """Remove exact registry entities after their hidden options were committed."""
+    keys = tuple(dict.fromkeys(str(value) for value in player_keys if value))
+    prevalidated = {str(value) for value in prevalidated_non_playing_keys}
+    started_at = dt_util.utcnow().isoformat()
+    runtime: EmbiRuntimeData = entry.runtime_data
+    succeeded: list[PlayerActionItem] = []
+    protected: list[PlayerActionItem] = []
+    failed: list[PlayerActionItem] = []
+
+    async with runtime.cleanup_lock:
+        try:
+            catalog = await _fresh_catalog(hass, entry)
+        except Exception:
+            result = PlayerActionResult(
+                "remove",
+                len(keys),
+                (),
+                (),
+                tuple(
+                    PlayerActionItem(None, key, "Emby player", "failed", "refresh_failed")
+                    for key in keys
+                ),
+            )
+            await _record_action(hass, entry, action="remove", started_at=started_at, result=result)
+            return result
+
+        registry = er.async_get(hass)
+        for key in keys:
+            context = _find_context(catalog, player_key=key)
+            if context is None or not context.registry_present:
+                succeeded.append(
+                    PlayerActionItem(
+                        None, key, context.ha_name if context else "Emby player", "removed"
+                    )
+                )
+                continue
+            item = PlayerActionItem(
+                context.entity_id,
+                context.player_key,
+                context.ha_name,
+                "protected",
+                context.protected_reason,
+            )
+            if context.playback in ACTIVE_PLAYBACK_STATES or (
+                context.playback == PLAYBACK_UNKNOWN and key not in prevalidated
+            ):
+                protected.append(item)
+                continue
+
+            entity = registry.async_get(context.entity_id) if context.entity_id else None
+            if entity is None:
+                matches = [
+                    candidate
+                    for candidate in registry.entities.values()
+                    if _owned_exact(candidate, entry, key)
+                ]
+                entity = matches[0] if len(matches) == 1 else None
+            if entity is None:
+                succeeded.append(PlayerActionItem(None, key, context.ha_name, "removed"))
+                continue
+            if not _owned_exact(entity, entry, key):
+                failed.append(
+                    PlayerActionItem(
+                        entity.entity_id,
+                        key,
+                        context.ha_name,
+                        "failed",
+                        "ownership_changed",
+                    )
+                )
+                continue
+            if hass.states.get(entity.entity_id) is not None:
+                failed.append(
+                    PlayerActionItem(
+                        entity.entity_id,
+                        key,
+                        context.ha_name,
+                        "failed",
+                        "state_still_present",
+                    )
+                )
+                continue
+            registry.async_remove(entity.entity_id)
+            if any(_owned_exact(candidate, entry, key) for candidate in registry.entities.values()):
+                failed.append(
+                    PlayerActionItem(
+                        entity.entity_id,
+                        key,
+                        context.ha_name,
+                        "failed",
+                        "verification_failed",
+                    )
+                )
+            else:
+                succeeded.append(
+                    PlayerActionItem(entity.entity_id, key, context.ha_name, "removed")
+                )
+
+    result = PlayerActionResult(
+        "remove",
+        len(keys),
+        tuple(succeeded),
+        tuple(protected),
+        tuple(failed),
+    )
+    await _record_action(hass, entry, action="remove", started_at=started_at, result=result)
+    _LOGGER.log(
+        logging.INFO if result.status == "completed" else logging.WARNING,
+        "EMBi hidden-player reconciliation: %s requested, %s removed, %s protected, %s failed",
+        result.requested,
+        len(result.succeeded),
+        len(result.protected),
+        len(result.failed),
+    )
     return result

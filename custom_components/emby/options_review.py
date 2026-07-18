@@ -120,10 +120,10 @@ def semantic_changes(
             SemanticChange(
                 f"player:{key}",
                 label,
-                ("Ausgeblendet" if german else "Hidden")
+                ("Aus Home Assistant entfernt" if german else "Removed from Home Assistant")
                 if was_hidden
                 else ("In Home Assistant anzeigen" if german else "Show in Home Assistant"),
-                ("Ausgeblendet" if german else "Hidden")
+                ("Aus Home Assistant entfernt" if german else "Removed from Home Assistant")
                 if is_hidden
                 else ("In Home Assistant anzeigen" if german else "Show in Home Assistant"),
             )

@@ -40,7 +40,7 @@
     "step": {
       "init": {
         "title": "Manage EMBi",
-        "description": "Manage Home Assistant players and clean up old Emby server records in clearly separated areas.\n\n{server_history} records in Emby server history\n{ha_players} registered Home Assistant players\n{protected} playing or paused\n{server_missing} no longer reported by the Emby server\nAutomatic cleanup: {automatic_cleanup}\n\n{apply_notice}",
+        "description": "Manage Home Assistant players and clean old Emby server records in clearly separated areas.\n\n{server_history} Emby server-history records\n{ha_players} registered Home Assistant players\n{protected} are playing or paused\n{server_missing} are no longer reported by the Emby server\nAutomatic cleanup: {automatic_cleanup} · {automatic_age} days\nNext run: {next_run}\n\n{apply_notice}",
         "menu_options": {
           "ha_players": "Home Assistant players",
           "server_cleanup": "Clean up Emby server",
@@ -49,30 +49,27 @@
       },
       "ha_players": {
         "title": "Home Assistant players",
-        "description": "Global visibility settings are shown first. Open a short user or client group to manage its master setting, exceptions or technical details.\n\n{ha_players} registered players\n{playing} playing or paused\n{known_users} recognized users\n{server_missing} no longer reported by the Emby server",
+        "description": "Open a user or client group and switch each player on or off directly. When changes are finally applied, switched-off and safely inactive players are removed from Home Assistant. As long as the Emby server still knows the record, the switch remains available for restoration.\n\n{ha_players} registered players\n{playing} are playing or paused\n{known_users} recognized users\n{server_missing} are no longer reported by the Emby server",
         "data": {
           "only_during_playback": "Only show players during playback",
           "auto_show_new_players": "Automatically add new players",
           "technical_access_visibility": "Show technical access as players",
           "search_query": "Search user, device, app or entity ID",
           "selected_group": "Open group",
-          "player_action": "Player management",
           "flow_action": "Action"
         },
         "data_description": {
           "only_during_playback": "When enabled, players appear only while playing or paused.",
           "auto_show_new_players": "When disabled, current visible players remain allowed and new players stay hidden until selected.",
           "technical_access_visibility": "Only explicitly technical or API-only clients are controlled by this setting.",
-          "selected_group": "Groups use short names and a player count.",
-          "player_action": "Remove or restore Home Assistant players in this player area."
+          "selected_group": "Groups use short names and a player count."
         }
       },
       "player_group": {
         "title": "{group}",
-        "description": "{count} players belong to this group. Each player can be switched on or off directly. Playing or paused sessions remain protected. A detail view can optionally be opened below.",
+        "description": "{count} players belong to this group. On exposes the player in Home Assistant. Off marks it for safe removal when changes are finally applied. Playing, paused, or unclear playback remains protected. The switched-off record remains available while it still exists on the Emby server.",
         "data": {
           "show_user_players": "Show all players for this user",
-          "player_action": "Open",
           "flow_action": "Action"
         }
       },
@@ -89,11 +86,8 @@
       },
       "player_details": {
         "title": "Player details",
-        "description": "Technical details are shown only on this dedicated page.\n\n{details}",
-        "data": {
-          "selected_player_key": "Player",
-          "flow_action": "Action"
-        }
+        "description": "Technical information for the previously selected player.\n\n{details}",
+        "data": {}
       },
       "server_cleanup": {
         "title": "Clean up Emby server",
@@ -103,7 +97,7 @@
       },
       "automatic_cleanup": {
         "title": "Automatic cleanup",
-        "description": "Configure the automatic server-history cleanup. These changes remain in the draft until Review changes is applied.",
+        "description": "Configure automatic server-history cleanup. After Apply changes, a changed and enabled automatic cleanup runs immediately and then runs again every 24 hours.",
         "data": {
           "server_auto_cleanup_enabled": "Automatic cleanup",
           "automatic_age_preset": "Age limit",
@@ -168,7 +162,7 @@
       },
       "review_changes": {
         "title": "Review changes",
-        "description": "{count_text} pending. Nothing has been written yet.\n\n{changes}\n\n{error}",
+        "description": "{count_text} pending. Nothing has been saved yet. Switched-off players are safely removed from Home Assistant when applied; Emby server history is changed only by the explicitly enabled cleanup.\n\n{changes}\n\n{error}",
         "data": {
           "flow_action": "Action"
         }

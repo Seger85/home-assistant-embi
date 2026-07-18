@@ -2,7 +2,7 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.3"
+VERSION = "0.9.4"
 PLATFORMS = ["media_player"]
 
 CONFIG_ENTRY_VERSION = 4

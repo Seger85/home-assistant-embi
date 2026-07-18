@@ -78,3 +78,5 @@ def test_apply_returns_root_and_group_uses_boolean_switches_source() -> None:
     )[0]
     assert "selector.BooleanSelector()" in group
     assert "CONF_HIDDEN_PAGE_PLAYER_KEYS" not in group
+    assert "CONF_PLAYER_ACTION" not in devices
+    assert "CONF_SELECTED_PLAYER_KEY" not in group

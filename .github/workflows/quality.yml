@@ -104,6 +104,7 @@ jobs:
       - name: Build and verify release-equivalent asset
         run: |
           rm -rf dist
-          python scripts/build_package.py --output-dir dist --expected-version 0.9.3 --commit "${GITHUB_SHA}"
+          VERSION="$(python -c 'import json; print(json.load(open("custom_components/emby/manifest.json"))["version"])')"
+          python scripts/build_package.py --output-dir dist --expected-version "${VERSION}" --commit "${GITHUB_SHA}"
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"

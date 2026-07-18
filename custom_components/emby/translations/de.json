@@ -40,7 +40,7 @@
     "step": {
       "init": {
         "title": "EMBi verwalten",
-        "description": "Verwalte Home-Assistant-Player und bereinige alte Emby-Server-Einträge in klar getrennten Bereichen.\n\n{server_history} Einträge in der Emby-Serverhistorie\n{ha_players} registrierte Home-Assistant-Player\n{protected} laufen oder sind pausiert\n{server_missing} werden nicht mehr vom Emby-Server gemeldet\nAutomatische Bereinigung: {automatic_cleanup}\n\n{apply_notice}",
+        "description": "Verwalte Home-Assistant-Player und bereinige alte Emby-Server-Einträge in klar getrennten Bereichen.\n\n{server_history} Einträge in der Emby-Serverhistorie\n{ha_players} registrierte Home-Assistant-Player\n{protected} laufen oder sind pausiert\n{server_missing} werden nicht mehr vom Emby-Server gemeldet\nAutomatische Bereinigung: {automatic_cleanup} · {automatic_age} Tage\nNächster Lauf: {next_run}\n\n{apply_notice}",
         "menu_options": {
           "ha_players": "Home-Assistant-Player",
           "server_cleanup": "Emby-Server bereinigen",
@@ -49,30 +49,27 @@
       },
       "ha_players": {
         "title": "Home-Assistant-Player",
-        "description": "Zuerst werden die globalen Sichtbarkeitseinstellungen angezeigt. Öffne danach eine kurze Benutzer- oder Clientgruppe für Master-Schalter, Ausnahmen oder technische Details.\n\n{ha_players} registrierte Player\n{playing} laufen oder sind pausiert\n{known_users} erkannte Benutzer\n{server_missing} werden nicht mehr vom Emby-Server gemeldet",
+        "description": "Öffne eine Benutzer- oder Clientgruppe und schalte jeden Player direkt ein oder aus. Beim finalen „Änderungen übernehmen“ werden ausgeschaltete, sicher inaktive Player aus Home Assistant entfernt. Solange der Emby-Server den Eintrag noch kennt, bleibt der Schalter zum Wiederherstellen erhalten.\n\n{ha_players} registrierte Player\n{playing} laufen oder sind pausiert\n{known_users} erkannte Benutzer\n{server_missing} werden nicht mehr vom Emby-Server gemeldet",
         "data": {
           "only_during_playback": "Player nur während der Wiedergabe anzeigen",
           "auto_show_new_players": "Neue Player automatisch hinzufügen",
           "technical_access_visibility": "Technische Zugriffe als Player anzeigen",
           "search_query": "Benutzer, Gerät, App oder Entity-ID suchen",
           "selected_group": "Gruppe öffnen",
-          "player_action": "Player verwalten",
           "flow_action": "Aktion"
         },
         "data_description": {
           "only_during_playback": "Aktiviert: Player erscheinen nur während laufender oder pausierter Wiedergabe.",
           "auto_show_new_players": "Deaktiviert: Aktuell sichtbare Player bleiben erhalten; neue Player werden erst nach Auswahl angezeigt.",
           "technical_access_visibility": "Dieser Schalter betrifft nur explizit technische oder API-only Clients.",
-          "selected_group": "Gruppen werden kurz mit Name und Playeranzahl dargestellt.",
-          "player_action": "Home-Assistant-Player werden ausschließlich in diesem Bereich entfernt oder wiederhergestellt."
+          "selected_group": "Gruppen werden kurz mit Name und Playeranzahl dargestellt."
         }
       },
       "player_group": {
         "title": "{group}",
-        "description": "{count} Player gehören zu dieser Gruppe. Jeder Player kann direkt ein- oder ausgeschaltet werden. Laufende oder pausierte Wiedergaben bleiben geschützt. Optional kann unten eine Detailansicht geöffnet werden.",
+        "description": "{count} Player gehören zu dieser Gruppe. Ein schaltet den Player in Home Assistant ein. Aus markiert ihn zur sicheren Entfernung beim finalen Übernehmen. Laufende, pausierte oder unklare Wiedergaben bleiben geschützt. Der ausgeschaltete Eintrag bleibt verfügbar, solange er noch auf dem Emby-Server existiert.",
         "data": {
           "show_user_players": "Alle Player dieses Benutzers anzeigen",
-          "player_action": "Öffnen",
           "flow_action": "Aktion"
         }
       },
@@ -89,11 +86,8 @@
       },
       "player_details": {
         "title": "Playerdetails",
-        "description": "Technische Angaben werden ausschließlich auf dieser Detailseite angezeigt.\n\n{details}",
-        "data": {
-          "selected_player_key": "Player",
-          "flow_action": "Aktion"
-        }
+        "description": "Technische Angaben zu dem zuvor gewählten Player.\n\n{details}",
+        "data": {}
       },
       "server_cleanup": {
         "title": "Emby-Server bereinigen",
@@ -103,7 +97,7 @@
       },
       "automatic_cleanup": {
         "title": "Automatische Bereinigung",
-        "description": "Konfiguriere die automatische Bereinigung der Serverhistorie. Änderungen bleiben im Entwurf, bis sie unter „Änderungen prüfen“ übernommen werden.",
+        "description": "Konfiguriere die automatische Bereinigung der Serverhistorie. Nach „Änderungen übernehmen“ wird eine geänderte aktive Automatik sofort ausgeführt; danach läuft sie alle 24 Stunden erneut.",
         "data": {
           "server_auto_cleanup_enabled": "Automatische Bereinigung",
           "automatic_age_preset": "Altersgrenze",
@@ -168,7 +162,7 @@
       },
       "review_changes": {
         "title": "Änderungen prüfen",
-        "description": "{count_text} offen. Bisher wurde nichts gespeichert.\n\n{changes}\n\n{error}",
+        "description": "{count_text} offen. Bisher wurde nichts gespeichert. Ausgeschaltete Player werden beim Übernehmen sicher aus Home Assistant entfernt; die Emby-Serverhistorie wird nur durch die ausdrücklich aktivierte Bereinigung verändert.\n\n{changes}\n\n{error}",
         "data": {
           "flow_action": "Aktion"
         }

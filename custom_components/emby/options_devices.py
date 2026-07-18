@@ -14,15 +14,11 @@ from .const import (
     CONF_GLOBAL_PLAYER_MODE,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_ONLY_DURING_PLAYBACK,
-    CONF_PLAYER_ACTION,
     CONF_SEARCH_QUERY,
     CONF_SELECTED_GROUP,
-    CONF_SELECTED_PLAYER_KEY,
     CONF_TECHNICAL_ACCESS_VISIBILITY,
     CONF_UNRESOLVED_LEGACY_RULES,
     CONF_USER_MASTER_VISIBILITY,
-    PLAYER_ACTION_REMOVE,
-    PLAYER_ACTION_RESTORE,
     PLAYER_MODE_ACTIVE_ONLY,
     PLAYER_MODE_PERSISTENT,
 )
@@ -79,7 +75,7 @@ def _page_selector(total_pages: int) -> selector.SelectSelector:
 
 
 def _player_toggle_fields(players):
-    """Return stable, unique user-facing labels for native BooleanSelectors."""
+    """Return stable, unique and meaningful labels for native switches."""
     options = player_options(players)
     counts = Counter(option["label"] for option in options)
     seen: Counter[str] = Counter()
@@ -87,11 +83,19 @@ def _player_toggle_fields(players):
     result = []
     for option in options:
         base = option["label"]
-        seen[base] += 1
-        label = base if counts[base] == 1 else f"{base} ({seen[base]})"
         player = by_key.get(option["value"])
-        if player is not None:
-            result.append((label, player))
+        if player is None:
+            continue
+        seen[base] += 1
+        label = base
+        if counts[base] > 1:
+            if player.users:
+                label = f"{base} · {player.users[0]}"
+            elif player.last_activity is not None:
+                label = f"{base} · {player.last_activity.date().isoformat()}"
+            if any(existing == label for existing, _player in result):
+                label = f"{label} ({seen[base]})"
+        result.append((label, player))
     return result
 
 
@@ -143,10 +147,6 @@ class DevicesOptionsMixin:
         }
         if groups:
             fields[vol.Optional(CONF_SELECTED_GROUP)] = _single(groups)
-        fields[vol.Optional(CONF_PLAYER_ACTION)] = _single(
-            [PLAYER_ACTION_REMOVE, PLAYER_ACTION_RESTORE],
-            translation_key="player_management_action",
-        )
         fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
             german=self._is_de(),
             primary_label="Speichern & zurück" if self._is_de() else "Save & back",
@@ -194,13 +194,7 @@ class DevicesOptionsMixin:
                         return await self.async_step_older_rules()
                     if selected_group:
                         self._selected_group = str(selected_group)
-                        self._page_by_step["player_exceptions"] = 1
                         return await self.async_step_player_group()
-                    action = user_input.get(CONF_PLAYER_ACTION)
-                    if action == PLAYER_ACTION_REMOVE:
-                        return await self.async_step_manage_ha_players()
-                    if action == PLAYER_ACTION_RESTORE:
-                        return await self.async_step_restore_ha_players()
                     return await self.async_step_init()
 
         return self.async_show_form(
@@ -235,8 +229,6 @@ class DevicesOptionsMixin:
         fields: dict[Any, Any] = {}
         for label, player in toggle_fields:
             fields[vol.Required(label, default=player.visible_in_embi)] = selector.BooleanSelector()
-        if group_players:
-            fields[vol.Optional(CONF_SELECTED_PLAYER_KEY)] = _single(player_options(group_players))
         fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
             german=self._is_de(),
             primary_label="Speichern & zurück" if self._is_de() else "Save & back",
@@ -284,10 +276,6 @@ class DevicesOptionsMixin:
                         hidden -= group_keys
                         hidden.update(key for key, visible in requested.items() if not visible)
                     self._draft_options[CONF_HIDDEN_EXACT_PLAYERS] = sorted(hidden)
-                    selected = user_input.get(CONF_SELECTED_PLAYER_KEY)
-                    if selected:
-                        self._selected_player_key = str(selected)
-                        return await self.async_step_player_details()
                     return await self.async_step_ha_players()
 
         group_name = next(
@@ -313,46 +301,22 @@ class DevicesOptionsMixin:
         return await self.async_step_player_group(user_input)
 
     async def async_step_player_details(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            return await self.async_step_player_group()
         if not self._selected_group:
             return await self.async_step_ha_players()
-        errors: dict[str, str] = {}
         try:
             players, _stats = await fresh_catalog(self)
         except Exception:
             _LOGGER.exception("Failed to load current EMBi player catalog")
             players = []
-            errors["base"] = "cannot_connect"
         group_players = list(group_player_catalog(players).get(self._selected_group, []))
-        by_key = {player.player_key: player for player in group_players}
-        fields: dict[Any, Any] = {}
-        if group_players:
-            fields[
-                vol.Optional(
-                    CONF_SELECTED_PLAYER_KEY,
-                    default=self._selected_player_key,
-                )
-            ] = _single(player_options(group_players))
-        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
-            german=self._is_de(),
-            primary_label="Speichern & zurück" if self._is_de() else "Save & back",
-        )
-
-        if user_input is not None:
-            if back_requested(user_input):
-                return await self.async_step_player_group()
-            selected = user_input.get(CONF_SELECTED_PLAYER_KEY)
-            if selected and str(selected) in by_key:
-                self._selected_player_key = str(selected)
-            elif selected:
-                errors["base"] = "invalid_selection"
-
-        selected_players = (
-            [by_key[self._selected_player_key]] if self._selected_player_key in by_key else []
-        )
+        selected_players = [
+            player for player in group_players if player.player_key == self._selected_player_key
+        ]
         return self.async_show_form(
             step_id="player_details",
-            data_schema=vol.Schema(fields),
-            errors=errors,
+            data_schema=vol.Schema({}),
             description_placeholders={
                 "details": render_player_details(selected_players, german=self._is_de())
             },
