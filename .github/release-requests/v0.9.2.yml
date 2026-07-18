@@ -1,0 +1,12 @@
+version: "0.9.2"
+tag: "v0.9.2"
+title: "EMBi 0.9.2"
+target_sha: "4f6d51f25a67bf625b0184904b590d424c209d3d"
+stable: true
+prerelease: false
+requested_by: "Seger"
+report_issue: 37
+cleanup_branches:
+  - "fix/embi-0.9.2"
+  - "release/v0.9.2"
+request_nonce: "2026-07-18T07:35:00+02:00"
