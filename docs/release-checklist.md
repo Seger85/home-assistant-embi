@@ -1,8 +1,8 @@
-# Release-Checkliste 0.9.2
+# Release-Checkliste 0.9.3
 
 ## Unveränderliche Basis
 
-- [x] Manifest und Runtime tragen `0.9.2`.
+- [x] Manifest und Runtime tragen `0.9.3`.
 - [x] Config-Entry- und Unique-ID-Vertrag bleiben kompatibel.
 - [x] Der bestehende Stable-Tag `v0.9.0` bleibt unverändert.
 - [x] Es gibt keine Dev-, Beta- oder RC-Veröffentlichung.
@@ -24,7 +24,7 @@
 
 ## Migration
 
-- [x] 0.9.0 nach 0.9.2 ist idempotent.
+- [x] 0.9.0 nach 0.9.3 ist idempotent.
 - [x] Entity-IDs, Unique IDs, Namen, Aliase, Areas, Labels und disabled state bleiben erhalten.
 - [x] Sichtbarkeit, Cleanup-Schalter, Alterswerte, Scheduler und Laufbericht bleiben erhalten.
 
@@ -42,10 +42,10 @@
 
 - [ ] PR #30 ist auf einem exakten Head vollständig grün und ohne offene Reviewthreads.
 - [ ] Squash-Merge nach `main`; finalen Merge-SHA erfassen.
-- [ ] Tag exakt `v0.9.2` auf dem finalen Main-Commit.
-- [ ] Release-Titel `EMBi 0.9.2`, nicht Draft, nicht Prerelease, als Latest.
+- [ ] Tag exakt `v0.9.3` auf dem finalen Main-Commit.
+- [ ] Release-Titel `EMBi 0.9.3`, nicht Draft, nicht Prerelease, als Latest.
 - [ ] Assets ausschließlich `embi.zip` und `embi.zip.sha256`.
-- [ ] Veröffentlichte Assets erneut laden, SHA-256, ZIP-Struktur und Manifest `0.9.2` prüfen.
-- [ ] HACS erkennt `v0.9.2` als Stable und installiert das Releaseasset.
+- [ ] Veröffentlichte Assets erneut laden, SHA-256, ZIP-Struktur und Manifest `0.9.3` prüfen.
+- [ ] HACS erkennt `v0.9.3` als Stable und installiert das Releaseasset.
 
 Die visuelle Home-Assistant-Prüfung auf iPhone, iPad und Desktop erfolgt nachgelagert und blockiert den GitHub-Release nicht.

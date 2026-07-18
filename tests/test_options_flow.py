@@ -188,8 +188,9 @@ async def test_apply_writes_and_reloads_once(monkeypatch) -> None:
     flow, entry, store, hass = setup_flow()
     flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
     result = await flow.async_step_apply_changes()
-    assert result["type"] == "abort"
-    assert result["reason"] == "apply_complete"
+    assert result["type"] == "menu"
+    assert result["step_id"] == "init"
+    assert "gespeichert" in result["description_placeholders"]["apply_notice"]
     assert len(hass.config_entries.updates) == 1
     assert hass.config_entries.reloads == [entry.entry_id]
     assert store.saved == []
@@ -235,7 +236,8 @@ async def test_auto_cleanup_change_resets_deadline_on_apply(monkeypatch) -> None
     flow._runtime.maintenance_state.report.next_run_at = "2026-07-16T12:00:00+00:00"
     flow._draft_options[CONF_SERVER_AUTO_CLEANUP_ENABLED] = True
     result = await flow.async_step_apply_changes()
-    assert result["reason"] == "apply_complete"
+    assert result["type"] == "menu"
+    assert result["step_id"] == "init"
     assert len(store.saved) == 1
     assert store.saved[0].initial_run_completed is False
     assert store.saved[0].report.next_run_at is None

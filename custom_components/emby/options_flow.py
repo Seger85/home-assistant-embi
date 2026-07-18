@@ -55,7 +55,7 @@ class EmbyOptionsFlow(
     HomeAssistantCleanupOptionsMixin,
     config_entries.OptionsFlow,
 ):
-    """EMBi 0.9.2 Options Flow with a preserved in-memory draft."""
+    """EMBi 0.9.3 Options Flow with a preserved in-memory draft."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
@@ -64,6 +64,7 @@ class EmbyOptionsFlow(
         self._draft_options = self._draft.current
         self._pending_cleanup_records: dict[str, EmbyDeviceRecord] = {}
         self._pending_cleanup_age_days: int | None = None
+        self._pending_cleanup_ignore_age = False
         self._pending_ha_entity_ids: list[str] = []
         self._pending_restore_player_keys: list[str] = []
         self._pending_enable_entity_ids: set[str] = set()
@@ -75,6 +76,7 @@ class EmbyOptionsFlow(
         self._section_error: dict[str, str] = {}
         self._manual_age_preset: str | None = None
         self._automatic_age_preset: str | None = None
+        self._apply_notice = ""
 
     @property
     def _dirty(self) -> bool:
@@ -149,6 +151,7 @@ class EmbyOptionsFlow(
                 "server_missing": str(stats.server_missing if stats else 0),
                 "automatic_cleanup": self._on_off(auto_status),
                 "review_count": str(count),
+                "apply_notice": self._apply_notice,
             },
         )
 
@@ -211,6 +214,7 @@ class EmbyOptionsFlow(
         self._draft.discard()
         self._pending_cleanup_records = {}
         self._pending_cleanup_age_days = None
+        self._pending_cleanup_ignore_age = False
         self._pending_ha_entity_ids = []
         self._pending_restore_player_keys = []
         self._pending_enable_entity_ids.clear()
@@ -349,13 +353,31 @@ class EmbyOptionsFlow(
         )
         failed += max(0, len(restore_keys) - restored)
 
-        return self.async_abort(
-            reason="apply_complete",
-            description_placeholders={
-                "removed": "0",
-                "restored": str(restored),
-                "enabled": str(enabled),
-                "protected": str(len(protected_keys)),
-                "failed": str(failed),
-            },
-        )
+        self._draft = OptionsDraft.from_options(updated)
+        self._original_options = self._draft.original
+        self._draft_options = self._draft.current
+        self._pending_cleanup_records = {}
+        self._pending_cleanup_age_days = None
+        self._pending_cleanup_ignore_age = False
+        self._pending_ha_entity_ids = []
+        self._pending_restore_player_keys = []
+        self._pending_enable_entity_ids.clear()
+        self._selected_group = None
+        self._selected_player_key = None
+        self._search_query = ""
+        self._page_by_step.clear()
+        self._review_error = None
+        self._section_error.clear()
+        if self._is_de():
+            self._apply_notice = (
+                "Änderungen gespeichert und EMBi neu geladen. "
+                f"Wiederhergestellt: {restored}, aktiviert: {enabled}, "
+                f"geschützt: {len(protected_keys)}, fehlgeschlagen: {failed}."
+            )
+        else:
+            self._apply_notice = (
+                "Changes saved and EMBi reloaded. "
+                f"Restored: {restored}, enabled: {enabled}, "
+                f"protected: {len(protected_keys)}, failed: {failed}."
+            )
+        return await self.async_step_init()

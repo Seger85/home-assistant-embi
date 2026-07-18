@@ -2,7 +2,7 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.2"
+VERSION = "0.9.3"
 PLATFORMS = ["media_player"]
 
 CONFIG_ENTRY_VERSION = 4
@@ -86,6 +86,9 @@ CONF_CONFIRM_DISCARD = "confirm_discard"
 
 CONF_SERVER_CLEANUP_ENABLED = "server_cleanup_enabled"
 CONF_SERVER_CLEANUP_AGE_DAYS = "server_cleanup_age_days"
+CONF_MANUAL_CLEANUP_SCOPE = "manual_cleanup_scope"
+MANUAL_CLEANUP_SCOPE_AGE = "age_threshold"
+MANUAL_CLEANUP_SCOPE_ALL_SAFE = "all_safe_records"
 CONF_DELETE_DEVICE_RECORD_IDS = "delete_device_record_ids"
 CONF_REMOVE_DELETED_HA_ENTITIES = "remove_deleted_ha_entities"
 CONF_CONFIRM_DELETE = "confirm_delete"
@@ -121,7 +124,7 @@ DEFAULT_SERVER_CLEANUP_AGE_DAYS = 365
 DEFAULT_REMOVE_HA_ENTITIES = False
 MIN_SERVER_CLEANUP_AGE_DAYS = 1
 MAX_SERVER_CLEANUP_AGE_DAYS = 3650
-AUTO_CLEANUP_INITIAL_DELAY_SECONDS = 120
+AUTO_CLEANUP_INITIAL_DELAY_SECONDS = 10
 AUTO_CLEANUP_INTERVAL_HOURS = 24
 
 RUN_STATUS_IDLE = "idle"

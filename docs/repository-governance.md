@@ -4,14 +4,14 @@
 
 `main` enthält veröffentlichte Stable-Versionen. Änderungen erfolgen über geprüfte Pull Requests. Force-Push und History Rewrite sind ausgeschlossen.
 
-## EMBi 0.9.2
+## EMBi 0.9.3
 
 ```text
-release/0.9.2
+release/0.9.3
 → PR #30 nach main
 → vollständige CI
 → Squash-Merge
-→ Tag v0.9.2
+→ Tag v0.9.3
 → Stable Release als latest
 ```
 
@@ -29,9 +29,9 @@ Quality umfasst JSON, YAML, Compileall, Mypy, Ruff, Ruff-Format, Pytest, Vertrag
 
 ## Releasevertrag
 
-- Manifest und Runtime: `0.9.2`
-- Tag: `v0.9.2`
-- Titel: `EMBi 0.9.2`
+- Manifest und Runtime: `0.9.3`
+- Tag: `v0.9.3`
+- Titel: `EMBi 0.9.3`
 - nicht Draft oder Prerelease
 - als Latest markiert
 - Assets: `embi.zip` und `embi.zip.sha256`

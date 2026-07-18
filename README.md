@@ -44,6 +44,14 @@ Für einen bekannten Benutzer kann ein Master-Schalter alle zugeordneten Player 
 
 Suche und Seitenauswahl begrenzen lange Listen auf mobile-taugliche Abschnitte. Zurückgehen erhält den vollständigen Entwurf.
 
+
+## Bedienung ab 0.9.3
+
+- **Änderungen übernehmen** speichert, lädt EMBi neu und führt sichtbar zur Hauptseite zurück.
+- Innerhalb einer Benutzer- oder Clientgruppe besitzt jeder Player direkt einen Ein-/Aus-Schalter; die zusätzliche Ausnahmenseite entfällt.
+- **Technische Zugriffe** werden anhand eindeutiger App-, Geräte-, API- und Sitzungsmerkmale klassifiziert.
+- Die manuelle Serverprüfung kann wahlweise nur alte oder alle sicher prüfbaren Einträge anzeigen. Die automatische Bereinigung hält immer an ihrer Altersgrenze fest.
+
 ## Änderungen prüfen
 
 Normale Einstellungen werden zunächst nur im geöffneten Dialog gesammelt.
@@ -100,7 +108,7 @@ Beim Wiederherstellen entfernt EMBi die passende Regel, lädt neu und prüft die
 
 EMBi wird ausschließlich über reguläre GitHub-Releases bereitgestellt. Das HACS-Paket heißt `embi.zip`; die zugehörige Prüfsumme liegt im Releaseasset `embi.zip.sha256`.
 
-## Upgrade auf 0.9.2
+## Upgrade auf 0.9.3
 
 Die Migration ist idempotent und erhält insbesondere:
 

@@ -27,6 +27,7 @@ async def async_run_manual_cleanup(
     selected_record_ids: Iterable[str],
     age_days: int,
     remove_ha_entities: bool,
+    ignore_age: bool = False,
 ) -> tuple[CleanupRunReport, bool]:
     """Run a revalidated manual cleanup."""
     return await _async_execute_cleanup(
@@ -36,6 +37,7 @@ async def async_run_manual_cleanup(
         age_days=age_days,
         remove_ha_entities=remove_ha_entities,
         selected_record_ids={str(value) for value in selected_record_ids},
+        ignore_age=ignore_age,
     )
 
 

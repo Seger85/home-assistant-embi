@@ -42,6 +42,7 @@ async def _async_execute_cleanup(
     age_days: int,
     remove_ha_entities: bool,
     selected_record_ids: set[str] | None = None,
+    ignore_age: bool = False,
 ) -> tuple[CleanupRunReport, bool]:
     """Run one fail-safe cleanup and return its report and reload requirement."""
     runtime: EmbiRuntimeData = entry.runtime_data
@@ -100,6 +101,7 @@ async def _async_execute_cleanup(
             now=dt_util.utcnow(),
             age_days=age_days,
             active_player_keys=active,
+            ignore_age=ignore_age if mode != RUN_MODE_AUTOMATIC else False,
         )
         report.skipped_active = len(plan.skipped_active)
         report.skipped_without_activity = len(plan.skipped_without_activity)
