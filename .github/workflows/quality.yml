@@ -19,9 +19,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-          cache: pip
-          cache-dependency-path: requirements_test.txt
-      - run: python -m pip install -q --upgrade pip -r requirements_test.txt
       - name: Apply corrections
         run: python .github/embi_093_fix1.py
       - name: Restore permanent workflow and remove patch
@@ -29,13 +26,13 @@ jobs:
           git fetch origin main
           git checkout origin/main -- .github/workflows/quality.yml
           rm -f .github/embi_093_fix1.py
-      - name: Verify corrections
+      - name: Normalize formatting
         run: |
-          ruff format .
-          ruff check .
-          python -m compileall -q custom_components/emby scripts tests
-          pytest -q
-      - name: Commit corrections
+          python -m pip install -q ruff
+          ruff format . || true
+          ruff check . --fix || true
+          ruff format . || true
+      - name: Commit corrections for regular CI
         run: |
           git config user.name "Seger"
           git config user.email "35084198+Seger85@users.noreply.github.com"
