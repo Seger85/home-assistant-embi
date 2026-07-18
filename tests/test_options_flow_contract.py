@@ -30,10 +30,14 @@ def test_draft_write_contract() -> None:
 
 def test_navigation_contract() -> None:
     flow = source("options_flow.py")
+    navigation = source("options_navigation.py")
     assert 'menu_options = ["ha_players", "server_cleanup"]' in flow
     assert 'menu_options.append("review_changes")' in flow
     assert "async_step_back_to_init" in flow
-    assert '"back_to_init"' in flow
+    assert "FLOW_ACTION_BACK" in navigation
+    assert "navigation_selector" in navigation
+    assert "SelectSelectorMode.DROPDOWN" in navigation
+    assert "BooleanSelector" not in navigation
 
 
 def test_inline_error_contract() -> None:
