@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 FILES = (
     Path("custom_components/emby/options_cleanup.py"),
