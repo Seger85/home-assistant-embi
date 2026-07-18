@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
+from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import voluptuous as vol
 from homeassistant.helpers import selector
@@ -14,6 +16,7 @@ from .const import (
     CONF_GLOBAL_PLAYER_MODE,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_ONLY_DURING_PLAYBACK,
+    CONF_PLAYER_SORT_ORDER,
     CONF_SEARCH_QUERY,
     CONF_SELECTED_GROUP,
     CONF_TECHNICAL_ACCESS_VISIBILITY,
@@ -21,12 +24,13 @@ from .const import (
     CONF_USER_MASTER_VISIBILITY,
     PLAYER_MODE_ACTIVE_ONLY,
     PLAYER_MODE_PERSISTENT,
+    PLAYER_SORT_NEWEST,
+    PLAYER_SORT_OLDEST,
 )
-from .options_navigation import back_requested, navigation_selector
+from .options_navigation import navigation_selector
 from .options_runtime import (
     fresh_catalog,
     group_options,
-    player_options,
     render_player_details,
 )
 from .player_context import (
@@ -34,6 +38,7 @@ from .player_context import (
     CLIENT_CLASS_TECHNICAL,
     GROUP_TECHNICAL,
     GROUP_USER_PREFIX,
+    filter_player_catalog,
     group_player_catalog,
 )
 
@@ -74,27 +79,64 @@ def _page_selector(total_pages: int) -> selector.SelectSelector:
     )
 
 
-def _player_toggle_fields(players):
-    """Return stable, unique and meaningful labels for native switches."""
-    options = player_options(players)
-    counts = Counter(option["label"] for option in options)
+def _localized_activity(
+    value: datetime | None,
+    *,
+    german: bool,
+    time_zone: str,
+) -> str:
+    # Return one compact local last-access line.
+    if value is None:
+        return "Zuletzt: unbekannt" if german else "Last access: unknown"
+    try:
+        zone = ZoneInfo(time_zone)
+    except ZoneInfoNotFoundError:
+        zone = ZoneInfo("UTC")
+    normalized = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    local = normalized.astimezone(zone)
+    if german:
+        return f"Zuletzt: {local:%d.%m.%Y %H:%M}"
+    return f"Last access: {local:%Y-%m-%d %H:%M}"
+
+
+def _sort_group_players(players, order: str):
+    # Sort known dates oldest/newest and keep unknown timestamps at the end.
+    newest = order == PLAYER_SORT_NEWEST
+    return sorted(
+        players,
+        key=lambda player: (
+            player.last_activity is None,
+            (
+                -player.last_activity.timestamp()
+                if newest and player.last_activity is not None
+                else player.last_activity.timestamp()
+                if player.last_activity is not None
+                else 0
+            ),
+            player.selector_label.casefold(),
+        ),
+    )
+
+
+def _player_toggle_fields(
+    players,
+    *,
+    german: bool,
+    time_zone: str,
+):
+    # Return unique two-line labels without entity IDs or horizontal detail chains.
     seen: Counter[str] = Counter()
-    by_key = {player.player_key: player for player in players}
     result = []
-    for option in options:
-        base = option["label"]
-        player = by_key.get(option["value"])
-        if player is None:
-            continue
-        seen[base] += 1
-        label = base
-        if counts[base] > 1:
-            if player.users:
-                label = f"{base} · {player.users[0]}"
-            elif player.last_activity is not None:
-                label = f"{base} · {player.last_activity.date().isoformat()}"
-            if any(existing == label for existing, _player in result):
-                label = f"{label} ({seen[base]})"
+    for player in players:
+        primary = player.selector_label
+        secondary = _localized_activity(
+            player.last_activity,
+            german=german,
+            time_zone=time_zone,
+        )
+        candidate = f"{primary}\n{secondary}"
+        seen[candidate] += 1
+        label = candidate if seen[candidate] == 1 else f"{primary} ({seen[candidate]})\n{secondary}"
         result.append((label, player))
     return result
 
@@ -145,57 +187,70 @@ class DevicesOptionsMixin:
                 selector.TextSelectorConfig()
             ),
         }
+        fields[vol.Required(CONF_PLAYER_SORT_ORDER, default=self._player_sort_order)] = _single(
+            [
+                {
+                    "value": PLAYER_SORT_OLDEST,
+                    "label": "Älteste zuerst" if self._is_de() else "Oldest first",
+                },
+                {
+                    "value": PLAYER_SORT_NEWEST,
+                    "label": "Neueste zuerst" if self._is_de() else "Newest first",
+                },
+            ]
+        )
         if groups:
             fields[vol.Optional(CONF_SELECTED_GROUP)] = _single(groups)
-        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+        fields[vol.Required(CONF_FLOW_ACTION, default="back")] = navigation_selector(
             german=self._is_de(),
-            primary_label="Speichern & zurück" if self._is_de() else "Save & back",
         )
 
-        if user_input is not None:
-            if back_requested(user_input):
-                return await self.async_step_init()
-            if not errors:
-                requested_auto_show = bool(user_input.get(CONF_AUTO_SHOW_NEW_PLAYERS, True))
-                requested_technical = bool(user_input.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
-                active_technical = [
-                    player
-                    for player in players
-                    if player.client_class == CLIENT_CLASS_TECHNICAL
-                    and player.playback in ACTIVE_PLAYBACK_STATES
-                ]
-                technical_would_hide_active = (
-                    bool(self._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
-                    and not requested_technical
-                    and bool(active_technical)
+        if user_input is not None and not errors:
+            requested_auto_show = bool(user_input.get(CONF_AUTO_SHOW_NEW_PLAYERS, True))
+            requested_technical = bool(user_input.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
+            active_technical = [
+                player
+                for player in players
+                if player.client_class == CLIENT_CLASS_TECHNICAL
+                and player.playback in ACTIVE_PLAYBACK_STATES
+            ]
+            technical_would_hide_active = (
+                bool(self._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
+                and not requested_technical
+                and bool(active_technical)
+            )
+            if technical_would_hide_active:
+                errors["base"] = "playback_protected"
+            else:
+                self._draft_options[CONF_GLOBAL_PLAYER_MODE] = (
+                    PLAYER_MODE_ACTIVE_ONLY
+                    if user_input.get(CONF_ONLY_DURING_PLAYBACK)
+                    else PLAYER_MODE_PERSISTENT
                 )
-                if technical_would_hide_active:
-                    errors["base"] = "playback_protected"
-                else:
-                    self._draft_options[CONF_GLOBAL_PLAYER_MODE] = (
-                        PLAYER_MODE_ACTIVE_ONLY
-                        if user_input.get(CONF_ONLY_DURING_PLAYBACK)
-                        else PLAYER_MODE_PERSISTENT
+                self._draft_options[CONF_AUTO_SHOW_NEW_PLAYERS] = requested_auto_show
+                self._draft_options[CONF_TECHNICAL_ACCESS_VISIBILITY] = requested_technical
+                if not requested_auto_show:
+                    allowed = {
+                        str(value) for value in self._draft_options.get(CONF_ALLOWED_DEVICE_IDS, [])
+                    }
+                    allowed.update(
+                        player.player_key for player in players if player.visible_in_embi
                     )
-                    self._draft_options[CONF_AUTO_SHOW_NEW_PLAYERS] = requested_auto_show
-                    self._draft_options[CONF_TECHNICAL_ACCESS_VISIBILITY] = requested_technical
-                    if not requested_auto_show:
-                        allowed = {
-                            str(value)
-                            for value in self._draft_options.get(CONF_ALLOWED_DEVICE_IDS, [])
-                        }
-                        allowed.update(
-                            player.player_key for player in players if player.visible_in_embi
-                        )
-                        self._draft_options[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
-                    self._search_query = str(user_input.get(CONF_SEARCH_QUERY, "")).strip()
-                    selected_group = user_input.get(CONF_SELECTED_GROUP)
-                    if selected_group == _OLDER_RULES_GROUP:
-                        return await self.async_step_older_rules()
-                    if selected_group:
-                        self._selected_group = str(selected_group)
-                        return await self.async_step_player_group()
-                    return await self.async_step_init()
+                    self._draft_options[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
+                self._search_query = str(user_input.get(CONF_SEARCH_QUERY, "")).strip()
+                requested_sort = str(user_input.get(CONF_PLAYER_SORT_ORDER, PLAYER_SORT_OLDEST))
+                self._player_sort_order = (
+                    requested_sort
+                    if requested_sort in {PLAYER_SORT_OLDEST, PLAYER_SORT_NEWEST}
+                    else PLAYER_SORT_OLDEST
+                )
+                selected_group = user_input.get(CONF_SELECTED_GROUP)
+                if selected_group == _OLDER_RULES_GROUP:
+                    return await self.async_step_older_rules()
+                if selected_group:
+                    self._selected_group = str(selected_group)
+                    return await self.async_step_player_group()
+                return await self.async_step_init()
 
         return self.async_show_form(
             step_id="ha_players",
@@ -225,58 +280,59 @@ class DevicesOptionsMixin:
             players = []
             errors["base"] = "cannot_connect"
         group_players = list(group_player_catalog(players).get(self._selected_group, []))
-        toggle_fields = _player_toggle_fields(group_players)
+        group_players = filter_player_catalog(group_players, self._search_query)
+        group_players = _sort_group_players(group_players, self._player_sort_order)
+        toggle_fields = _player_toggle_fields(
+            group_players,
+            german=self._is_de(),
+            time_zone=self.hass.config.time_zone,
+        )
         fields: dict[Any, Any] = {}
         for label, player in toggle_fields:
             fields[vol.Required(label, default=player.visible_in_embi)] = selector.BooleanSelector()
-        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+        fields[vol.Required(CONF_FLOW_ACTION, default="back")] = navigation_selector(
             german=self._is_de(),
-            primary_label="Speichern & zurück" if self._is_de() else "Save & back",
         )
 
-        if user_input is not None:
-            if back_requested(user_input):
-                return await self.async_step_back_to_ha_players()
-            if not errors:
-                requested = {
-                    player.player_key: bool(user_input.get(label, player.visible_in_embi))
-                    for label, player in toggle_fields
+        if user_input is not None and not errors:
+            requested = {
+                player.player_key: bool(user_input.get(label, player.visible_in_embi))
+                for label, player in toggle_fields
+            }
+            if any(
+                not requested.get(player.player_key, player.visible_in_embi)
+                and player.playback in ACTIVE_PLAYBACK_STATES
+                for player in group_players
+            ):
+                errors["base"] = "playback_protected"
+            else:
+                hidden = {
+                    str(value) for value in self._draft_options.get(CONF_HIDDEN_EXACT_PLAYERS, [])
                 }
-                if any(
-                    not requested.get(player.player_key, player.visible_in_embi)
-                    and player.playback in ACTIVE_PLAYBACK_STATES
-                    for player in group_players
-                ):
-                    errors["base"] = "playback_protected"
-                else:
-                    hidden = {
-                        str(value)
-                        for value in self._draft_options.get(CONF_HIDDEN_EXACT_PLAYERS, [])
-                    }
-                    group_keys = {player.player_key for player in group_players}
-                    user_name = (
-                        self._selected_group.removeprefix(GROUP_USER_PREFIX)
-                        if self._selected_group.startswith(GROUP_USER_PREFIX)
-                        else None
-                    )
-                    any_visible = any(requested.values())
-                    if user_name is not None:
-                        visibility = dict(self._draft_options.get(CONF_USER_MASTER_VISIBILITY, {}))
-                        visibility[user_name] = any_visible
-                        self._draft_options[CONF_USER_MASTER_VISIBILITY] = visibility
-                        hidden -= group_keys
-                        if any_visible:
-                            hidden.update(key for key, visible in requested.items() if not visible)
-                    elif self._selected_group == GROUP_TECHNICAL:
-                        self._draft_options[CONF_TECHNICAL_ACCESS_VISIBILITY] = any_visible
-                        hidden -= group_keys
-                        if any_visible:
-                            hidden.update(key for key, visible in requested.items() if not visible)
-                    else:
-                        hidden -= group_keys
+                group_keys = {player.player_key for player in group_players}
+                user_name = (
+                    self._selected_group.removeprefix(GROUP_USER_PREFIX)
+                    if self._selected_group.startswith(GROUP_USER_PREFIX)
+                    else None
+                )
+                any_visible = any(requested.values())
+                if user_name is not None:
+                    visibility = dict(self._draft_options.get(CONF_USER_MASTER_VISIBILITY, {}))
+                    visibility[user_name] = any_visible
+                    self._draft_options[CONF_USER_MASTER_VISIBILITY] = visibility
+                    hidden -= group_keys
+                    if any_visible:
                         hidden.update(key for key, visible in requested.items() if not visible)
-                    self._draft_options[CONF_HIDDEN_EXACT_PLAYERS] = sorted(hidden)
-                    return await self.async_step_ha_players()
+                elif self._selected_group == GROUP_TECHNICAL:
+                    self._draft_options[CONF_TECHNICAL_ACCESS_VISIBILITY] = any_visible
+                    hidden -= group_keys
+                    if any_visible:
+                        hidden.update(key for key, visible in requested.items() if not visible)
+                else:
+                    hidden -= group_keys
+                    hidden.update(key for key, visible in requested.items() if not visible)
+                self._draft_options[CONF_HIDDEN_EXACT_PLAYERS] = sorted(hidden)
+                return await self.async_step_ha_players()
 
         group_name = next(
             (
@@ -333,13 +389,10 @@ class DevicesOptionsMixin:
         fields: dict[Any, Any] = {}
         if options:
             fields[vol.Optional("kept_rules", default=unresolved)] = _multi(options)
-        fields[vol.Required(CONF_FLOW_ACTION, default="save")] = navigation_selector(
+        fields[vol.Required(CONF_FLOW_ACTION, default="back")] = navigation_selector(
             german=self._is_de(),
-            primary_label="Speichern & zurück" if self._is_de() else "Save & back",
         )
         if user_input is not None:
-            if back_requested(user_input):
-                return await self.async_step_ha_players()
             kept = {str(value) for value in user_input.get("kept_rules", unresolved)}
             self._draft_options[CONF_UNRESOLVED_LEGACY_RULES] = sorted(kept)
             return await self.async_step_ha_players()

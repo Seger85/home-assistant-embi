@@ -56,7 +56,8 @@
           "technical_access_visibility": "Technische Zugriffe als Player anzeigen",
           "search_query": "Benutzer, Gerät, App oder Entity-ID suchen",
           "selected_group": "Gruppe öffnen",
-          "flow_action": "Aktion"
+          "flow_action": "Aktion",
+          "player_sort_order": "Sortierung"
         },
         "data_description": {
           "only_during_playback": "Aktiviert: Player erscheinen nur während laufender oder pausierter Wiedergabe.",
@@ -67,7 +68,7 @@
       },
       "player_group": {
         "title": "{group}",
-        "description": "{count} Player gehören zu dieser Gruppe. Ein schaltet den Player in Home Assistant ein. Aus markiert ihn zur sicheren Entfernung beim finalen Übernehmen. Laufende, pausierte oder unklare Wiedergaben bleiben geschützt. Der ausgeschaltete Eintrag bleibt verfügbar, solange er noch auf dem Emby-Server existiert.",
+        "description": "{count} Player gehören zu dieser Gruppe. Jeder Schalter wird beim Zurückgehen in den Entwurf übernommen. Der letzte Zugriff steht in der zweiten Zeile; gespeichert wird erst unter „Änderungen prüfen“.",
         "data": {
           "show_user_players": "Alle Player dieses Benutzers anzeigen",
           "flow_action": "Aktion"
@@ -185,7 +186,7 @@
       "unsaved_changes": "Übernimm oder verwirf zuerst den aktuellen Entwurf, bevor du eine destruktive Aktion startest."
     },
     "abort": {
-      "apply_complete": "Änderungen übernommen. Wiederhergestellt: {restored}. Aktiviert: {enabled}. Geschützt: {protected}. Fehlgeschlagen: {failed}.",
+      "apply_complete": "Änderungen gespeichert. EMBi führt Reload, Registry-Abgleich und eine eventuell fällige unmittelbare Bereinigung im Hintergrund aus. Der Status ist anschließend in den EMBi-Diagnosen und im letzten Bereinigungslauf sichtbar.",
       "server_cleanup_complete": "Serverbereinigung abgeschlossen. Gelöscht: {server_deleted}. Fehlgeschlagen: {server_failed}.",
       "ha_player_removal_complete": "Entfernung aus Home Assistant abgeschlossen. Angefordert: {requested}. Entfernt: {removed}. Geschützt: {protected}. Fehlgeschlagen: {failed}.",
       "ha_player_restore_complete": "Wiederherstellung in Home Assistant abgeschlossen. Angefordert: {requested}. Wiederhergestellt: {restored}. Fehlgeschlagen: {failed}."

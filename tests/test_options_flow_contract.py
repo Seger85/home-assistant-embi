@@ -22,7 +22,7 @@ def test_draft_write_contract() -> None:
         )
     )
     assert "async_update_entry" not in pages
-    assert flow.count("async_update_entry") == 1
+    assert flow.count(".async_update_entry(") == 1
     assert "async_step_apply_changes" in flow
     assert "async_step_discard_changes" in flow
     assert "self._draft.discard()" in flow
@@ -71,3 +71,19 @@ def test_draft_does_not_schedule_runtime() -> None:
     )
     assert "async_setup_automatic_cleanup" not in combined
     assert "async_schedule_automatic_cleanup" not in combined
+
+
+def test_apply_completion_and_back_only_contract() -> None:
+    flow = source("options_flow.py")
+    devices = source("options_devices.py")
+    cleanup = source("options_cleanup.py")
+    apply = flow.split("async def async_step_apply_changes", 1)[1]
+    assert 'return self.async_abort(reason="apply_complete")' in apply
+    assert "await self.hass.config_entries.async_reload" not in apply
+    assert "Speichern & zurück" not in devices
+    assert "Save & back" not in devices
+    automatic = cleanup.split("async def async_step_automatic_cleanup", 1)[1].split(
+        "async def async_step_server_history_check", 1
+    )[0]
+    assert "Speichern & zurück" not in automatic
+    assert "Save & back" not in automatic

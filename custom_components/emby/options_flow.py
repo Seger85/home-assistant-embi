@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from copy import deepcopy
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.components import persistent_notification
 from homeassistant.helpers import entity_registry as er
 
 from .api import EmbyApiError, EmbyDeviceRecord
@@ -23,6 +25,7 @@ from .const import (
     FLOW_ACTION_APPLY,
     FLOW_ACTION_BACK,
     FLOW_ACTION_DISCARD,
+    PLAYER_SORT_OLDEST,
 )
 from .maintenance import async_run_automatic_cleanup
 from .models import EmbiRuntimeData
@@ -81,6 +84,7 @@ class EmbyOptionsFlow(
         self._selected_group: str | None = None
         self._selected_player_key: str | None = None
         self._search_query = ""
+        self._player_sort_order = PLAYER_SORT_OLDEST
         self._page_by_step: dict[str, int] = {}
         self._review_error: str | None = None
         self._section_error: dict[str, str] = {}
@@ -243,6 +247,69 @@ class EmbyOptionsFlow(
         self._section_error.clear()
         return await self.async_step_init()
 
+    async def _async_finalize_apply(
+        self,
+        *,
+        remove_keys: frozenset[str],
+        enable_entity_ids: frozenset[str],
+        cleanup_changed: bool,
+        updated_auto: bool,
+    ) -> None:
+        # Reload and finish destructive follow-up work after the dialog has closed.
+        try:
+            # The listener task was scheduled first by async_update_entry.
+            await asyncio.sleep(0)
+            self._runtime.suppress_update_listener = False
+            current_entry = (
+                self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+            )
+            registry = er.async_get(self.hass)
+            for entity_id in sorted(enable_entity_ids):
+                entity = registry.async_get(entity_id)
+                player_key = str(getattr(entity, "unique_id", ""))
+                if owned_exact(entity, current_entry, player_key):
+                    registry.async_update_entity(entity_id, disabled_by=None)
+
+            reloaded = await self.hass.config_entries.async_reload(self._entry.entry_id)
+            if not reloaded:
+                raise RuntimeError("EMBi reload after option commit returned false")
+
+            current_entry = (
+                self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+            )
+            if remove_keys:
+                await async_remove_hidden_player_entities(
+                    self.hass,
+                    current_entry,
+                    sorted(remove_keys),
+                    prevalidated_non_playing_keys=remove_keys,
+                )
+
+            if cleanup_changed and updated_auto:
+                reload_needed = await async_run_automatic_cleanup(self.hass, current_entry)
+                if reload_needed:
+                    await self.hass.config_entries.async_reload(current_entry.entry_id)
+        except Exception:
+            _LOGGER.exception("EMBi post-apply finalization failed")
+            persistent_notification.async_create(
+                self.hass,
+                (
+                    "EMBi hat die Optionen gespeichert, konnte Reload, Registry-Abgleich "
+                    "oder die unmittelbare Bereinigung aber nicht vollständig abschließen. "
+                    "Details stehen im Home-Assistant-Protokoll und in den EMBi-Diagnosen."
+                    if self._is_de()
+                    else "EMBi saved the options but could not fully complete reload, registry "
+                    "reconciliation, or immediate cleanup. See the Home Assistant log and "
+                    "EMBi diagnostics for details."
+                ),
+                title=(
+                    "EMBi-Nachbereitung fehlgeschlagen"
+                    if self._is_de()
+                    else "EMBi post-processing failed"
+                ),
+                notification_id=f"emby_apply_failed_{self._entry.entry_id}",
+            )
+
     async def async_step_apply_changes(self, user_input: dict[str, Any] | None = None):
         self._review_error = None
         if not self._dirty:
@@ -339,8 +406,6 @@ class EmbyOptionsFlow(
             updated[CONF_ALLOWED_DEVICE_IDS] = sorted(allowed)
 
         final_players = _catalog(updated)
-        original_by_key = {player.player_key: player for player in original_players}
-        final_by_key = {player.player_key: player for player in final_players}
         remove_keys = {
             player.player_key
             for player in final_players
@@ -349,13 +414,6 @@ class EmbyOptionsFlow(
             and player.player_key not in protected_keys
             and player.playback not in ACTIVE_PLAYBACK_STATES
             and player.playback != PLAYBACK_UNKNOWN
-        }
-        restore_keys = {
-            key
-            for key, player in final_by_key.items()
-            if player.visible_in_embi
-            and key in original_by_key
-            and not original_by_key[key].visible_in_embi
         }
 
         cleanup_keys = (
@@ -380,117 +438,19 @@ class EmbyOptionsFlow(
         self._runtime.suppress_update_listener = True
         try:
             self.hass.config_entries.async_update_entry(self._entry, options=updated)
-            blocker = getattr(self.hass, "async_block_till_done", None)
-            if blocker is not None:
-                await blocker()
         except Exception:
+            self._runtime.suppress_update_listener = False
             _LOGGER.exception("Failed to store EMBi options")
             self._review_error = "save_failed"
             return await self.async_step_review_changes()
-        finally:
-            self._runtime.suppress_update_listener = False
 
-        try:
-            await self.hass.config_entries.async_reload(self._entry.entry_id)
-        except Exception:
-            _LOGGER.exception("Failed to reload EMBi after applying options")
-            self._review_error = "save_failed"
-            return await self.async_step_review_changes()
-
-        current_entry = (
-            self.hass.config_entries.async_get_entry(self._entry.entry_id) or self._entry
+        self.hass.async_create_task(
+            self._async_finalize_apply(
+                remove_keys=frozenset(remove_keys),
+                enable_entity_ids=frozenset(self._pending_enable_entity_ids),
+                cleanup_changed=cleanup_changed,
+                updated_auto=updated_auto,
+            ),
+            "Finalize EMBi option changes after closing the flow",
         )
-        blocker = getattr(self.hass, "async_block_till_done", None)
-        if blocker is not None:
-            await blocker()
-
-        removed = removal_protected = removal_failed = 0
-        if remove_keys:
-            removal = await async_remove_hidden_player_entities(
-                self.hass,
-                current_entry,
-                sorted(remove_keys),
-                prevalidated_non_playing_keys=remove_keys,
-            )
-            removed = len(removal.succeeded)
-            removal_protected = len(removal.protected)
-            removal_failed = len(removal.failed)
-
-        enabled = failed = 0
-        registry = er.async_get(self.hass)
-        for entity_id in sorted(self._pending_enable_entity_ids):
-            entity = registry.async_get(entity_id)
-            player_key = str(getattr(entity, "unique_id", ""))
-            if not owned_exact(entity, current_entry, player_key):
-                failed += 1
-                continue
-            registry.async_update_entity(entity_id, disabled_by=None)
-            enabled += 1
-
-        registry = er.async_get(self.hass)
-        restored = sum(
-            any(
-                owned_exact(entity, current_entry, player_key)
-                for entity in registry.entities.values()
-            )
-            for player_key in restore_keys
-        )
-        failed += max(0, len(restore_keys) - restored) + removal_failed
-
-        cleanup_deleted = cleanup_failed = 0
-        if cleanup_changed and updated_auto:
-            try:
-                reload_needed = await async_run_automatic_cleanup(self.hass, current_entry)
-                report = current_entry.runtime_data.maintenance_state.report
-                cleanup_deleted = report.server_deleted
-                cleanup_failed = report.server_failed
-                if reload_needed:
-                    await self.hass.config_entries.async_reload(current_entry.entry_id)
-            except Exception:
-                _LOGGER.exception("Immediate EMBi automatic cleanup after apply failed")
-                cleanup_failed += 1
-                failed += 1
-
-        self._draft = OptionsDraft.from_options(updated)
-        self._original_options = self._draft.original
-        self._draft_options = self._draft.current
-        self._pending_cleanup_records = {}
-        self._pending_cleanup_age_days = None
-        self._pending_cleanup_ignore_age = False
-        self._pending_ha_entity_ids = []
-        self._pending_restore_player_keys = []
-        self._pending_enable_entity_ids.clear()
-        self._selected_group = None
-        self._selected_player_key = None
-        self._search_query = ""
-        self._page_by_step.clear()
-        self._review_error = None
-        self._section_error.clear()
-        protected_total = len(protected_keys) + removal_protected
-        if self._is_de():
-            cleanup_notice = (
-                f" Automatische Prüfung sofort ausgeführt: {cleanup_deleted} gelöscht, "
-                f"{cleanup_failed} fehlgeschlagen."
-                if cleanup_changed and updated_auto
-                else ""
-            )
-            self._apply_notice = (
-                "Änderungen gespeichert und EMBi neu geladen. "
-                f"Aus Home Assistant entfernt: {removed}, wiederhergestellt: {restored}, "
-                f"aktiviert: {enabled}, geschützt: {protected_total}, fehlgeschlagen: {failed}."
-                f"{cleanup_notice}"
-            )
-        else:
-            cleanup_notice = (
-                f" Automatic check ran immediately: {cleanup_deleted} deleted, "
-                f"{cleanup_failed} failed."
-                if cleanup_changed and updated_auto
-                else ""
-            )
-            self._apply_notice = (
-                "Changes saved and EMBi reloaded. "
-                f"Removed from Home Assistant: {removed}, restored: {restored}, "
-                f"enabled: {enabled}, protected: {protected_total}, failed: {failed}."
-                f"{cleanup_notice}"
-            )
-        return await self.async_step_init()
+        return self.async_abort(reason="apply_complete")

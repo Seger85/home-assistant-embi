@@ -32,14 +32,12 @@ def test_group_switches_are_the_only_normal_player_action() -> None:
 def test_apply_reconciles_hidden_entities_and_runs_changed_auto_cleanup_immediately() -> None:
     source = Path("custom_components/emby/options_flow.py").read_text(encoding="utf-8")
     apply = source.split("async def async_step_apply_changes", 1)[1]
-    assert "async_remove_hidden_player_entities" in apply
-    assert "prevalidated_non_playing_keys=remove_keys" in apply
-    assert "prevalidated_non_playing_keys=remove_keys" in apply
-    assert "prevalidated_non_playing_keys=remove_keys" in apply
-    assert "prevalidated_non_playing_keys=remove_keys" in apply
-    assert "prevalidated_non_playing_keys=remove_keys" in apply
-    assert "async_run_automatic_cleanup" in apply
-    assert "cleanup_changed and updated_auto" in apply
+    assert "_async_finalize_apply" in source
+    assert "async_remove_hidden_player_entities" in source
+    assert "prevalidated_non_playing_keys=remove_keys" in source
+    assert "async_run_automatic_cleanup" in source
+    assert "cleanup_changed and updated_auto" in source
+    assert 'return self.async_abort(reason="apply_complete")' in apply
 
 
 def test_release_after_merge_and_package_version_is_dynamic() -> None:

@@ -76,6 +76,10 @@ class FakeHass:
     async def async_block_till_done(self) -> None:
         return None
 
+    def async_create_task(self, coro, name=None):
+        coro.close()
+        return SimpleNamespace(name=name)
+
 
 @dataclass
 class FakeEntry:
@@ -184,17 +188,36 @@ async def test_back_preserves_draft(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_apply_writes_and_reloads_once(monkeypatch) -> None:
+async def test_apply_closes_immediately_and_schedules_finalize(monkeypatch) -> None:
     patch_catalog(monkeypatch)
-    flow, entry, store, hass = setup_flow()
+    flow, _entry, store, hass = setup_flow()
     flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
+    scheduled = []
+    hass.async_create_task = lambda coro, name: scheduled.append((coro, name))
     result = await flow.async_step_apply_changes()
-    assert result["type"] == "menu"
-    assert result["step_id"] == "init"
-    assert "gespeichert" in result["description_placeholders"]["apply_notice"]
+    assert result["type"] == "abort"
+    assert result["reason"] == "apply_complete"
     assert len(hass.config_entries.updates) == 1
-    assert hass.config_entries.reloads == [entry.entry_id]
+    assert hass.config_entries.reloads == []
+    assert len(scheduled) == 1
+    assert flow._runtime.suppress_update_listener is True
+    scheduled[0][0].close()
     assert store.saved == []
+
+
+@pytest.mark.asyncio
+async def test_finalize_clears_listener_suppression_and_reloads(monkeypatch) -> None:
+    patch_catalog(monkeypatch)
+    flow, entry, _store, hass = setup_flow()
+    flow._runtime.suppress_update_listener = True
+    await flow._async_finalize_apply(
+        remove_keys=frozenset(),
+        enable_entity_ids=frozenset(),
+        cleanup_changed=False,
+        updated_auto=False,
+    )
+    assert flow._runtime.suppress_update_listener is False
+    assert hass.config_entries.reloads == [entry.entry_id]
 
 
 @pytest.mark.asyncio
@@ -236,15 +259,18 @@ async def test_auto_cleanup_change_resets_deadline_on_apply(monkeypatch) -> None
     flow._runtime.maintenance_state.initial_run_completed = True
     flow._runtime.maintenance_state.report.next_run_at = "2026-07-16T12:00:00+00:00"
     flow._draft_options[CONF_SERVER_AUTO_CLEANUP_ENABLED] = True
+    scheduled = []
+    hass.async_create_task = lambda coro, name: scheduled.append((coro, name))
     result = await flow.async_step_apply_changes()
-    assert result["type"] == "menu"
-    assert result["step_id"] == "init"
-    assert len(store.saved) >= 2
-    assert flow._runtime.maintenance_state.initial_run_completed is True
-    assert flow._runtime.maintenance_state.report.mode == "automatic"
-    assert flow._runtime.maintenance_state.report.next_run_at is not None
+    assert result["type"] == "abort"
+    assert result["reason"] == "apply_complete"
+    assert len(store.saved) == 1
+    assert flow._runtime.maintenance_state.initial_run_completed is False
+    assert flow._runtime.maintenance_state.report.next_run_at is None
     assert entry.options[CONF_SERVER_AUTO_CLEANUP_ENABLED] is True
-    assert hass.config_entries.reloads == [entry.entry_id]
+    assert hass.config_entries.reloads == []
+    assert len(scheduled) == 1
+    scheduled[0][0].close()
 
 
 @pytest.mark.asyncio
@@ -406,7 +432,14 @@ async def test_form_back_action_preserves_complete_draft(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, entry, store, hass = setup_flow()
     flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
-    result = await flow.async_step_ha_players({CONF_FLOW_ACTION: FLOW_ACTION_BACK})
+    result = await flow.async_step_ha_players(
+        {
+            CONF_FLOW_ACTION: FLOW_ACTION_BACK,
+            CONF_ONLY_DURING_PLAYBACK: True,
+            CONF_AUTO_SHOW_NEW_PLAYERS: True,
+            CONF_TECHNICAL_ACCESS_VISIBILITY: False,
+        }
+    )
 
     assert result["type"] == "menu"
     assert flow._draft_options[CONF_GLOBAL_PLAYER_MODE] == PLAYER_MODE_ACTIVE_ONLY
