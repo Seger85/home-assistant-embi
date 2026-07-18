@@ -1,14 +1,16 @@
 version: "0.9.3"
 tag: "v0.9.3"
 title: "EMBi 0.9.3"
-target_sha: "7c9a0ebb0af5ed3086db54e2d4679435cd0e4c0a"
+target_sha: "54747c90c16b79a437c4860bfdc4fcaba894c825"
 stable: true
 prerelease: false
 requested_by: "Seger"
 report_issue: 41
 cleanup_branches:
   - "fix/embi-0.9.3"
+  - "fix/embi-0.9.3-release-notes"
   - "release/v0.9.3"
+  - "release/v0.9.3-retry"
   - "bootstrap/embi-0.9.3"
   - "trigger/embi-0.9.3"
-request_nonce: "2026-07-18T10:00:06+02:00"
+request_nonce: "2026-07-18T10:09:25+02:00"
