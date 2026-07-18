@@ -3,10 +3,7 @@ name: EMBi 0.9.3 one-shot patch
 on:
   push:
     branches:
-      - fix/embi-0.9.3
-    paths:
-      - .github/embi_093_patch.py
-      - .github/workflows/embi-093-patch.yml
+      - bootstrap/embi-0.9.3
 
 permissions:
   contents: write
@@ -18,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: fix/embi-0.9.3
+          ref: bootstrap/embi-0.9.3
           fetch-depth: 0
           show-progress: false
       - uses: actions/setup-python@v6
@@ -53,4 +50,4 @@ jobs:
           git config user.email "35084198+Seger85@users.noreply.github.com"
           git add -A
           git commit -m "EMBi 0.9.3: Streamline player controls and cleanup UX [embi-093-applied]" -m "Signed-off-by: Seger"
-          git push origin HEAD:fix/embi-0.9.3
+          git push origin HEAD:${GITHUB_REF_NAME}
