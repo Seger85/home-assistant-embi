@@ -13,7 +13,7 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Extract Hassfest failure
+      - name: Extract Hassfest failure tail
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -21,4 +21,4 @@ jobs:
           run_id=29632177372
           job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n1)"
           gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > job.log
-          grep -n -A25 -B12 -Ei 'ERROR|Error|invalid|translation|selector|config flow|options flow|manifest|hassfest|failed|Traceback' job.log | tail -n 220 || true
+          tail -n 100 job.log
