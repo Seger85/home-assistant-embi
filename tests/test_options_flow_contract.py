@@ -45,7 +45,8 @@ def test_inline_error_contract() -> None:
     server = source("options_cleanup.py")
     players = source("options_ha_cleanup.py")
     assert 'self._review_error = "no_changes"' in flow
-    assert 'errors["base"] = "unsaved_changes"' in server
+    assert "MANUAL_CLEANUP_SCOPE_ALL_SAFE" in server
+    assert 'errors["base"] = "invalid_selection"' in server
     assert 'errors["base"] = "unsaved_changes"' in players
 
 

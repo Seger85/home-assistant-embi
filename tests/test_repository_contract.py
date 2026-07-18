@@ -97,7 +97,7 @@ def test_automatic_cleanup_contract_is_explicit_persistent_and_uncapped() -> Non
     cleanup = (COMPONENT / "cleanup.py").read_text()
     execution = (COMPONENT / "maintenance_cycle_execute.py").read_text()
     scheduler = (COMPONENT / "maintenance_scheduler.py").read_text()
-    assert "AUTO_CLEANUP_INITIAL_DELAY_SECONDS = 120" in constants
+    assert "AUTO_CLEANUP_INITIAL_DELAY_SECONDS = 10" in constants
     assert "AUTO_CLEANUP_INTERVAL_HOURS = 24" in constants
     assert "DEFAULT_SERVER_CLEANUP_AGE_DAYS = 365" in constants
     assert "there is deliberately no run cap" in cleanup

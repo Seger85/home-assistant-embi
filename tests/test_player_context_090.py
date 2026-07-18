@@ -268,7 +268,7 @@ def test_known_technical_apps_use_combined_non_playback_evidence() -> None:
         )
         classification, reason = classify_client([item])
         assert classification == CLIENT_CLASS_TECHNICAL
-        assert reason == "technical_app_without_playback"
+        assert reason == "explicit_technical_identity"
 
 
 def test_normal_playback_clients_are_not_misclassified_as_technical() -> None:
