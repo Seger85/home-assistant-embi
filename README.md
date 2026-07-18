@@ -18,7 +18,7 @@ Dadurch ist klar, ob du nur eine App-Variante ausblendest, einen Home-Assistant-
 
 ## Home-Assistant-Player
 
-Der in 0.9.0 noch **Geräte & Player** genannte Bereich heißt in 0.9.2 **Home-Assistant-Player** und beginnt mit den globalen Einstellungen:
+Der Bereich **Home-Assistant-Player** beginnt mit den globalen Einstellungen:
 
 - Player nur während Wiedergabe oder Pause anzeigen
 - neue Player automatisch hinzufügen
@@ -38,19 +38,11 @@ Normale Playerzeilen bleiben kompakt, beispielsweise:
 
 Interne Schlüssel, Unique IDs und Rohstatus erscheinen nicht in Auswahlfeldern. Home-Assistant-Anzeigename, Entity-ID und weitere technische Angaben stehen nur in der Detailansicht.
 
-### Benutzergruppen und Ausnahmen
+### Benutzergruppen und direkte Player-Schalter
 
-Für einen bekannten Benutzer kann ein Master-Schalter alle zugeordneten Player gemeinsam ein- oder ausblenden. Einzelne Abweichungen werden unter **Ausnahmen verwalten** gepflegt.
+Innerhalb einer Benutzer- oder Clientgruppe besitzt jeder Player direkt einen Ein-/Aus-Schalter. Damit lassen sich einzelne Player ohne zusätzliche Ausnahmenseite ein- oder ausblenden.
 
-Suche und Seitenauswahl begrenzen lange Listen auf mobile-taugliche Abschnitte. Zurückgehen erhält den vollständigen Entwurf.
-
-
-## Bedienung ab 0.9.3
-
-- **Änderungen übernehmen** speichert, lädt EMBi neu und führt sichtbar zur Hauptseite zurück.
-- Innerhalb einer Benutzer- oder Clientgruppe besitzt jeder Player direkt einen Ein-/Aus-Schalter; die zusätzliche Ausnahmenseite entfällt.
-- **Technische Zugriffe** werden anhand eindeutiger App-, Geräte-, API- und Sitzungsmerkmale klassifiziert.
-- Die manuelle Serverprüfung kann wahlweise nur alte oder alle sicher prüfbaren Einträge anzeigen. Die automatische Bereinigung hält immer an ihrer Altersgrenze fest.
+Der Gruppenstatus wird aus den gewählten Playern abgeleitet. Laufende und pausierte Wiedergaben bleiben geschützt. Optional kann weiterhin eine technische Detailansicht für einen einzelnen Player geöffnet werden.
 
 ## Änderungen prüfen
 
@@ -58,7 +50,8 @@ Normale Einstellungen werden zunächst nur im geöffneten Dialog gesammelt.
 
 - **‹ Zurück** wechselt die Seite und behält den Entwurf.
 - **Änderungen prüfen** zeigt eine verständliche Zusammenfassung.
-- **Änderungen übernehmen** schreibt genau einmal und lädt EMBi höchstens einmal neu.
+- **Änderungen übernehmen** schreibt genau einmal, lädt EMBi höchstens einmal neu und führt anschließend sichtbar zur Hauptseite zurück.
+- Eine Bestätigung auf der Hauptseite zeigt, dass die Einstellungen gespeichert und EMBi neu geladen wurden.
 - **Änderungen verwerfen** setzt den Entwurf ohne Speicherung zurück.
 - Schließen über **X** speichert nichts.
 
@@ -75,12 +68,26 @@ Der Bereich **Emby-Server bereinigen** enthält:
 
 Manuelle und automatische Altersgrenzen bleiben getrennt. Die Presets 7, 30, 90, 180 und 365 Tage sowie benutzerdefinierte Werte werden unterstützt. Bestehende exakte Werte wie `364` bleiben unverändert.
 
+### Automatische Bereinigung
+
+Die automatische Bereinigung hält immer an der gespeicherten Altersgrenze fest. Nach dem Aktivieren registriert EMBi den persistenten Scheduler und führt einen fälligen ersten Lauf nach einer kurzen Grace Period aus. Weitere Läufe werden jeweils 24 Stunden nach Abschluss des vorherigen Laufversuchs geplant.
+
+### Manuelle Bereinigung
+
+Bei der manuellen Prüfung stehen zwei Geltungsbereiche zur Verfügung:
+
+- **Nur Einträge außerhalb der Altersgrenze**
+- **Alle sicheren Einträge – unabhängig vom Alter**
+
+Damit können bewusst auch jüngere historische Datensätze ausgewählt werden, ohne die automatische Altersregel zu verändern.
+
 Vor jeder Serverlöschung prüft EMBi erneut:
 
-- der Datensatz ist strikt älter als die gewählte Grenze
+- der Datensatz gehört weiterhin eindeutig zum ausgewählten Servereintrag
 - ein gültiger Aktivitätszeitpunkt ist vorhanden
 - der zugehörige Player spielt nicht und ist nicht pausiert
 - Server, Config Entry, Plattform und Identität sind weiterhin eindeutig
+- bei automatischen Läufen und manueller Altersprüfung ist die konfigurierte Altersgrenze erfüllt
 
 Die Kandidatenauswahl ist die Vorschau. Danach folgt genau eine eindeutig bezeichnete Ausführung, beispielsweise **3 Emby-Einträge löschen**.
 

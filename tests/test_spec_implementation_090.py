@@ -56,7 +56,8 @@ def test_readme_is_product_oriented_and_not_a_prerelease_history_page() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
     assert "mehr Geräte in der Liste haben als im Haus" in readme
-    assert "Geräte & Player" in readme
+    assert "Home-Assistant-Player" in readme
+    assert "direkte Player-Schalter" in readme
     assert "Gemeinsam genutzt" in readme
     assert "Technische Zugriffe" in readme
     assert "Unklare Clients" in readme
