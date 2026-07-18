@@ -41,7 +41,7 @@ jobs:
           rm -rf dist
           python scripts/build_package.py \
             --output-dir dist \
-            --expected-version 0.9.2 \
+            --expected-version 0.9.3 \
             --commit "${BUILD_COMMIT_SHA}"
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"
