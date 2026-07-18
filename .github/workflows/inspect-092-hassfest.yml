@@ -1,0 +1,24 @@
+name: Inspect EMBi 0.9.2 Hassfest
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/inspect-092-hassfest.yml"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Hassfest failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id=29632177372
+          job_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --jq '.jobs[] | select(.conclusion == "failure") | .id' | head -n1)"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${job_id}/logs" > job.log
+          grep -n -A25 -B12 -Ei 'ERROR|Error|invalid|translation|selector|config flow|options flow|manifest|hassfest|failed|Traceback' job.log | tail -n 220 || true
