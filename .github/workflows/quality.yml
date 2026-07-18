@@ -16,12 +16,6 @@ jobs:
           ref: fix/embi-0.9.3
           fetch-depth: 0
           show-progress: false
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-          cache: pip
-          cache-dependency-path: requirements_test.txt
-      - run: python -m pip install -q --upgrade pip -r requirements_test.txt
       - name: Apply contract updates
         run: python .github/embi_093_fix2.py
       - name: Restore permanent workflow and remove patch
@@ -29,12 +23,7 @@ jobs:
           git fetch origin main
           git checkout origin/main -- .github/workflows/quality.yml
           rm -f .github/embi_093_fix2.py
-      - name: Verify updated contracts
-        run: |
-          ruff format .
-          ruff check .
-          pytest -q
-      - name: Commit contract updates
+      - name: Commit updates for regular CI
         run: |
           git config user.name "Seger"
           git config user.email "35084198+Seger85@users.noreply.github.com"
