@@ -19,6 +19,8 @@ Playing and paused clients remain protected. Unknown playback is freshly revalid
 
 ## Sensors
 
-The sensor page uses one six-item multi-select. OK updates only the draft. Final apply removes disabled exact EMBi sensor registry entries; re-enabling restores their stable unique IDs.
+The sensor page uses one six-item multi-select, including `sensor.emby_movie_count` and the other documented EMBi sensor IDs. OK updates only the draft. Final apply removes disabled exact EMBi sensor registry entries; re-enabling restores their stable unique IDs.
+
+Remove conflicting YAML or template sensors before enabling the corresponding EMBi sensor and restart Home Assistant. EMBi never adopts or deletes unrelated YAML entities.
 
 Direct `.storage` edits are unsupported.
