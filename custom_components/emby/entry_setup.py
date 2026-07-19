@@ -34,7 +34,7 @@ from .maintenance import (
 from .maintenance_store import EmbiMaintenanceStore, resolve_store_load
 from .models import EmbiRuntimeData, MaintenanceState, MigrationSummary
 from .options_model import legacy_initial_run_completed, migrate_options_090
-from .player_actions import async_reconcile_invisible_player_entities
+from .player_reconciliation_099 import async_reconcile_invisible_player_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 notification_id=_notification_id(entry),
             )
             raise ConfigEntryNotReady("EMBi migration storage failed") from None
-        _LOGGER.info("EMBi option migration to schema 2 completed")
+        _LOGGER.info("EMBi option migration to schema 3 completed")
 
     if migrated_options != original_options:
         hass.config_entries.async_update_entry(entry, options=migrated_options)

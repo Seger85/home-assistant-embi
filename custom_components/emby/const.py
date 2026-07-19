@@ -2,12 +2,12 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.8"
+VERSION = "0.9.9"
 PLATFORMS = ["media_player", "sensor"]
 
 CONFIG_ENTRY_VERSION = 4
-CONFIG_ENTRY_MINOR_VERSION = 0
-OPTIONS_SCHEMA_VERSION = 2
+CONFIG_ENTRY_MINOR_VERSION = 1
+OPTIONS_SCHEMA_VERSION = 3
 CONF_OPTIONS_SCHEMA_VERSION = "options_schema_version"
 
 CONF_ENABLED_SENSORS = "enabled_sensors"
@@ -26,6 +26,14 @@ SENSOR_KEYS = (
     SENSOR_USERS_WATCHING,
 )
 SENSOR_UPDATE_INTERVAL_SECONDS = 60
+SENSOR_ENTITY_IDS = {
+    SENSOR_MOVIE_COUNT: "emby_movie_count",
+    SENSOR_TV_SERIES_COUNT: "emby_tv_series_count",
+    SENSOR_TV_EPISODE_COUNT: "emby_tv_episode_count",
+    SENSOR_ALBUM_COUNT: "emby_album_count",
+    SENSOR_SONG_COUNT: "emby_song_count",
+    SENSOR_USERS_WATCHING: "emby_users_watching",
+}
 
 # Canonical 0.9 player-visibility model.
 CONF_GLOBAL_PLAYER_MODE = "global_player_mode"
@@ -100,7 +108,7 @@ CONF_CONFIRM_SERVER_DELETION = "confirm_server_deletion"
 
 CONF_MAINTENANCE_STORE_INITIALIZED = "maintenance_store_initialized"
 CONF_REGISTRY_RECONCILIATION_VERSION = "registry_reconciliation_version"
-REGISTRY_RECONCILIATION_VERSION = 1
+REGISTRY_RECONCILIATION_VERSION = 2
 CONF_CLEANUP_ENTITY_IDS = "cleanup_entity_ids"
 CONF_CONFIRM_CLEANUP = "confirm_cleanup"
 CONF_CONFIRM_BULK = "confirm_bulk"

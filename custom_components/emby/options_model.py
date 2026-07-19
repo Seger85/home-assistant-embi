@@ -105,6 +105,10 @@ def migrate_options_090(
     known_player_keys = {device.player_key for device in records}
     known_reported_ids = {device.reported_device_id for device in records}
 
+    # 0.9.8 could persist dynamic user field names at the top level in
+    # addition to the canonical nested mapping.
+    canonical_user_visibility = _user_visibility(source.get(CONF_USER_MASTER_VISIBILITY, {}))
+
     allowed: set[str] = set()
     for configured_id in source.get(CONF_ALLOWED_DEVICE_IDS, []):
         value = str(configured_id)
@@ -156,9 +160,11 @@ def migrate_options_090(
     migrated[CONF_HIDDEN_EXACT_PLAYERS] = _strings(hidden_players)
     migrated[CONF_HIDDEN_WHOLE_DEVICES] = _strings(hidden_devices)
     migrated[CONF_UNRESOLVED_LEGACY_RULES] = _strings(unresolved)
-    migrated[CONF_USER_MASTER_VISIBILITY] = _user_visibility(
-        source.get(CONF_USER_MASTER_VISIBILITY, {})
-    )
+    for user_name in tuple(canonical_user_visibility):
+        # The nested map was already the effective runtime source in 0.9.8.
+        # Remove accidental duplicate root keys without changing visibility.
+        migrated.pop(user_name, None)
+    migrated[CONF_USER_MASTER_VISIBILITY] = canonical_user_visibility
 
     migrated[CONF_SERVER_CLEANUP_ENABLED] = bool(
         source.get(CONF_SERVER_CLEANUP_ENABLED, defaults[CONF_SERVER_CLEANUP_ENABLED])

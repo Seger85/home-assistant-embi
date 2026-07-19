@@ -3,10 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from custom_components.emby.options_devices import (
-    _player_toggle_fields,
-    _sort_group_players,
-)
+from custom_components.emby.options_devices import _player_toggle_fields, _sort_group_players
 from custom_components.emby.player_context import PlayerContext
 
 
@@ -89,7 +86,7 @@ def test_unknown_and_active_lifecycle_states_are_fail_safe() -> None:
     assert "state_is_restored(state)" in maintenance
 
 
-def test_diagnostics_identifies_097_contract_without_private_data() -> None:
+def test_diagnostics_identifies_current_contract_without_private_data() -> None:
     diagnostics = Path("custom_components/emby/diagnostics.py").read_text(encoding="utf-8")
-    assert '"options_flow_contract": "0.9.7"' in diagnostics
+    assert '"options_flow_contract": "0.9.9"' in diagnostics
     assert '"manual_cleanup_policy": "all_safe_inactive_age_independent"' in diagnostics

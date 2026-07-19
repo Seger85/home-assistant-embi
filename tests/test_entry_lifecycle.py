@@ -4,10 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.emby.entry_lifecycle import (
-    async_migrate_entry,
-    async_unload_entry,
-)
+from custom_components.emby.entry_lifecycle import async_migrate_entry, async_unload_entry
 from custom_components.emby.models import EmbiRuntimeData
 
 
@@ -45,7 +42,7 @@ async def test_config_entry_version_migration_is_idempotent() -> None:
     hass = FakeHass()
     entry = SimpleNamespace(version=2, minor_version=0)
     assert await async_migrate_entry(hass, entry) is True
-    assert hass.config_entries.updated == [{"version": 4, "minor_version": 0}]
+    assert hass.config_entries.updated == [{"version": 4, "minor_version": 1}]
 
     hass.config_entries.updated.clear()
     assert await async_migrate_entry(hass, entry) is True

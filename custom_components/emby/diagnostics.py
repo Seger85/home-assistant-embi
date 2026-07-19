@@ -16,11 +16,14 @@ from .const import (
     CONF_REGISTRY_RECONCILIATION_VERSION,
     CONF_UNRESOLVED_LEGACY_RULES,
     CONF_USER_MASTER_VISIBILITY,
+    DOMAIN,
     NAME,
+    SENSOR_ENTITY_IDS,
     SENSOR_KEYS,
     VERSION,
 )
 from .models import EmbiRuntimeData
+from .options_sensors import sensor_unique_id
 from .player_context import build_player_catalog, catalog_stats
 from .registry_state import state_is_restored
 
@@ -63,6 +66,21 @@ async def async_get_config_entry_diagnostics(
         for player in players
     )
 
+    sensor_entity_ids = {
+        key: registry.async_get_entity_id("sensor", DOMAIN, sensor_unique_id(entry.entry_id, key))
+        for key in SENSOR_KEYS
+    }
+    sensor_identity_mismatches = sum(
+        entity_id is not None and entity_id != f"sensor.{SENSOR_ENTITY_IDS[key]}"
+        for key, entity_id in sensor_entity_ids.items()
+    )
+    user_visibility = entry.options.get(CONF_USER_MASTER_VISIBILITY, {})
+    duplicate_user_option_keys = (
+        sum(key in entry.options for key in user_visibility)
+        if isinstance(user_visibility, dict)
+        else 0
+    )
+
     issues = sorted(
         {
             player.protected_reason
@@ -81,8 +99,8 @@ async def async_get_config_entry_diagnostics(
         },
         "migration": runtime.maintenance_state.migration.as_dict(),
         "runtime": {
-            "options_flow_contract": "0.9.7",
-            "sensor_contract": "0.9.8",
+            "options_flow_contract": "0.9.9",
+            "sensor_contract": "0.9.9",
             "manual_cleanup_policy": "all_safe_inactive_age_independent",
             "server_history_records": stats.server_history_records,
             "home_assistant_players": stats.ha_players,
@@ -97,6 +115,10 @@ async def async_get_config_entry_diagnostics(
             "automatic_cleanup_scheduled": runtime.auto_cleanup_scheduled,
             "enabled_sensors": len(entry.options.get(CONF_ENABLED_SENSORS, list(SENSOR_KEYS))),
             "total_sensors": len(SENSOR_KEYS),
+            "sensor_entity_ids": sensor_entity_ids,
+            "sensor_identity_mismatches": sensor_identity_mismatches,
+            "duplicate_user_option_keys": duplicate_user_option_keys,
+            "cleanup_report_version": runtime.maintenance_state.report.report_version,
             "stale_restored_registry_entities": stale_restored,
             "registry_reconciliation_version": int(
                 entry.options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0

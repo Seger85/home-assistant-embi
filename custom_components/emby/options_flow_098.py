@@ -19,6 +19,7 @@ from .const import (
     SENSOR_USERS_WATCHING,
 )
 from .maintenance import async_run_automatic_cleanup
+from .options_devices_099 import MobilePlayerGroupMixin
 from .options_flow import EmbyOptionsFlow as BaseEmbyOptionsFlow
 from .options_sensors import SensorsOptionsMixin, remove_disabled_sensor_entities
 from .player_action_common import owned_exact
@@ -36,8 +37,8 @@ _SENSOR_LABELS = {
 }
 
 
-class EmbyOptionsFlow(SensorsOptionsMixin, BaseEmbyOptionsFlow):
-    """EMBi 0.9.8 Options Flow extension for sensors and cleanup reporting."""
+class EmbyOptionsFlow(MobilePlayerGroupMixin, SensorsOptionsMixin, BaseEmbyOptionsFlow):
+    """EMBi 0.9.9 Options Flow extension for sensors and cleanup reporting."""
 
     async def _review_lines(self) -> tuple[list[str], int]:
         lines, count = await super()._review_lines()
@@ -95,7 +96,6 @@ class EmbyOptionsFlow(SensorsOptionsMixin, BaseEmbyOptionsFlow):
             )
         )
         placeholders["age_limit"] = str(age_limit)
-        placeholders["recent"] = str(report.skipped_recent)
         return placeholders
 
     async def _async_finalize_apply(
