@@ -12,4 +12,6 @@ EMBi 1.0 uses canonical unversioned runtime modules:
 - `sensor.py`: the Home Assistant sensor platform backed by one update coordinator
 - `sensor_registry.py`: exact sensor identity migration
 
+The sensor update coordinator refreshes all six values as one consistent snapshot and marks API-dependent values unavailable after a failed refresh instead of publishing false zero values.
+
 Migration code remains in `options_model.py`; normal runtime does not emulate old release-specific classes. Entity removal requires exact domain, platform, config-entry, and unique-ID ownership. Disallowed entities are removed from the entity platform, state machine, and registry rather than retained indefinitely as managed `unavailable` entities.
