@@ -32,6 +32,7 @@ from .const import (
     SENSOR_KEYS,
 )
 from .entry_lifecycle import async_update_listener
+from .legacy_migration import legacy_initial_run_completed
 from .maintenance import (
     async_apply_pending_registry_cleanup,
     async_setup_automatic_cleanup,
@@ -39,7 +40,7 @@ from .maintenance import (
 )
 from .maintenance_store import EmbiMaintenanceStore, resolve_store_load
 from .models import EmbiRuntimeData, MaintenanceState, MigrationSummary
-from .options_model import legacy_initial_run_completed, migrate_options_090
+from .options_model import migrate_options
 from .player_reconciliation import async_reconcile_player_visibility
 from .sensor_registry import async_prepare_sensor_registry_identities
 
@@ -50,8 +51,52 @@ def _notification_id(entry: ConfigEntry) -> str:
     return f"{MAINTENANCE_NOTIFICATION_ID_PREFIX}_{entry.entry_id}"
 
 
+async def _async_enforce_player_visibility(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    options: dict,
+):
+    """Enforce saved visibility on every setup while tracking migration progress separately."""
+    reconciliation_version = int(
+        options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0
+    )
+    failures = int(options.get(CONF_REGISTRY_RECONCILIATION_FAILURES, 0) or 0)
+    migration_pending = reconciliation_version < REGISTRY_RECONCILIATION_VERSION
+
+    try:
+        reconciliation = await async_reconcile_player_visibility(hass, entry)
+    except Exception:
+        if migration_pending:
+            failures = min(failures + 1, REGISTRY_RECONCILIATION_MAX_FAILURES)
+            options[CONF_REGISTRY_RECONCILIATION_FAILURES] = failures
+            hass.config_entries.async_update_entry(entry, options=options)
+        _LOGGER.exception("EMBi setup visibility reconciliation failed")
+        return None
+
+    if migration_pending:
+        if not reconciliation.protected and not reconciliation.failed:
+            options[CONF_REGISTRY_RECONCILIATION_VERSION] = (
+                REGISTRY_RECONCILIATION_VERSION
+            )
+            options[CONF_REGISTRY_RECONCILIATION_FAILURES] = 0
+        else:
+            options[CONF_REGISTRY_RECONCILIATION_FAILURES] = min(
+                failures + 1,
+                REGISTRY_RECONCILIATION_MAX_FAILURES,
+            )
+        hass.config_entries.async_update_entry(entry, options=options)
+
+    if reconciliation.protected or reconciliation.failed:
+        _LOGGER.warning(
+            "EMBi setup visibility reconciliation deferred: %s protected, %s failed",
+            len(reconciliation.protected),
+            len(reconciliation.failed),
+        )
+    return reconciliation
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up EMBi and run bounded idempotent migrations."""
+    """Set up EMBi, migrate stored data, and enforce saved visibility."""
     client = EmbyApiClient(
         session=async_get_clientsession(hass),
         host=entry.data[CONF_HOST],
@@ -69,7 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     original_options = dict(entry.options)
     rc3_initial_run_completed = legacy_initial_run_completed(original_options)
-    migrated_options, options_changed = migrate_options_090(original_options, devices)
+    migrated_options, options_changed = migrate_options(original_options, devices)
     store_expected = bool(migrated_options.get(CONF_MAINTENANCE_STORE_INITIALIZED, False))
 
     store = EmbiMaintenanceStore.create(hass, entry.entry_id)
@@ -201,45 +246,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    reconciliation_version = int(migrated_options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0)
-    failures = int(migrated_options.get(CONF_REGISTRY_RECONCILIATION_FAILURES, 0) or 0)
-    if (
-        reconciliation_version < REGISTRY_RECONCILIATION_VERSION
-        and failures < REGISTRY_RECONCILIATION_MAX_FAILURES
-    ):
-        try:
-            reconciliation = await async_reconcile_player_visibility(hass, entry)
-        except Exception:
-            failures += 1
-            migrated_options[CONF_REGISTRY_RECONCILIATION_FAILURES] = failures
-            hass.config_entries.async_update_entry(entry, options=migrated_options)
-            _LOGGER.exception("EMBi startup registry reconciliation failed")
-        else:
-            if not reconciliation.protected and not reconciliation.failed:
-                migrated_options[CONF_REGISTRY_RECONCILIATION_VERSION] = (
-                    REGISTRY_RECONCILIATION_VERSION
-                )
-                migrated_options[CONF_REGISTRY_RECONCILIATION_FAILURES] = 0
-                hass.config_entries.async_update_entry(entry, options=migrated_options)
-            else:
-                failures += 1
-                migrated_options[CONF_REGISTRY_RECONCILIATION_FAILURES] = failures
-                hass.config_entries.async_update_entry(entry, options=migrated_options)
-                level = (
-                    logging.WARNING
-                    if failures < REGISTRY_RECONCILIATION_MAX_FAILURES
-                    else logging.INFO
-                )
-                _LOGGER.log(
-                    level,
-                    "EMBi startup reconciliation deferred: %s protected, %s failed; "
-                    "attempt %s of %s",
-                    len(reconciliation.protected),
-                    len(reconciliation.failed),
-                    failures,
-                    REGISTRY_RECONCILIATION_MAX_FAILURES,
-                )
+    await _async_enforce_player_visibility(hass, entry, migrated_options)
 
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
     await async_setup_automatic_cleanup(hass, entry)
