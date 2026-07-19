@@ -1,6 +1,6 @@
 # UI quality assurance
 
-For Options Flow changes verify both German and English on iPhone-width and desktop-width layouts:
+For Options Flow changes verify both German and English on iPhone, iPad, and desktop layouts:
 
 - every root menu item opens and submits
 - the six-item sensor selector serializes normally
