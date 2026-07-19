@@ -1,48 +1,5 @@
-# Repository- und Release-Governance
+# Repository governance
 
-## Stable-Linie
+`main` contains the stable integration. Changes are reviewed through pull requests and must preserve branch protection, required checks, and immutable release tags.
 
-`main` enthält veröffentlichte Stable-Versionen. Änderungen erfolgen über geprüfte Pull Requests. Force-Push und History Rewrite sind ausgeschlossen.
-
-## EMBi 0.9.3
-
-```text
-release/0.9.3
-→ PR #30 nach main
-→ vollständige CI
-→ Squash-Merge
-→ Tag v0.9.3
-→ Stable Release als latest
-```
-
-Der vorherige Funktionsumfang 0.9.0 entstand im Branch `feature/embi-0.9.0` und in PR #29. Diese abgeschlossene Linie bleibt unverändert.
-
-## Pflichtchecks
-
-- Quality Python 3.13 und 3.14
-- HACS validation
-- Hassfest
-- EMBi specification contract
-- Test package
-
-Quality umfasst JSON, YAML, Compileall, Mypy, Ruff, Ruff-Format, Pytest, Vertragsprüfungen, Datenschutzprüfung, Paketbau, SHA-256 und `BUILD_COMMIT`.
-
-## Releasevertrag
-
-- Manifest und Runtime: `0.9.3`
-- Tag: `v0.9.3`
-- Titel: `EMBi 0.9.3`
-- nicht Draft oder Prerelease
-- als Latest markiert
-- Assets: `embi.zip` und `embi.zip.sha256`
-- veröffentlichte Assets erneut prüfen
-
-Bestehende Tags und Releases bleiben unverändert.
-
-## HACS
-
-HACS verwendet `zip_release: true`, `filename: embi.zip` und `hide_default_branch: true`.
-
-## Schutz
-
-Das Ruleset **Protect main and develop** erzwingt Pull Requests und Pflichtchecks und blockiert Force-Push. Unabhängige Änderungen werden nicht in den Release-PR gemischt. Zugangsdaten und private Systeminformationen dürfen nicht veröffentlicht werden.
+Release branches use `release/<version>` and are deleted after a verified stable release. Main history is never rewritten. Issues and pull-request discussions remain available as the public engineering record.

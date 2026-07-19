@@ -1,105 +1,84 @@
-# EMBi – Emby in Home Assistant, ohne Gerätefriedhof
+# EMBi – Emby Integration for Home Assistant
 
-**EMBi verbindet einen lokalen Emby-Server mit Home Assistant und trennt dabei Player-Sichtbarkeit, Home-Assistant-Entities und historische Emby-Servereinträge sauber voneinander.**
+EMBi connects a local Emby server to Home Assistant. It provides controllable media-player entities, safe management of historical Emby device records, and optional library and playback statistics.
 
-## Home-Assistant-Player
+## Features
 
-Der Bereich **Home-Assistant-Player** enthält ausschließlich die globalen Schalter und die Gruppenauswahl:
+### Home Assistant players
 
-- Player nur während Wiedergabe oder Pause anzeigen
-- neue Player automatisch hinzufügen
-- technische Zugriffe als Player anzeigen
-- Gruppe öffnen
+- Show players permanently or only while playing or paused.
+- Automatically expose newly discovered players.
+- Include or exclude technical API clients.
+- Manage players by user and device group.
+- Remove safely inactive Home Assistant player entities without deleting their Emby server record.
+- Restore previously removed players while preserving stable identities.
 
-Innerhalb einer Gruppe besitzt jeder Player einen direkten Ein-/Aus-Schalter. Die Zeilen bleiben kompakt:
+Playing, paused, and ambiguous players are protected from destructive actions. Existing player entity IDs, unique IDs, names, areas, labels, and aliases are not migrated or rewritten.
 
-> Wohnzimmer · Emby TV  
-> Zuletzt: 18.07.2026 14:30
+### Emby sensors
 
-Bekannte Zugriffe sind immer **älteste zuerst** sortiert. Unbekannte Zeitpunkte stehen am Ende. Suchfeld und Sortierauswahl gibt es nicht mehr.
+All six sensors are enabled by default and can be switched individually in the integration options:
 
-Laufende, pausierte und nicht eindeutig bewertbare Player bleiben geschützt. Ein sicher inaktiver, ausgeschalteter Player wird erst nach **Änderungen prüfen → Änderungen übernehmen** aus der Home-Assistant-Registry entfernt. Der Emby-Servereintrag bleibt dabei bestehen und der Player kann über EMBi wiederhergestellt werden.
+- `sensor.emby_movie_count`
+- `sensor.emby_tv_series_count`
+- `sensor.emby_tv_episode_count`
+- `sensor.emby_album_count`
+- `sensor.emby_song_count`
+- `sensor.emby_users_watching`
 
-## Entwurf und Navigation
+Library counters use Emby's `/Items/Counts` endpoint. The users-watching sensor uses `/Sessions` and counts unique users with active playback; paused sessions are not counted.
 
-Nicht destruktive Unterseiten verwenden den normalen Home-Assistant-OK-Submit:
+Disabling a sensor and applying the options removes that EMBi-owned entity from the Home Assistant entity registry. Re-enabling it creates the sensor again with the same EMBi unique ID and the documented entity ID when that entity ID is free.
 
-- OK übernimmt sichtbare Werte nur in den In-Memory-Entwurf und führt eine Ebene zurück.
-- **Änderungen prüfen** zeigt den semantischen Unterschied zum gespeicherten Stand.
-- **Änderungen übernehmen** speichert genau einmal und schließt den Options Flow sofort.
-- Reload, Registry-Abgleich und gegebenenfalls sofort fällige automatische Bereinigung laufen anschließend als nachgelagerter Task.
-- **Änderungen verwerfen** verwirft den Entwurf.
-- Schließen über **X** speichert nichts.
+> Existing YAML sensors using these entity IDs must be removed before enabling the EMBi sensors. Restart Home Assistant after removing the YAML definitions. EMBi never adopts, migrates, or deletes unrelated YAML sensors.
 
-## Direkte Hauptnavigation
+### Safe server-history cleanup
 
-1. **Home-Assistant-Player**
-2. **Automatische Serverbereinigung**
-3. **Einzelne Emby-Servereinträge löschen**
-4. **Änderungen prüfen** – nur bei offenem Entwurf
+EMBi can remove obsolete device-history records from the Emby server.
 
-Ein zusätzliches Bereinigungs-Zwischenmenü gibt es nicht mehr.
+- Automatic cleanup uses a configurable age threshold and persistent schedule.
+- Manual cleanup lists safe inactive records independently of the automatic age threshold.
+- Active, paused, ambiguous, and temporally unverifiable records remain protected.
+- A matching Home Assistant player is removed only after successful server deletion and fresh ownership, platform, unique-ID, remaining-history, and playback validation.
 
-## Automatische Serverbereinigung
+The automatic report distinguishes records that are not yet due from protected or failed records.
 
-Die automatische Bereinigung behält die vorhandene Altersgrenze, Zeitplanung und Sicherheitslogik. Auf derselben Seite stehen:
+## Installation through HACS
 
-- letzter Lauf und Modus
-- verwendete Altersgrenze
-- gelöschte, geschützte und fehlgeschlagene Einträge
-- nächster geplanter Lauf
+1. Open HACS.
+2. Add `Seger85/home-assistant-embi` as a custom **Integration** repository.
+3. Install **Emby Integration - EMBi**.
+4. Restart Home Assistant.
+5. Add or configure EMBi under **Settings → Devices & services**.
 
-Änderungen werden auch hier zunächst nur in den Entwurf übernommen.
+EMBi is distributed through stable GitHub releases. HACS installs `embi.zip`; `embi.zip.sha256` contains the published checksum.
 
-## Einzelne Emby-Servereinträge löschen
+## Configuration
 
-Die manuelle Auswahl zeigt immer alle eindeutig sicheren inaktiven Servereinträge **unabhängig vom Alter** und fest **älteste zuerst**. Es gibt keine manuelle Altersgrenze und keinen Scope-Selektor. Die automatische Altersgrenze bleibt unverändert.
+The connection and all runtime options are managed through the Home Assistant UI. Normal option pages update an in-memory draft; permanent changes are written only through **Review changes → Apply changes**.
 
-Geschützt bleiben:
+Direct edits to `.storage` are neither required nor supported.
 
-- `playing`
-- `paused`
-- unklare Wiedergabe- oder Identitätszustände
-- Einträge ohne verlässlichen Aktivitätszeitpunkt
+## Security model
 
-Nach Auswahl folgen Vorschau und eindeutige Bestätigung. Erst nach erfolgreicher Serverlöschung darf eine exakt zugeordnete Home-Assistant-Entity entfernt werden. Config Entry, Domain, Plattform, Entity-ID, Unique-ID, verbleibende Serverhistorie und Wiedergabestatus werden frisch geprüft. Eine pauschale Registry-Bereinigung findet nicht statt.
+- Credentials are stored by Home Assistant and redacted from diagnostics.
+- Registry deletion requires exact config-entry, domain, platform, and unique-ID ownership.
+- Server-history deletion is explicit and revalidated immediately before execution.
+- EMBi does not delete media, libraries, users, or playback history.
+- No blanket registry cleanup is performed.
 
-## Installation über HACS
+## Documentation
 
-1. HACS öffnen.
-2. `Seger85/home-assistant-embi` als benutzerdefiniertes Integrations-Repository hinzufügen.
-3. **Emby Integration - EMBi** installieren oder aktualisieren.
-4. Home Assistant neu starten.
-5. EMBi unter **Einstellungen → Geräte & Dienste** konfigurieren.
-
-EMBi wird ausschließlich über reguläre GitHub-Releases bereitgestellt. Das HACS-Paket heißt `embi.zip`; die Prüfsumme liegt in `embi.zip.sha256`.
-
-## Upgrade auf 0.9.7
-
-Die Migration erhält:
-
-- Config Entry und Verbindung
-- bestehende Entity-IDs und Unique-IDs
-- individuelle Namen, Aliase, Areas und Labels
-- deaktivierten Registry-Zustand
-- bestehende Sichtbarkeitsregeln
-- automatische Bereinigung einschließlich exakter Alterswerte
-- Scheduler- und Laufstatus
-
-Die bisherige manuelle Altersoption bleibt migrationssicher in gespeicherten Optionen erhalten, wird aber nicht mehr als UI-Steuerung verwendet. Vor dem Update bleibt ein vollständiges Home-Assistant-Backup empfohlen. Direkte Änderungen an `.storage` sind nicht erforderlich und nicht unterstützt.
-
-## Dokumentation
-
-- [Konfiguration](docs/configuration.md)
-- [Serverbereinigung](docs/server-cleanup.md)
-- [Architektur](docs/architecture.md)
-- [Sicherheit](docs/security.md)
-- [Fehlerbehebung](docs/troubleshooting.md)
-- [UI-Qualitätssicherung](docs/ui-qa.md)
+- [Configuration](docs/configuration.md)
+- [Server cleanup](docs/server-cleanup.md)
+- [Architecture](docs/architecture.md)
+- [Security](docs/security.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [UI quality assurance](docs/ui-qa.md)
 
 ## Credits
 
-- **Projekt:** Seger
-- **Basis:** Home Assistant Emby und pyemby
+- Project: Seger
+- Based on the Home Assistant Emby integration and pyemby
 
-Lizenz: Apache-2.0
+License: Apache-2.0

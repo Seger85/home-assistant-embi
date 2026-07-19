@@ -2,13 +2,30 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.7"
-PLATFORMS = ["media_player"]
+VERSION = "0.9.8"
+PLATFORMS = ["media_player", "sensor"]
 
 CONFIG_ENTRY_VERSION = 4
 CONFIG_ENTRY_MINOR_VERSION = 0
 OPTIONS_SCHEMA_VERSION = 2
 CONF_OPTIONS_SCHEMA_VERSION = "options_schema_version"
+
+CONF_ENABLED_SENSORS = "enabled_sensors"
+SENSOR_MOVIE_COUNT = "movie_count"
+SENSOR_TV_SERIES_COUNT = "tv_series_count"
+SENSOR_TV_EPISODE_COUNT = "tv_episode_count"
+SENSOR_ALBUM_COUNT = "album_count"
+SENSOR_SONG_COUNT = "song_count"
+SENSOR_USERS_WATCHING = "users_watching"
+SENSOR_KEYS = (
+    SENSOR_MOVIE_COUNT,
+    SENSOR_TV_SERIES_COUNT,
+    SENSOR_TV_EPISODE_COUNT,
+    SENSOR_ALBUM_COUNT,
+    SENSOR_SONG_COUNT,
+    SENSOR_USERS_WATCHING,
+)
+SENSOR_UPDATE_INTERVAL_SECONDS = 60
 
 # Canonical 0.9 player-visibility model.
 CONF_GLOBAL_PLAYER_MODE = "global_player_mode"

@@ -17,7 +17,7 @@ from .const import (
     DEFAULT_SSL,
     DOMAIN,
 )
-from .options_flow import EmbyOptionsFlow
+from .options_flow_098 import EmbyOptionsFlow
 from .options_model import default_options_090
 
 

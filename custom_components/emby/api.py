@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
+
+from .const import (
+    SENSOR_ALBUM_COUNT,
+    SENSOR_MOVIE_COUNT,
+    SENSOR_SONG_COUNT,
+    SENSOR_TV_EPISODE_COUNT,
+    SENSOR_TV_SERIES_COUNT,
+    SENSOR_USERS_WATCHING,
+)
 
 
 class EmbyApiError(Exception):
@@ -14,6 +24,19 @@ class EmbyApiError(Exception):
 
 class EmbyAuthError(EmbyApiError):
     """Authentication failed."""
+
+
+def _non_negative_int(value: Any, field: str) -> int:
+    """Validate one Emby counter without manufacturing false zero values."""
+    if isinstance(value, bool):
+        raise EmbyApiError(f"Invalid {field} value from /Items/Counts")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as err:
+        raise EmbyApiError(f"Invalid {field} value from /Items/Counts") from err
+    if parsed < 0:
+        raise EmbyApiError(f"Invalid {field} value from /Items/Counts")
+    return parsed
 
 
 def _parse_emby_datetime(value: str | None) -> datetime | None:
@@ -292,6 +315,45 @@ class EmbyApiClient:
             if isinstance(item, dict) and item.get("Id")
         ]
         return sorted(records, key=lambda item: item.label.casefold())
+
+    async def async_get_sensor_data(self) -> dict[str, int]:
+        """Return library counters and unique users with active playback."""
+        counts_raw, sessions_raw = await asyncio.gather(
+            self._request("GET", "/Items/Counts"),
+            self._request("GET", "/Sessions"),
+        )
+        if not isinstance(counts_raw, dict):
+            raise EmbyApiError("Unexpected response from /Items/Counts")
+        if not isinstance(sessions_raw, list):
+            raise EmbyApiError("Unexpected response from /Sessions")
+
+        mapping = {
+            SENSOR_MOVIE_COUNT: "MovieCount",
+            SENSOR_TV_SERIES_COUNT: "SeriesCount",
+            SENSOR_TV_EPISODE_COUNT: "EpisodeCount",
+            SENSOR_ALBUM_COUNT: "AlbumCount",
+            SENSOR_SONG_COUNT: "SongCount",
+        }
+        values = {
+            key: _non_negative_int(counts_raw.get(api_key), api_key)
+            for key, api_key in mapping.items()
+        }
+
+        watching_users: set[str] = set()
+        for session in sessions_raw:
+            if not isinstance(session, dict):
+                continue
+            if not isinstance(session.get("NowPlayingItem"), dict):
+                continue
+            play_state = session.get("PlayState")
+            if not isinstance(play_state, dict) or play_state.get("IsPaused") is not False:
+                continue
+            identity = session.get("UserId") or session.get("UserName")
+            if identity and str(identity).strip():
+                watching_users.add(str(identity).strip().casefold())
+
+        values[SENSOR_USERS_WATCHING] = len(watching_users)
+        return values
 
     async def async_delete_device(self, record_id: str) -> None:
         """Delete one explicitly selected device-history record."""
