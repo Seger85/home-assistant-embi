@@ -28,7 +28,6 @@ def test_every_frozen_requirement_has_traceable_acceptance_evidence() -> None:
     requirements = yaml.safe_load((SPEC_DIR / "requirements.yaml").read_text(encoding="utf-8"))
     matrix = (SPEC_DIR / "10-test-and-acceptance-matrix.md").read_text(encoding="utf-8")
     requirement_ids = _collect_requirement_ids(requirements)
-
     assert requirement_ids
     assert "EMBI-0.9-EVIDENCE-START" in matrix
     missing = sorted(
@@ -48,38 +47,33 @@ def test_temporary_implementation_workflows_are_not_committed() -> None:
         "embi-09-cleanup-temp.yml",
         "format-091-once.yml",
     }
-
     assert forbidden.isdisjoint({path.name for path in workflows.glob("*.yml")})
 
 
-def test_readme_is_product_oriented_and_not_a_prerelease_history_page() -> None:
+def test_readme_is_community_oriented_and_documents_sensor_lifecycle() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "Home Assistant players" in readme
+    assert "sensor.emby_movie_count" in readme
+    assert "sensor.emby_users_watching" in readme
+    assert "paused sessions are not counted" in readme
+    assert "YAML sensors" in readme
+    assert "entity registry" in readme
+    for forbidden in ("Gerry", "ChatGPT", "AI agent", "Upgrade to 0.9.7"):
+        assert forbidden not in readme
 
-    assert "trennt dabei Player-Sichtbarkeit" in readme
-    assert "Home-Assistant-Player" in readme
-    assert "direkten Ein-/Aus-Schalter" in readme
-    assert "älteste zuerst" in readme
-    assert "Einzelne Emby-Servereinträge löschen" in readme
-    assert "wiederhergestellt" in readme
-    assert "Release Candidate" not in readme
-    assert "0.3.0-rc" not in readme
 
-
-def test_main_documents_share_the_product_contract() -> None:
+def test_main_documents_share_the_public_product_contract() -> None:
     expected_terms = {
-        "docs/PROJECT_STATE.md": ("0.9.0", "Geräte & Player", "private"),
-        "docs/architecture.md": ("PlayerContext", "Gemeinsam genutzt", "Store"),
-        "docs/configuration.md": ("Änderungen prüfen", "älteste zuerst", "migrationssicher"),
-        "docs/server-cleanup.md": ("playing", "paused", "Wiederherstellung"),
-        "docs/security.md": (
-            "keine direkten Änderungen an `.storage`",
-            "Unklare Clients",
-        ),
-        "docs/troubleshooting.md": ("Unklare Clients", "v0.3.0"),
-        "docs/development.md": ("feature/embi-0.9.0", "validate_spec_contract.py"),
-        "docs/ui-qa.md": ("iPhone", "iPad", "Desktop"),
-        "docs/release-checklist.md": ("v0.9.0", "BUILD_COMMIT", "HACS"),
-        "docs/repository-governance.md": ("PR #29", "feature/embi-0.9.0"),
+        "docs/PROJECT_STATE.md": ("Product overview", "stable GitHub release", "HACS"),
+        "docs/architecture.md": ("PlayerContext", "sensor", "update coordinator"),
+        "docs/configuration.md": ("Review changes", "sensor.emby_movie_count", "YAML"),
+        "docs/server-cleanup.md": ("skipped_recent", "Playing", "Manual selection"),
+        "docs/security.md": ("`.storage`", "unique ID", "unrelated"),
+        "docs/troubleshooting.md": ("unavailable", "YAML", "HACS"),
+        "docs/development.md": ("Ruff", "validate_spec_contract.py", "pull request"),
+        "docs/ui-qa.md": ("iPhone", "iPad", "desktop"),
+        "docs/release-checklist.md": ("BUILD_COMMIT", "HACS", "latest"),
+        "docs/repository-governance.md": ("main", "release/<version>", "never rewritten"),
     }
     for relative_path, terms in expected_terms.items():
         content = (ROOT / relative_path).read_text(encoding="utf-8")
@@ -87,10 +81,10 @@ def test_main_documents_share_the_product_contract() -> None:
             assert term in content, f"{relative_path} misses {term}"
 
 
-def test_translations_are_structurally_identical_and_use_097_navigation() -> None:
+def test_translations_are_structurally_identical_and_use_098_navigation() -> None:
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
-    english = json.loads((COMPONENT / "translations" / "en.json").read_text(encoding="utf-8"))
-    german = json.loads((COMPONENT / "translations" / "de.json").read_text(encoding="utf-8"))
+    english = json.loads((COMPONENT / "translations/en.json").read_text(encoding="utf-8"))
+    german = json.loads((COMPONENT / "translations/de.json").read_text(encoding="utf-8"))
 
     def paths(value, prefix=()):
         result = set()
@@ -106,16 +100,18 @@ def test_translations_are_structurally_identical_and_use_097_navigation() -> Non
     root_menu = english["options"]["step"]["init"]["menu_options"]
     assert set(root_menu) == {
         "ha_players",
+        "sensors",
         "automatic_cleanup",
         "server_history_check",
         "review_changes",
     }
-    assert "server_cleanup" not in root_menu
+    assert "sensors" in english["options"]["step"]
+    assert "sensors" in german["options"]["step"]
     assert "older_rules" in english["options"]["step"]
     assert "older_rules" in german["options"]["step"]
 
 
-def test_091_does_not_add_reserved_entity_platforms_or_direct_storage_edits() -> None:
+def test_098_adds_only_the_expected_sensor_platform_and_no_direct_storage_edits() -> None:
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
     component_text = "\n".join(
         path.read_text(encoding="utf-8")
@@ -124,8 +120,8 @@ def test_091_does_not_add_reserved_entity_platforms_or_direct_storage_edits() ->
     )
     direct_storage_path = "/config/" + ".storage"
 
-    assert 'PLATFORMS = ["media_player"]' in constants
-    assert "sensor.py" not in {path.name for path in COMPONENT.iterdir()}
+    assert 'PLATFORMS = ["media_player", "sensor"]' in constants
+    assert "sensor.py" in {path.name for path in COMPONENT.iterdir()}
     assert "button.py" not in {path.name for path in COMPONENT.iterdir()}
     assert "update.py" not in {path.name for path in COMPONENT.iterdir()}
     assert direct_storage_path not in component_text

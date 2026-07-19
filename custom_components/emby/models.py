@@ -29,6 +29,7 @@ class CleanupRunReport:
     server_deleted: int = 0
     server_failed: int = 0
     skipped_active: int = 0
+    skipped_recent: int = 0
     skipped_without_activity: int = 0
     registry_keys_queued: int = 0
     registry_entities_matched: int = 0
@@ -86,6 +87,7 @@ class CleanupRunReport:
             "server_deleted",
             "server_failed",
             "skipped_active",
+            "skipped_recent",
             "skipped_without_activity",
             "registry_keys_queued",
             "registry_entities_matched",

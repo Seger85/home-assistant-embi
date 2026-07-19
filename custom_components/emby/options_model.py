@@ -10,6 +10,7 @@ from .const import (
     CONF_ALLOWED_DEVICE_IDS,
     CONF_AUTO_SHOW_NEW_PLAYERS,
     CONF_CLIENT_MODE,
+    CONF_ENABLED_SENSORS,
     CONF_GLOBAL_PLAYER_MODE,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_HIDDEN_WHOLE_DEVICES,
@@ -33,6 +34,7 @@ from .const import (
     OPTIONS_SCHEMA_VERSION,
     PLAYER_MODE_ACTIVE_ONLY,
     PLAYER_MODE_PERSISTENT,
+    SENSOR_KEYS,
 )
 
 ACTIVE_STATES = {"playing", "paused"}
@@ -59,6 +61,7 @@ def default_options_090() -> dict[str, Any]:
         CONF_HIDDEN_WHOLE_DEVICES: [],
         CONF_USER_MASTER_VISIBILITY: {},
         CONF_UNRESOLVED_LEGACY_RULES: [],
+        CONF_ENABLED_SENSORS: list(SENSOR_KEYS),
         CONF_SERVER_CLEANUP_ENABLED: True,
         CONF_SERVER_CLEANUP_AGE_DAYS: DEFAULT_SERVER_CLEANUP_AGE_DAYS,
         CONF_SERVER_AUTO_CLEANUP_ENABLED: False,
@@ -181,6 +184,11 @@ def migrate_options_090(
             defaults[CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES],
         )
     )
+    configured_sensors = source.get(CONF_ENABLED_SENSORS, defaults[CONF_ENABLED_SENSORS])
+    if not isinstance(configured_sensors, (list, tuple, set)):
+        configured_sensors = defaults[CONF_ENABLED_SENSORS]
+    enabled_sensors = {str(value) for value in configured_sensors}
+    migrated[CONF_ENABLED_SENSORS] = [key for key in SENSOR_KEYS if key in enabled_sensors]
     if source.get(CONF_MAINTENANCE_STORE_INITIALIZED):
         migrated[CONF_MAINTENANCE_STORE_INITIALIZED] = True
 

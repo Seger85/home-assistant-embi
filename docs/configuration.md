@@ -1,63 +1,50 @@
-# Konfiguration
+# Configuration
 
-## Verbindung
+## Connection
 
-EMBi verwendet pro Emby-Server einen Home-Assistant-Config-Entry mit Name, Host, Port, HTTPS-Einstellung und API-Schlüssel. Zugangsdaten werden in Diagnostics redigiert.
+Each Emby server is configured as a Home Assistant config entry with a display name, host, port, HTTPS setting, and API key. Credentials are redacted from diagnostics.
 
-## Hauptnavigation ab 0.9.7
+## Options flow
 
-Der Options Flow bietet direkt:
+The root menu provides:
 
-1. **Home-Assistant-Player**
-2. **Automatische Serverbereinigung**
-3. **Einzelne Emby-Servereinträge löschen**
-4. **Änderungen prüfen**, sobald der Entwurf abweicht
+1. **Home Assistant players**
+2. **Emby sensors**
+3. **Automatic server cleanup**
+4. **Delete individual Emby server records**
+5. **Review changes** when the draft differs from the saved options
 
-Normale Unterseiten schreiben nicht direkt. Der normale OK-Submit übernimmt Werte nur in den In-Memory-Entwurf und führt eine Ebene zurück. Dauerhaft gespeichert wird ausschließlich über **Änderungen prüfen → Änderungen übernehmen**. Schließen über X und ein nicht angewendeter Entwurf verändern den Config Entry nicht.
+Non-destructive pages update only the in-memory draft. Permanent storage occurs exclusively through **Review changes → Apply changes**. Closing the flow without applying does not change the config entry.
 
-## Home-Assistant-Player
+## Home Assistant players
 
-### Globale Regeln
+Global controls define playback-only visibility, automatic discovery, and technical-client visibility. Player groups contain direct per-player switches. Known access timestamps are sorted oldest first and unknown timestamps remain at the end.
 
-- **Nur während der Wiedergabe anzeigen**
-- **Neue Player automatisch anzeigen**
-- **Technische Zugriffe anzeigen**
-- **Gruppe öffnen**
+Player removal requires exact EMBi ownership and a safely inactive playback state. Playing, paused, and unknown states remain protected.
 
-Suchfeld und Sortierauswahl sind vollständig entfernt. Die Gruppenauswahl führt zu den direkten Schaltern der enthaltenen Player.
+## Emby sensors
 
-### Player-Zeilen
+The six sensor switches are enabled by default. Applying a disabled sensor removes only the matching sensor entity that belongs to the same EMBi config entry, platform, and unique ID.
 
-- Zeile 1: `Gerät · App`
-- Zeile 2: lokalisierter letzter Zugriff
-- bekannte Zeitpunkte: immer älteste zuerst
-- unbekannte Zeitpunkte: immer am Ende
+The documented entity IDs are:
 
-Entity-ID, Config-Entry-ID und Unique-ID werden nicht in normalen Auswahlzeilen gezeigt.
+- `sensor.emby_movie_count`
+- `sensor.emby_tv_series_count`
+- `sensor.emby_tv_episode_count`
+- `sensor.emby_album_count`
+- `sensor.emby_song_count`
+- `sensor.emby_users_watching`
 
-### Schutzlogik
+Remove existing YAML sensors with these entity IDs and restart Home Assistant before enabling the EMBi sensors. EMBi does not migrate or adopt YAML entities and does not implement automatic collision handling.
 
-Ein Schalter darf einen Player nur dann ausblenden und nach finalem Apply aus Home Assistant entfernen, wenn der Player eindeutig zur Integration gehört und sicher inaktiv ist. `playing`, `paused` und `unknown` arbeiten fail-safe und bleiben sichtbar beziehungsweise unangetastet.
+## Automatic server cleanup
 
-Die Emby-Serverhistorie wird durch Player-Sichtbarkeit nicht verändert. Solange der Servereintrag besteht, bleibt der Player in EMBi wiederherstellbar.
+Automatic cleanup retains its enabled state, exact age threshold, scheduler state, next-run timestamp, and safe registry follow-up option. The last-run report includes deleted, protected, failed, and not-yet-due records.
 
-## Automatische Serverbereinigung
+## Manual server cleanup
 
-Die Seite enthält Einstellungen und Status gemeinsam:
+Manual selection is independent of the automatic age threshold. It lists only unequivocally safe inactive records, oldest first, and retains explicit preview and confirmation.
 
-- aktiviert/deaktiviert
-- Altersgrenze einschließlich vorhandener exakter Werte
-- passende Home-Assistant-Entities nach sicherer Serverlöschung bereinigen
-- letzter Lauf, Ergebnis, Schutzfälle und nächster Lauf
+## Backups and rollback
 
-OK aktualisiert nur den Entwurf. Erst Apply schreibt Optionen und löst bei einer geänderten aktivierten Automatik den vorhandenen sicheren Nachlauf aus.
-
-## Manuelle Serverbereinigung
-
-Die manuelle Seite besitzt keine Altersgrenze und keinen Scope-Selektor. Sie listet alle eindeutig sicheren inaktiven Einträge unabhängig vom Alter, fest älteste zuerst. Die automatische Altersgrenze wird nicht verändert.
-
-Auswahl, Vorschau und eindeutige Löschbestätigung bleiben getrennt. Nach erfolgreicher Serverlöschung wird ein exakt passender Registry-Eintrag nur dann entfernt, wenn keine verbleibende Serverhistorie, keine aktive/unklare Wiedergabe und keine Zuordnungsabweichung vorliegt.
-
-## Migration
-
-0.9.7 verändert weder Entity-IDs noch Unique-IDs. Bestehende Optionen bleiben schema- und migrationssicher erhalten, auch wenn ältere manuelle Alters-/Scope-Werte nicht mehr in der Oberfläche erscheinen. Vor dem Upgrade ein vollständiges Home-Assistant-Backup erstellen; `.storage` nicht direkt bearbeiten.
+Create a full Home Assistant backup before changing integration versions. Roll back through HACS or restore the backup; do not edit `.storage` directly.

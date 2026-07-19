@@ -10,12 +10,14 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_ALLOWED_DEVICE_IDS,
+    CONF_ENABLED_SENSORS,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_HIDDEN_WHOLE_DEVICES,
     CONF_REGISTRY_RECONCILIATION_VERSION,
     CONF_UNRESOLVED_LEGACY_RULES,
     CONF_USER_MASTER_VISIBILITY,
     NAME,
+    SENSOR_KEYS,
     VERSION,
 )
 from .models import EmbiRuntimeData
@@ -80,6 +82,7 @@ async def async_get_config_entry_diagnostics(
         "migration": runtime.maintenance_state.migration.as_dict(),
         "runtime": {
             "options_flow_contract": "0.9.7",
+            "sensor_contract": "0.9.8",
             "manual_cleanup_policy": "all_safe_inactive_age_independent",
             "server_history_records": stats.server_history_records,
             "home_assistant_players": stats.ha_players,
@@ -92,6 +95,8 @@ async def async_get_config_entry_diagnostics(
             "pyemby_initialized": runtime.pyemby is not None,
             "maintenance_storage_available": runtime.maintenance_storage_available,
             "automatic_cleanup_scheduled": runtime.auto_cleanup_scheduled,
+            "enabled_sensors": len(entry.options.get(CONF_ENABLED_SENSORS, list(SENSOR_KEYS))),
+            "total_sensors": len(SENSOR_KEYS),
             "stale_restored_registry_entities": stale_restored,
             "registry_reconciliation_version": int(
                 entry.options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0

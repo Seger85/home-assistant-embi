@@ -104,6 +104,7 @@ async def _async_execute_cleanup(
             ignore_age=ignore_age if mode != RUN_MODE_AUTOMATIC else False,
         )
         report.skipped_active = len(plan.skipped_active)
+        report.skipped_recent = len(plan.skipped_recent)
         report.skipped_without_activity = len(plan.skipped_without_activity)
 
         candidates = plan.candidates
