@@ -24,6 +24,8 @@ All six sensors are enabled by default and can be selected in the integration op
 - `sensor.emby_song_count`
 - `sensor.emby_users_watching`
 
+`sensor.emby_users_watching` counts each actively playing user once; paused sessions are not counted.
+
 Disabling a sensor changes only the draft until final apply. After apply, only the exact EMBi-owned registry entity is removed. Re-enabling it restores the same unique ID and documented entity ID when that target is free.
 
 > Remove conflicting YAML sensors before enabling the corresponding EMBi sensor and restart Home Assistant. EMBi never adopts, renames, or deletes unrelated YAML entities.
