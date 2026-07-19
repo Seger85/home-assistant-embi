@@ -10,6 +10,7 @@ from .const import (
     FOLLOW_UP_IDLE,
     FOLLOW_UP_STATUSES,
     MAINTENANCE_STORE_VERSION,
+    OPTIONS_SCHEMA_VERSION,
     RUN_MODES,
     RUN_STATUS_IDLE,
     RUN_STATUSES,
@@ -20,6 +21,7 @@ from .const import (
 class CleanupRunReport:
     """Privacy-safe result of one manual or automatic cleanup run."""
 
+    report_version: int = 2
     status: str = RUN_STATUS_IDLE
     mode: str | None = None
     started_at: str | None = None
@@ -72,6 +74,8 @@ class CleanupRunReport:
             raise ValueError("maintenance report must be a mapping")
         fields = cls.__dataclass_fields__
         values = {key: data[key] for key in fields if key in data}
+        if "report_version" not in data:
+            values["report_version"] = 2 if "skipped_recent" in data else 1
         string_fields = {
             "status",
             "mode",
@@ -82,6 +86,7 @@ class CleanupRunReport:
             "next_run_at",
         }
         integer_fields = {
+            "report_version",
             "age_threshold_days",
             "server_candidates",
             "server_deleted",
@@ -171,7 +176,7 @@ class MigrationSummary:
 
     status: str = "not_run"
     from_schema: int | None = None
-    to_schema: int = 2
+    to_schema: int = OPTIONS_SCHEMA_VERSION
     completed_at: str | None = None
     changed: bool = False
     unresolved_rules: int = 0
@@ -189,7 +194,7 @@ class MigrationSummary:
         return cls(
             status=str(data.get("status", "not_run")),
             from_schema=(int(data["from_schema"]) if data.get("from_schema") is not None else None),
-            to_schema=int(data.get("to_schema", 2)),
+            to_schema=int(data.get("to_schema", OPTIONS_SCHEMA_VERSION)),
             completed_at=(
                 str(data["completed_at"]) if data.get("completed_at") is not None else None
             ),

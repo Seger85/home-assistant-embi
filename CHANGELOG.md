@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.9] - 2026-07-19
+
+- Canonicalize the active-viewer sensor as `sensor.emby_users_watching` and migrate an exact EMBi-owned registry entry in place when the target is free.
+- Remove accidental duplicate top-level user visibility options while preserving the effective nested visibility map.
+- Use compact mobile-safe player labels with oldest-known activity first and unknown timestamps last.
+- Run registry reconciliation version 2 for safely removable hidden `stale_restored` players while preserving active, paused, live, and ambiguous protections.
+- Version cleanup reports so legacy runs without `skipped_recent` show that the value was not recorded instead of a false zero.
+- Extend translated error contracts and privacy-safe diagnostics for sensor identities, option duplicates, and report versions.
+
 ## [0.9.8] - 2026-07-19
 
 - Add six optional Emby library and active-viewer sensors, enabled by default.

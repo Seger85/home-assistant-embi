@@ -129,6 +129,11 @@ class CleanupOptionsMixin:
                 else "-"
             )
         )
+        recent = (
+            str(report.skipped_recent)
+            if report.report_version >= 2
+            else ("Noch nicht erfasst" if self._is_de() else "Not recorded yet")
+        )
         return {
             "run_at": self._format_report_time(
                 report.completed_at or report.started_at,
@@ -137,6 +142,7 @@ class CleanupOptionsMixin:
             "mode": mode,
             "age": age,
             "deleted": str(report.server_deleted),
+            "recent": recent,
             "protected": str(report.skipped_active + report.registry_entities_protected),
             "failed": str(report.server_failed),
             "next_run": self._format_report_time(report.next_run_at, empty=no_schedule),

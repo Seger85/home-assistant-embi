@@ -28,6 +28,7 @@ from .const import (
 )
 from .models import EmbiRuntimeData
 from .options_sensors import sensor_unique_id
+from .sensor_registry import async_prepare_sensor_registry_identities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,38 +43,38 @@ class EmbiSensorEntityDescription(SensorEntityDescription):
 SENSOR_DESCRIPTIONS: tuple[EmbiSensorEntityDescription, ...] = (
     EmbiSensorEntityDescription(
         key=SENSOR_MOVIE_COUNT,
-        name="Emby Movie Count",
         object_id="emby_movie_count",
+        name="Emby Movie Count",
         icon="mdi:movie-open",
     ),
     EmbiSensorEntityDescription(
         key=SENSOR_TV_SERIES_COUNT,
-        name="Emby TV Series Count",
         object_id="emby_tv_series_count",
+        name="Emby TV Series Count",
         icon="mdi:television-classic",
     ),
     EmbiSensorEntityDescription(
         key=SENSOR_TV_EPISODE_COUNT,
-        name="Emby TV Episode Count",
         object_id="emby_tv_episode_count",
+        name="Emby TV Episode Count",
         icon="mdi:television-play",
     ),
     EmbiSensorEntityDescription(
         key=SENSOR_ALBUM_COUNT,
-        name="Emby Album Count",
         object_id="emby_album_count",
+        name="Emby Album Count",
         icon="mdi:album",
     ),
     EmbiSensorEntityDescription(
         key=SENSOR_SONG_COUNT,
-        name="Emby Song Count",
         object_id="emby_song_count",
+        name="Emby Song Count",
         icon="mdi:music-note",
     ),
     EmbiSensorEntityDescription(
         key=SENSOR_USERS_WATCHING,
-        name="Active Emby Users",
         object_id="emby_users_watching",
+        name="Active Emby Users",
         icon="mdi:account-eye",
     ),
 )
@@ -92,6 +93,12 @@ async def async_setup_entry(
     ]
     if not descriptions:
         return
+
+    async_prepare_sensor_registry_identities(
+        hass,
+        entry,
+        (description.key for description in descriptions),
+    )
 
     async def _async_update_data() -> dict[str, int]:
         try:
