@@ -8,7 +8,7 @@ EMBi connects a local Emby server to Home Assistant. It provides controllable me
 - Automatically expose newly discovered players.
 - Include or exclude technical API clients with an independent master switch.
 - Manage exact player exceptions inside user, shared, unassigned, technical, and unclear groups.
-- Remove safely inactive EMBi entities from the entity platform, state machine, and registry without deleting Emby server history.
+- Remove safely inactive EMBi entities from the entity platform, state machine, and entity registry without deleting Emby server history.
 - Restore a hidden player with the same stable unique ID.
 
 Playing and paused clients are protected. Unknown playback is freshly revalidated for the specific client; it is not a permanent group-wide blocker. Names, areas, labels, aliases, and unrelated entities are never rewritten by player cleanup.
