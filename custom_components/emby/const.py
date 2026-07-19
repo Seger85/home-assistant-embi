@@ -50,16 +50,6 @@ CONF_USER_MASTER_VISIBILITY = "user_master_visibility"
 CONF_UNRESOLVED_LEGACY_RULES = "unresolved_legacy_rules"
 CONF_ALLOWED_DEVICE_IDS = "allowed_device_ids"
 
-# Legacy 0.3 keys are read only by the idempotent migration.
-CONF_CLIENT_MODE = "client_mode"
-CONF_IGNORED_PLAYER_KEYS = "ignored_player_keys"
-CONF_IGNORED_REPORTED_DEVICE_IDS = "ignored_reported_device_ids"
-CONF_UNRESOLVED_IGNORED_IDS = "unresolved_ignored_ids"
-CLIENT_MODE_ALL = "all"
-CLIENT_MODE_ACTIVE_ONLY = "active_only"
-CLIENT_MODE_ALLOWLIST = "allowlist"
-CLIENT_MODES = [CLIENT_MODE_ALL, CLIENT_MODE_ACTIVE_ONLY, CLIENT_MODE_ALLOWLIST]
-
 # Native Options Flow fields; these are never persisted as duplicate runtime state.
 CONF_BACK = "back"
 CONF_SEARCH_QUERY = "search_query"
