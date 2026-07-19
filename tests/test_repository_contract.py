@@ -136,7 +136,7 @@ def test_release_assets_and_merged_pr_contract() -> None:
     assert "FETCH_HEAD" in workflow
     assert "origin/main" not in workflow
     assert "from custom_components.emby.const import VERSION" not in workflow
-    assert "python scripts/read_version.py" in workflow
+    assert "python -I scripts/read_version.py" in workflow
     assert "git tag -a" in workflow
     assert 'git push origin "refs/tags/${RELEASE_TAG}"' in workflow
     assert "prerelease: false" in workflow
@@ -152,4 +152,5 @@ def test_test_package_is_bound_to_exact_source_commit() -> None:
     assert '--commit "${BUILD_COMMIT_SHA}"' in workflow
     assert 'test "$(cat dist/BUILD_COMMIT)" = "${BUILD_COMMIT_SHA}"' in workflow
     assert "embi-test-${{ env.BUILD_COMMIT_SHA }}" in workflow
-    assert "manifest.json" in workflow and "--expected-version" in workflow
+    assert "python -I scripts/read_version.py" in workflow
+    assert "--expected-version" in workflow
