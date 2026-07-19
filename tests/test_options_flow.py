@@ -172,11 +172,17 @@ async def test_root_navigation_and_dirty_review(monkeypatch) -> None:
     patch_catalog(monkeypatch)
     flow, _entry, _store, _hass = setup_flow()
     clean = await flow.async_step_init()
-    assert clean["menu_options"] == ["ha_players", "automatic_cleanup", "server_history_check"]
+    assert clean["menu_options"] == [
+        "ha_players",
+        "sensors",
+        "automatic_cleanup",
+        "server_history_check",
+    ]
     flow._draft_options[CONF_GLOBAL_PLAYER_MODE] = PLAYER_MODE_ACTIVE_ONLY
     dirty = await flow.async_step_init()
     assert dirty["menu_options"] == [
         "ha_players",
+        "sensors",
         "automatic_cleanup",
         "server_history_check",
         "review_changes",

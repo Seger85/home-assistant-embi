@@ -13,7 +13,9 @@ from .const import (
     CONF_ENABLED_SENSORS,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_HIDDEN_WHOLE_DEVICES,
+    CONF_REGISTRY_RECONCILIATION_FAILURES,
     CONF_REGISTRY_RECONCILIATION_VERSION,
+    CONF_SENSOR_IDENTITY_VERSION,
     CONF_UNRESOLVED_LEGACY_RULES,
     CONF_USER_MASTER_VISIBILITY,
     DOMAIN,
@@ -37,9 +39,10 @@ _OPTION_IDENTITIES = {
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant,
+    entry: ConfigEntry,
 ) -> dict[str, Any]:
-    """Return useful aggregate diagnostics without private client identities."""
+    """Return aggregate diagnostics without client, user, or internal IDs."""
     runtime: EmbiRuntimeData = entry.runtime_data
     registry = er.async_get(hass)
     players = build_player_catalog(
@@ -65,15 +68,19 @@ async def async_get_config_entry_diagnostics(
         bool(player.entity_id) and state_is_restored(hass.states.get(player.entity_id))
         for player in players
     )
-
     sensor_entity_ids = {
-        key: registry.async_get_entity_id("sensor", DOMAIN, sensor_unique_id(entry.entry_id, key))
+        key: registry.async_get_entity_id(
+            "sensor",
+            DOMAIN,
+            sensor_unique_id(entry.entry_id, key),
+        )
         for key in SENSOR_KEYS
     }
     sensor_identity_mismatches = sum(
         entity_id is not None and entity_id != f"sensor.{SENSOR_ENTITY_IDS[key]}"
         for key, entity_id in sensor_entity_ids.items()
     )
+    sensor_entities_present = sum(entity_id is not None for entity_id in sensor_entity_ids.values())
     user_visibility = entry.options.get(CONF_USER_MASTER_VISIBILITY, {})
     duplicate_user_option_keys = (
         sum(key in entry.options for key in user_visibility)
@@ -99,8 +106,9 @@ async def async_get_config_entry_diagnostics(
         },
         "migration": runtime.maintenance_state.migration.as_dict(),
         "runtime": {
-            "options_flow_contract": "0.9.9",
-            "sensor_contract": "0.9.9",
+            "options_flow_contract": "1.0.0",
+            "sensor_contract": "1.0.0",
+            "player_visibility_contract": "1.0.0",
             "manual_cleanup_policy": "all_safe_inactive_age_independent",
             "server_history_records": stats.server_history_records,
             "home_assistant_players": stats.ha_players,
@@ -115,13 +123,17 @@ async def async_get_config_entry_diagnostics(
             "automatic_cleanup_scheduled": runtime.auto_cleanup_scheduled,
             "enabled_sensors": len(entry.options.get(CONF_ENABLED_SENSORS, list(SENSOR_KEYS))),
             "total_sensors": len(SENSOR_KEYS),
-            "sensor_entity_ids": sensor_entity_ids,
+            "sensor_entities_present": sensor_entities_present,
             "sensor_identity_mismatches": sensor_identity_mismatches,
+            "sensor_identity_version": int(entry.options.get(CONF_SENSOR_IDENTITY_VERSION, 0) or 0),
             "duplicate_user_option_keys": duplicate_user_option_keys,
             "cleanup_report_version": runtime.maintenance_state.report.report_version,
             "stale_restored_registry_entities": stale_restored,
             "registry_reconciliation_version": int(
                 entry.options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0
+            ),
+            "registry_reconciliation_failures": int(
+                entry.options.get(CONF_REGISTRY_RECONCILIATION_FAILURES, 0) or 0
             ),
         },
         "classification": class_counts,
@@ -131,6 +143,18 @@ async def async_get_config_entry_diagnostics(
             "last_run": runtime.maintenance_state.report.as_dict(),
             "last_player_action": runtime.maintenance_state.last_player_action.as_dict(),
             "last_restore": runtime.maintenance_state.last_restore.as_dict(),
+            "last_reconciliation": (
+                runtime.maintenance_state.last_player_action.as_dict()
+                if runtime.maintenance_state.last_player_action.action == "reconcile"
+                else {
+                    "status": "not_run",
+                    "requested": 0,
+                    "succeeded": 0,
+                    "protected": 0,
+                    "failed": 0,
+                    "reason_codes": [],
+                }
+            ),
         },
         "issues": issues,
     }

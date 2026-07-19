@@ -33,7 +33,13 @@ def test_direct_navigation_contract() -> None:
     flow = source("options_flow.py")
     devices = source("options_devices.py")
     cleanup = source("options_cleanup.py")
-    assert 'menu_options = ["ha_players", "automatic_cleanup", "server_history_check"]' in flow
+    for step in (
+        '"ha_players"',
+        '"sensors"',
+        '"automatic_cleanup"',
+        '"server_history_check"',
+    ):
+        assert step in flow
     assert 'menu_options.append("review_changes")' in flow
     assert "navigation_selector" not in devices
     automatic = cleanup.split("async def async_step_automatic_cleanup", 1)[1].split(

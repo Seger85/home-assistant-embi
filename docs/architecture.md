@@ -1,23 +1,17 @@
 # Architecture
 
-EMBi is a Home Assistant config-entry integration built around four explicit boundaries:
+EMBi 1.0 uses canonical unversioned runtime modules:
 
-- `EmbyApiClient` handles authenticated local Emby REST requests.
-- `PlayerContext` derives player identity, visibility, lifecycle, and protection state.
-- The options flow keeps a single in-memory draft and applies it once.
-- The maintenance store persists scheduler and cleanup-report state through Home Assistant's supported storage API.
+- `options_flow.py`: one draft/apply controller
+- `options_devices.py`: one player/group UI implementation
+- `options_sensors.py`: one serializable sensor selector
+- `player_context.py`: the canonical `PlayerContext` classification and playback-safety model
+- `player_actions.py`: exact manual and post-commit player actions
+- `player_reconciliation.py`: bounded startup and visibility reconciliation
+- `registry_state.py`: state-removal safety predicates
+- `sensor.py`: the Home Assistant sensor platform backed by one update coordinator
+- `sensor_registry.py`: exact sensor identity migration
 
-## Platforms
+The sensor update coordinator refreshes all six values as one consistent snapshot and marks API-dependent values unavailable after a failed refresh instead of publishing false zero values. Version discovery remains isolated in `scripts/read_version.py` and does not import runtime modules.
 
-- `media_player` exposes Emby playback clients using the existing stable player unique-ID contract.
-- `sensor` exposes six optional numeric statistics through one update coordinator per config entry.
-
-The sensor coordinator requests `/Items/Counts` and `/Sessions` together. Failed or malformed API responses fail the update instead of publishing fabricated zero values.
-
-## Entity ownership
-
-Player and sensor registry operations require the exact config entry, domain, platform, and unique ID. Suggested sensor object IDs provide the documented entity IDs when those IDs are free. EMBi does not adopt YAML entities or implement automatic collision migration.
-
-## Options lifecycle
-
-Normal pages write only to the draft. Final apply stores options, closes the flow, reloads the config entry, removes disabled EMBi-owned sensor entities, reconciles safely inactive hidden players, and optionally runs newly changed automatic cleanup.
+Migration code remains in `options_model.py`; normal runtime does not emulate old release-specific classes. Entity removal requires exact domain, platform, config-entry, and unique-ID ownership. Disallowed entities are removed from the entity platform, state machine, and registry rather than retained indefinitely as managed `unavailable` entities.

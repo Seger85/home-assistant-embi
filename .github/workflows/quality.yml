@@ -24,12 +24,22 @@ jobs:
       - uses: actions/checkout@v7
         with:
           show-progress: false
+
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: requirements_test.txt
-      - run: python -m pip install -q --upgrade pip -r requirements_test.txt
+
+      - name: Resolve version without integration imports
+        run: |
+          VERSION="$(python -I scripts/read_version.py)"
+          test -n "${VERSION}"
+          echo "EMBI_VERSION=${VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Install validation dependencies
+        run: python -m pip install -q --upgrade pip -r requirements_test.txt
+
       - name: Validate JSON and YAML
         run: |
           python -m json.tool custom_components/emby/manifest.json >/dev/null
@@ -45,37 +55,28 @@ jobs:
           for path in paths:
               yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
           PY
+
       - name: Compile Python
         run: python -m compileall -q custom_components/emby scripts tests
+
       - name: Static type check
         run: >-
           mypy --ignore-missing-imports --follow-imports=skip
           custom_components/emby/options_model.py
           custom_components/emby/player_context.py
           custom_components/emby/options_runtime.py
-      - name: Capture Ruff lint result
-        id: ruff
-        shell: bash
-        run: |
-          set +e
-          ruff check . --output-format concise > ruff-report.txt 2>&1
-          status=$?
-          echo "status=${status}" >> "${GITHUB_OUTPUT}"
-          cat ruff-report.txt
-          exit 0
-      - name: Upload Ruff report
-        if: ${{ steps.ruff.outputs.status != '0' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ruff-report-${{ matrix.python-version }}-${{ github.sha }}
-          path: ruff-report.txt
-          retention-days: 1
-      - name: Enforce Ruff lint
-        if: ${{ steps.ruff.outputs.status != '0' }}
-        run: exit 1
+          custom_components/emby/registry_state.py
+          custom_components/emby/player_actions.py
+          custom_components/emby/player_reconciliation.py
+          custom_components/emby/sensor_registry.py
+
+      - name: Ruff lint
+        run: ruff check .
+
       - name: Ruff format
         run: ruff format --check .
-      - name: Capture unit-test result
+
+      - name: Capture unit and flow tests
         id: pytest
         shell: bash
         run: |
@@ -85,26 +86,38 @@ jobs:
           echo "status=${status}" >> "${GITHUB_OUTPUT}"
           cat pytest-report.txt
           exit 0
+
       - name: Upload unit-test report
         if: ${{ steps.pytest.outputs.status != '0' }}
         uses: actions/upload-artifact@v4
         with:
           name: pytest-report-${{ matrix.python-version }}-${{ github.sha }}
           path: pytest-report.txt
-          retention-days: 1
-      - name: Enforce unit tests
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce unit and flow tests
         if: ${{ steps.pytest.outputs.status != '0' }}
         run: exit 1
+
       - name: Validate specification contract
         run: python scripts/validate_spec_contract.py
+
       - name: Validate stable contract
         run: python scripts/validate_stable_contract.py
+
+      - name: Validate repository references
+        run: python scripts/validate_repository_references.py
+
       - name: Secret and privacy scan
         run: python scripts/secret_scan.py
+
       - name: Build and verify release-equivalent asset
         run: |
           rm -rf dist
-          VERSION="$(python -c 'import json; print(json.load(open("custom_components/emby/manifest.json"))["version"])')"
-          python scripts/build_package.py --output-dir dist --expected-version "${VERSION}" --commit "${GITHUB_SHA}"
+          python scripts/build_package.py \
+            --output-dir dist \
+            --expected-version "${EMBI_VERSION}" \
+            --commit "${GITHUB_SHA}"
           (cd dist && sha256sum --check embi.zip.sha256)
           test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"

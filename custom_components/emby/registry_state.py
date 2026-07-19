@@ -12,6 +12,18 @@ def state_is_restored(state: Any | None) -> bool:
     return bool(isinstance(attributes, Mapping) and attributes.get("restored") is True)
 
 
+def state_can_be_removed_after_visibility_commit(state: Any | None) -> bool:
+    """Allow restored or definitively inactive states after a committed hide."""
+    if state is None or state_is_restored(state):
+        return True
+    return str(getattr(state, "state", "")).casefold() in {
+        "idle",
+        "off",
+        "standby",
+        "unavailable",
+    }
+
+
 def state_blocks_registry_removal(state: Any | None) -> bool:
-    """Protect live states while allowing exact stale-restored registry cleanup."""
-    return state is not None and not state_is_restored(state)
+    """Protect only live non-restored states that are not definitively inactive."""
+    return not state_can_be_removed_after_visibility_commit(state)

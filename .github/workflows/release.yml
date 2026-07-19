@@ -30,7 +30,14 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || 'main' }}
           fetch-depth: 0
 
-      - name: Resolve immutable release identity without importing Home Assistant
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+
+      - name: Resolve immutable release identity without integration imports
         id: identity
         shell: bash
         env:
@@ -39,7 +46,7 @@ jobs:
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          version="$(python scripts/read_version.py)"
+          version="$(python -I scripts/read_version.py)"
           tag="v${version}"
           release_sha="${GITHUB_SHA}"
 
@@ -59,13 +66,6 @@ jobs:
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "release_sha=${release_sha}" >> "${GITHUB_OUTPUT}"
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-          cache: pip
-          cache-dependency-path: requirements_test.txt
 
       - name: Install validation dependencies
         run: python -m pip install -q --upgrade pip -r requirements_test.txt
@@ -90,12 +90,16 @@ jobs:
             custom_components/emby/options_model.py \
             custom_components/emby/player_context.py \
             custom_components/emby/options_runtime.py \
-            custom_components/emby/registry_state.py
+            custom_components/emby/registry_state.py \
+            custom_components/emby/player_actions.py \
+            custom_components/emby/player_reconciliation.py \
+            custom_components/emby/sensor_registry.py
           ruff check .
           ruff format --check .
           pytest -q
           python scripts/validate_spec_contract.py
           python scripts/validate_stable_contract.py
+          python scripts/validate_repository_references.py
           python scripts/secret_scan.py
 
       - name: HACS validation
@@ -159,7 +163,8 @@ jobs:
           jq -e '.assets | length == 2 and any(.name == "embi.zip") and any(.name == "embi.zip.sha256")' <<<"${json}" >/dev/null
           rm -rf verify-release
           mkdir verify-release
-          gh release download "${RELEASE_TAG}" --dir verify-release --pattern embi.zip --pattern embi.zip.sha256
+          gh release download "${RELEASE_TAG}" --dir verify-release \
+            --pattern embi.zip --pattern embi.zip.sha256
           (cd verify-release && sha256sum --check embi.zip.sha256)
           cmp dist/embi.zip verify-release/embi.zip
           cmp dist/embi.zip.sha256 verify-release/embi.zip.sha256

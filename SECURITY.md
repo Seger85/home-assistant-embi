@@ -1,26 +1,17 @@
 # Security Policy
 
-## Unterstützte Versionen
+## Unterstützte Version
 
-Während der Vorabphase wird nur die jeweils neueste EMBi-Version sicherheitsseitig gepflegt.
+Sicherheitskorrekturen werden für die jeweils neueste reguläre EMBi-Stable-Version bereitgestellt.
 
 ## Sicherheitslücken melden
 
-Bitte keine Zugangsdaten oder vollständigen Diagnosedateien in öffentliche Issues einstellen. Sicherheitsrelevante Hinweise zunächst privat an den Repository-Eigentümer `Seger85` melden.
+Keine API-Schlüssel, vollständigen Diagnosedateien oder privaten Geräte-/Benutzerdaten in öffentliche Issues einstellen. Hinweise zunächst privat an den Repository-Eigentümer `Seger85` melden.
 
 ## Vertrauliche Daten
 
-EMBi behandelt insbesondere folgende Werte als vertraulich:
-
-- primärer Emby-API-Schlüssel
-- optionaler API-Schlüssel für Serverbereinigung
-- Geräte-Historien-ID
-- gemeldete Client-ID
-- Client-/Gerätename
-- letzter Benutzername
-
-Diagnostics redigieren diese Werte. Vor einer Veröffentlichung sollte eine Diagnosedatei dennoch manuell geprüft werden.
+API-Schlüssel, Serveradressen, Geräte-Historien-IDs, gemeldete Client-IDs, Geräte-/Clientnamen und Benutzernamen gelten als vertraulich. Diagnostics geben nur redigierte Konfiguration und aggregierte Zähler aus. Eine Datei ist vor externer Weitergabe dennoch manuell zu prüfen.
 
 ## Destruktive Funktionen
 
-Die serverseitige Gerätebereinigung ist standardmäßig deaktiviert. Sie benötigt eine konkrete Auswahl und einen zweiten Bestätigungsschritt. Eine erfolgreiche Löschung kann nicht durch Home Assistant rückgängig gemacht werden; ein Emby-Server-Backup bleibt der einzige vollständige Rollback-Weg.
+Serverhistorien-Löschung bleibt standardmäßig deaktiviert und benötigt Auswahl, Bestätigung und frische Validierung. Home-Assistant-Registry-Aktionen prüfen Domain, Plattform, Config Entry, Unique-ID und Wiedergabe. Fremde Entities werden niemals übernommen oder gelöscht. Ein Emby-Server-Backup ist der einzige vollständige Rollback für serverseitige Löschungen.

@@ -1,25 +1,23 @@
 # Troubleshooting
 
-## A sensor is unavailable
+## Emby sensors page
 
-EMBi marks sensor updates unavailable when `/Items/Counts` or `/Sessions` fails or returns malformed values. Check Home Assistant logs, the Emby API key, network reachability, and server availability. EMBi deliberately does not replace an API failure with zero.
+The 1.0 sensor page is a native multi-select. If it does not open, verify that `strings.json`, `translations/en.json`, and `translations/de.json` have identical key structures and inspect the Options Flow error log.
 
-## The documented sensor entity ID is not created
+If a documented sensor remains unavailable, verify the Emby API response and reload the integration. Remove conflicting YAML sensors before enabling the EMBi-owned entity and restart Home Assistant.
 
-A YAML, template, or other integration entity may already use the entity ID. Remove the conflicting YAML definition, restart Home Assistant, and then enable the EMBi sensor again. EMBi does not adopt or delete the conflicting entity.
+## A player is not removed
 
-## A disabled sensor still appears
+Playing or paused clients remain protected. For an unknown state EMBi refreshes Emby sessions; a failed refresh protects only that client. Diagnostics report aggregate requested, removed, protected, and failed counts plus reason codes.
 
-Apply the draft through **Review changes → Apply changes**. Registry deletion occurs only after a successful config-entry reload and only for an exact EMBi-owned sensor identity.
+## Technical players remain visible
 
-## A player cannot be removed
+Confirm the technical master is off, apply the draft, and allow the planned reload to finish. A currently playing client is retained until playback ends; the media-player callback then rechecks visibility.
 
-Playing, paused, unknown, ambiguous, restored-without-proof, and otherwise unsafe lifecycle states remain protected. Stop playback and refresh the options page before trying again.
+## Sensor identity collision
 
-## Cleanup shows fewer candidates than expected
+EMBi never changes a foreign target entity. Remove or rename the unrelated entity manually, then reload EMBi. Do not edit `.storage`.
 
-Automatic cleanup excludes records newer than its age threshold and records without a reliable timestamp. Manual cleanup ignores the age threshold but still protects active, paused, unknown, ambiguous, or temporally unverifiable records.
+## HACS still shows an older version
 
-## HACS does not show the latest release
-
-Refresh HACS repository information and confirm that the GitHub release is stable, marked latest, and contains `embi.zip` plus `embi.zip.sha256`.
+Reload the custom repository information in HACS and confirm that the latest stable GitHub release contains both `embi.zip` and `embi.zip.sha256`.

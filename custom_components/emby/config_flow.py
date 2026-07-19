@@ -17,7 +17,7 @@ from .const import (
     DEFAULT_SSL,
     DOMAIN,
 )
-from .options_flow_098 import EmbyOptionsFlow
+from .options_flow import EmbyOptionsFlow
 from .options_model import default_options_090
 
 
@@ -29,7 +29,9 @@ def _text_selector(*, password: bool = False) -> selector.TextSelector:
 
 
 def _connection_schema(
-    defaults: dict[str, Any] | None = None, *, require_api_key: bool = True
+    defaults: dict[str, Any] | None = None,
+    *,
+    require_api_key: bool = True,
 ) -> vol.Schema:
     defaults = defaults or {}
     api_key_marker = (
@@ -42,7 +44,8 @@ def _connection_schema(
             vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "EMBi")): _text_selector(),
             vol.Required(CONF_HOST, default=defaults.get(CONF_HOST, "")): _text_selector(),
             vol.Required(
-                CONF_PORT, default=defaults.get(CONF_PORT, DEFAULT_PORT)
+                CONF_PORT,
+                default=defaults.get(CONF_PORT, DEFAULT_PORT),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=1,
@@ -52,7 +55,8 @@ def _connection_schema(
                 )
             ),
             vol.Required(
-                CONF_SSL, default=defaults.get(CONF_SSL, DEFAULT_SSL)
+                CONF_SSL,
+                default=defaults.get(CONF_SSL, DEFAULT_SSL),
             ): selector.BooleanSelector(),
             api_key_marker: _text_selector(password=True),
         }
@@ -60,7 +64,9 @@ def _connection_schema(
 
 
 def _api_client(
-    hass: HomeAssistant, data: dict[str, Any], api_key: str | None = None
+    hass: HomeAssistant,
+    data: dict[str, Any],
+    api_key: str | None = None,
 ) -> EmbyApiClient:
     return EmbyApiClient(
         session=async_get_clientsession(hass),
@@ -71,7 +77,10 @@ def _api_client(
     )
 
 
-async def _validate(hass: HomeAssistant, user_input: dict[str, Any]) -> dict[str, Any]:
+async def _validate(
+    hass: HomeAssistant,
+    user_input: dict[str, Any],
+) -> dict[str, Any]:
     return await _api_client(hass, user_input).async_validate()
 
 
@@ -111,7 +120,10 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
+    async def async_step_reconfigure(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ):
         entry = self._get_reconfigure_entry()
         defaults = {CONF_NAME: entry.title, **entry.data}
         defaults.pop(CONF_API_KEY, None)

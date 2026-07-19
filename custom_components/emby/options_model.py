@@ -18,6 +18,9 @@ from .const import (
     CONF_IGNORED_REPORTED_DEVICE_IDS,
     CONF_MAINTENANCE_STORE_INITIALIZED,
     CONF_OPTIONS_SCHEMA_VERSION,
+    CONF_REGISTRY_RECONCILIATION_FAILURES,
+    CONF_REGISTRY_RECONCILIATION_VERSION,
+    CONF_SENSOR_IDENTITY_VERSION,
     CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
@@ -50,7 +53,7 @@ def legacy_initial_run_completed(options: Mapping[str, Any]) -> bool:
 
 
 def default_options_090() -> dict[str, Any]:
-    """Safe defaults for a newly configured EMBi 0.9 installation."""
+    """Safe defaults for a newly configured EMBi installation."""
     return {
         CONF_OPTIONS_SCHEMA_VERSION: OPTIONS_SCHEMA_VERSION,
         CONF_GLOBAL_PLAYER_MODE: PLAYER_MODE_PERSISTENT,
@@ -67,6 +70,9 @@ def default_options_090() -> dict[str, Any]:
         CONF_SERVER_AUTO_CLEANUP_ENABLED: False,
         CONF_SERVER_AUTO_CLEANUP_AGE_DAYS: DEFAULT_SERVER_CLEANUP_AGE_DAYS,
         CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES: DEFAULT_REMOVE_HA_ENTITIES,
+        CONF_REGISTRY_RECONCILIATION_VERSION: 0,
+        CONF_REGISTRY_RECONCILIATION_FAILURES: 0,
+        CONF_SENSOR_IDENTITY_VERSION: 0,
     }
 
 
@@ -92,7 +98,7 @@ def migrate_options_090(
     *,
     new_install: bool = False,
 ) -> tuple[dict[str, Any], bool]:
-    """Idempotently migrate 0.3 options without changing effective visibility."""
+    """Idempotently migrate 0.3/0.9 options without changing effective visibility."""
     source = dict(options)
     defaults = default_options_090()
     migrated = dict(defaults)
@@ -105,8 +111,6 @@ def migrate_options_090(
     known_player_keys = {device.player_key for device in records}
     known_reported_ids = {device.reported_device_id for device in records}
 
-    # 0.9.8 could persist dynamic user field names at the top level in
-    # addition to the canonical nested mapping.
     canonical_user_visibility = _user_visibility(source.get(CONF_USER_MASTER_VISIBILITY, {}))
 
     allowed: set[str] = set()
@@ -161,8 +165,6 @@ def migrate_options_090(
     migrated[CONF_HIDDEN_WHOLE_DEVICES] = _strings(hidden_devices)
     migrated[CONF_UNRESOLVED_LEGACY_RULES] = _strings(unresolved)
     for user_name in tuple(canonical_user_visibility):
-        # The nested map was already the effective runtime source in 0.9.8.
-        # Remove accidental duplicate root keys without changing visibility.
         migrated.pop(user_name, None)
     migrated[CONF_USER_MASTER_VISIBILITY] = canonical_user_visibility
 
@@ -170,7 +172,10 @@ def migrate_options_090(
         source.get(CONF_SERVER_CLEANUP_ENABLED, defaults[CONF_SERVER_CLEANUP_ENABLED])
     )
     migrated[CONF_SERVER_CLEANUP_AGE_DAYS] = int(
-        source.get(CONF_SERVER_CLEANUP_AGE_DAYS, defaults[CONF_SERVER_CLEANUP_AGE_DAYS])
+        source.get(
+            CONF_SERVER_CLEANUP_AGE_DAYS,
+            defaults[CONF_SERVER_CLEANUP_AGE_DAYS],
+        )
     )
     migrated[CONF_SERVER_AUTO_CLEANUP_ENABLED] = bool(
         source.get(
@@ -190,11 +195,26 @@ def migrate_options_090(
             defaults[CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES],
         )
     )
-    configured_sensors = source.get(CONF_ENABLED_SENSORS, defaults[CONF_ENABLED_SENSORS])
+
+    configured_sensors = source.get(
+        CONF_ENABLED_SENSORS,
+        defaults[CONF_ENABLED_SENSORS],
+    )
     if not isinstance(configured_sensors, (list, tuple, set)):
         configured_sensors = defaults[CONF_ENABLED_SENSORS]
     enabled_sensors = {str(value) for value in configured_sensors}
     migrated[CONF_ENABLED_SENSORS] = [key for key in SENSOR_KEYS if key in enabled_sensors]
+
+    for key in (
+        CONF_REGISTRY_RECONCILIATION_VERSION,
+        CONF_REGISTRY_RECONCILIATION_FAILURES,
+        CONF_SENSOR_IDENTITY_VERSION,
+    ):
+        try:
+            migrated[key] = max(0, int(source.get(key, defaults[key]) or 0))
+        except (TypeError, ValueError):
+            migrated[key] = 0
+
     if source.get(CONF_MAINTENANCE_STORE_INITIALIZED):
         migrated[CONF_MAINTENANCE_STORE_INITIALIZED] = True
 
@@ -223,7 +243,7 @@ def should_expose_player(
     technical_access: bool,
     users: Iterable[str] = (),
 ) -> bool:
-    """Apply exact hidden rules and the canonical global visibility settings."""
+    """Apply exact hidden rules and canonical global visibility settings."""
     hidden_exact = {str(value) for value in options.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
     hidden_devices = {str(value) for value in options.get(CONF_HIDDEN_WHOLE_DEVICES, [])}
     if player_key in hidden_exact:

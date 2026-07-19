@@ -9,7 +9,13 @@ from homeassistant.components.media_player import (
     MediaType,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT, CONF_SSL, DEVICE_DEFAULT_NAME
+from homeassistant.const import (
+    CONF_API_KEY,
+    CONF_HOST,
+    CONF_PORT,
+    CONF_SSL,
+    DEVICE_DEFAULT_NAME,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
@@ -29,6 +35,7 @@ SUPPORT_EMBY = (
     | MediaPlayerEntityFeature.SEEK
     | MediaPlayerEntityFeature.PLAY
 )
+_ACTIVE_STATES = {"playing", "paused"}
 
 
 async def async_setup_entry(
@@ -49,6 +56,7 @@ async def async_setup_entry(
 
     active_entities: dict[str, EmbyDevice] = {}
     inactive_entities: dict[str, EmbyDevice] = {}
+    visibility_removals: set[str] = set()
 
     def allowed(device_id: str) -> bool:
         device = emby.devices[device_id]
@@ -74,7 +82,8 @@ async def async_setup_entry(
             state=getattr(device, "state", None),
             options={
                 CONF_GLOBAL_PLAYER_MODE: entry.options.get(
-                    CONF_GLOBAL_PLAYER_MODE, PLAYER_MODE_PERSISTENT
+                    CONF_GLOBAL_PLAYER_MODE,
+                    PLAYER_MODE_PERSISTENT,
                 ),
                 **dict(entry.options),
             },
@@ -82,17 +91,64 @@ async def async_setup_entry(
             users=users,
         )
 
+    async def _unknown_has_active_session(device_id: str) -> bool | None:
+        try:
+            sessions = await runtime.api_client._request("GET", "/Sessions")
+        except Exception:
+            return None
+        if not isinstance(sessions, list):
+            return None
+        for session in sessions:
+            if not isinstance(session, dict):
+                return None
+            reported = str(session.get("DeviceId") or "")
+            if reported and reported.casefold() not in device_id.casefold():
+                continue
+            if not isinstance(session.get("NowPlayingItem"), dict):
+                continue
+            play_state = session.get("PlayState")
+            if not isinstance(play_state, dict) or not isinstance(play_state.get("IsPaused"), bool):
+                return None
+            return True
+        return False
+
+    async def _async_remove_for_visibility(device_id: str, entity: EmbyDevice) -> None:
+        """Remove one disallowed entity only after current playback validation."""
+        removed = False
+        try:
+            device = emby.devices.get(device_id)
+            state = str(getattr(device, "state", "")).casefold()
+            if state in _ACTIVE_STATES:
+                return
+            if state not in {"idle", "off", "standby", "unavailable"}:
+                active_session = await _unknown_has_active_session(device_id)
+                if active_session is not False:
+                    return
+            if entity.hass is not None:
+                await entity.async_remove(force_remove=True)
+            removed = True
+        finally:
+            if removed:
+                active_entities.pop(device_id, None)
+                inactive_entities.pop(device_id, None)
+            visibility_removals.discard(device_id)
+
     @callback
     def device_update_callback(data: Any) -> None:
         new_entities: list[EmbyDevice] = []
         for device_id in list(emby.devices):
             if not allowed(device_id):
-                if device_id in active_entities:
-                    entity = active_entities.pop(device_id)
-                    inactive_entities[device_id] = entity
-                    entity.set_available(False)
+                entity = active_entities.get(device_id) or inactive_entities.get(device_id)
+                if entity is not None and device_id not in visibility_removals:
+                    visibility_removals.add(device_id)
+                    hass.async_create_task(
+                        _async_remove_for_visibility(device_id, entity),
+                        "Remove hidden EMBi player",
+                    )
                 continue
 
+            if device_id in visibility_removals:
+                continue
             if device_id not in active_entities and device_id not in inactive_entities:
                 entity = EmbyDevice(emby, device_id)
                 active_entities[device_id] = entity
@@ -128,17 +184,14 @@ class EmbyDevice(MediaPlayerEntity):
         self.device = self.emby.devices[self.device_id]
         self.media_status_last_position: float | None = None
         self.media_status_received = None
-        # This stable identity must not change during 0.3.0 -> 0.9.0 migration.
         self._attr_unique_id = device_id
 
     async def async_added_to_hass(self) -> None:
-        """Register the pyemby update callback."""
         await super().async_added_to_hass()
         self.emby.add_update_callback(self.async_update_callback, self.device_id)
 
     @callback
     def async_update_callback(self, msg: Any) -> None:
-        """Write the latest pyemby state to Home Assistant."""
         if self.device.media_position:
             if self.device.media_position != self.media_status_last_position:
                 self.media_status_last_position = self.device.media_position
@@ -149,7 +202,6 @@ class EmbyDevice(MediaPlayerEntity):
         self.async_write_ha_state()
 
     def set_available(self, value: bool) -> None:
-        """Set entity availability and publish the state."""
         self._attr_available = value
         if self.hass is not None:
             self.async_write_ha_state()
@@ -240,9 +292,7 @@ class EmbyDevice(MediaPlayerEntity):
 
     @property
     def supported_features(self) -> MediaPlayerEntityFeature:
-        if self.supports_remote_control:
-            return SUPPORT_EMBY
-        return MediaPlayerEntityFeature(0)
+        return SUPPORT_EMBY if self.supports_remote_control else MediaPlayerEntityFeature(0)
 
     async def async_media_play(self) -> None:
         await self.device.media_play()
