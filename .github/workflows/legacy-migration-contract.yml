@@ -1,0 +1,39 @@
+name: EMBi legacy migration contract
+
+on:
+  pull_request:
+    paths:
+      - "docs/specs/0.9.0/**"
+      - "scripts/validate_legacy_migration_contract.py"
+      - ".github/workflows/legacy-migration-contract.yml"
+  push:
+    paths:
+      - "docs/specs/0.9.0/**"
+      - "scripts/validate_legacy_migration_contract.py"
+      - ".github/workflows/legacy-migration-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Resolve version without integration imports
+        run: |
+          VERSION="$(python -I scripts/read_version.py)"
+          test -n "${VERSION}"
+
+      - name: Install validator dependency
+        run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
+
+      - name: Validate frozen legacy migration contract
+        run: python scripts/validate_legacy_migration_contract.py
