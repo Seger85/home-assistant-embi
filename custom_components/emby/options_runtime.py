@@ -6,6 +6,7 @@ from typing import Any
 
 from homeassistant.helpers import entity_registry as er
 
+from .const import CONF_TECHNICAL_ACCESS_VISIBILITY
 from .player_context import (
     GROUP_SHARED,
     GROUP_TECHNICAL,
@@ -75,7 +76,12 @@ async def fresh_catalog(flow: Any) -> tuple[list[PlayerContext], PlayerCatalogSt
     return players, catalog_stats(players, server_history_records=len(records))
 
 
-def group_options(players: list[PlayerContext], *, german: bool) -> list[dict[str, str]]:
+def group_options(
+    players: list[PlayerContext],
+    *,
+    german: bool,
+    include_technical: bool = True,
+) -> list[dict[str, str]]:
     grouped = group_player_catalog(players)
     options: list[dict[str, str]] = []
     user_keys = sorted(
@@ -84,18 +90,28 @@ def group_options(players: list[PlayerContext], *, german: bool) -> list[dict[st
     )
     for key in user_keys:
         user = key.removeprefix(GROUP_USER_PREFIX)
-        count = len(grouped[key])
-        options.append({"value": key, "label": f"{user} · {count} Player"})
+        options.append({"value": key, "label": f"{user} · {len(grouped[key])} Player"})
     labels = {
         GROUP_SHARED: "Gemeinsam genutzt" if german else "Shared devices",
-        GROUP_UNASSIGNED: ("Ohne Benutzerzuordnung" if german else "Without user assignment"),
+        GROUP_UNASSIGNED: "Ohne Benutzerzuordnung" if german else "Without user assignment",
         GROUP_TECHNICAL: "Technische Zugriffe" if german else "Technical access",
         GROUP_UNKNOWN: "Unklare Clients" if german else "Unclear clients",
     }
     for key in (GROUP_SHARED, GROUP_UNASSIGNED, GROUP_TECHNICAL, GROUP_UNKNOWN):
+        if key == GROUP_TECHNICAL and not include_technical:
+            continue
         if key in grouped:
             options.append({"value": key, "label": f"{labels[key]} · {len(grouped[key])}"})
     return options
+
+
+def options_for_flow(flow: Any, players: list[PlayerContext]) -> list[dict[str, str]]:
+    """Return group options using the current technical master state."""
+    return group_options(
+        players,
+        german=flow._is_de(),
+        include_technical=bool(flow._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)),
+    )
 
 
 def _compact_options(players: list[PlayerContext], *, value_getter) -> list[dict[str, str]]:
@@ -149,7 +165,7 @@ def render_player_details(players: list[PlayerContext], *, german: bool) -> str:
                     player.selector_label,
                     f"Home Assistant: {player.ha_name}",
                     f"Entity-ID: {entity}",
-                    (f"Benutzer: {user}" if german else f"Users: {user}"),
+                    f"Benutzer: {user}" if german else f"Users: {user}",
                     f"Status: {status_label(player.status, german=german)}",
                 )
             )

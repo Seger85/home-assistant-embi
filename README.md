@@ -1,23 +1,21 @@
 # EMBi – Emby Integration for Home Assistant
 
-EMBi connects a local Emby server to Home Assistant. It provides controllable media-player entities, safe management of historical Emby device records, and optional library and playback statistics.
+EMBi connects a local Emby server to Home Assistant. It provides controllable media-player entities, exact lifecycle management for historical clients, and optional library and playback statistics.
 
-## Features
-
-### Home Assistant players
+## Home Assistant players
 
 - Show players permanently or only while playing or paused.
 - Automatically expose newly discovered players.
-- Include or exclude technical API clients.
-- Manage players by user and device group.
-- Remove safely inactive Home Assistant player entities without deleting their Emby server record.
-- Restore previously removed players while preserving stable identities.
+- Include or exclude technical API clients with an independent master switch.
+- Manage exact player exceptions inside user, shared, unassigned, technical, and unclear groups.
+- Remove safely inactive EMBi entities from the entity platform, state machine, and registry without deleting Emby server history.
+- Restore a hidden player with the same stable unique ID.
 
-Playing, paused, and ambiguous players are protected from destructive actions. Existing player entity IDs, unique IDs, names, areas, labels, and aliases are not migrated or rewritten.
+Playing and paused clients are protected. Unknown playback is freshly revalidated for the specific client; it is not a permanent group-wide blocker. Names, areas, labels, aliases, and unrelated entities are never rewritten by player cleanup.
 
-### Emby sensors
+## Emby sensors
 
-All six sensors are enabled by default and can be switched individually in the integration options:
+All six sensors are enabled by default and can be selected in the integration options:
 
 - `sensor.emby_movie_count`
 - `sensor.emby_tv_series_count`
@@ -26,46 +24,28 @@ All six sensors are enabled by default and can be switched individually in the i
 - `sensor.emby_song_count`
 - `sensor.emby_users_watching`
 
-Library counters use Emby's `/Items/Counts` endpoint. The users-watching sensor uses `/Sessions` and counts unique users with active playback; paused sessions are not counted.
+Disabling a sensor changes only the draft until final apply. After apply, only the exact EMBi-owned registry entity is removed. Re-enabling it restores the same unique ID and documented entity ID when that target is free.
 
-Disabling a sensor and applying the options removes that EMBi-owned entity from the Home Assistant entity registry. Re-enabling it creates the sensor again with the same EMBi unique ID and the documented entity ID when that entity ID is free.
+> Remove conflicting YAML sensors before enabling the corresponding EMBi sensor and restart Home Assistant. EMBi never adopts, renames, or deletes unrelated YAML entities.
 
-> Existing YAML sensors using these entity IDs must be removed before enabling the EMBi sensors. Restart Home Assistant after removing the YAML definitions. EMBi never adopts, migrates, or deletes unrelated YAML sensors.
+## Safe server-history cleanup
 
-### Safe server-history cleanup
-
-EMBi can remove obsolete device-history records from the Emby server.
-
-- Automatic cleanup uses a configurable age threshold and persistent schedule.
-- Manual cleanup lists safe inactive records independently of the automatic age threshold.
-- Active, paused, ambiguous, and temporally unverifiable records remain protected.
-- A matching Home Assistant player is removed only after successful server deletion and fresh ownership, platform, unique-ID, remaining-history, and playback validation.
-
-The automatic report distinguishes records that are not yet due from protected or failed records.
+Automatic cleanup uses a persistent schedule and age threshold. Manual cleanup lists unequivocally safe inactive records independently of that threshold. Playing, paused, ambiguous, and temporally unverifiable records remain protected. Server deletion and Home Assistant entity removal are separate, freshly revalidated operations.
 
 ## Installation through HACS
 
-1. Open HACS.
-2. Add `Seger85/home-assistant-embi` as a custom **Integration** repository.
-3. Install **Emby Integration - EMBi**.
-4. Restart Home Assistant.
-5. Add or configure EMBi under **Settings → Devices & services**.
+1. Add `Seger85/home-assistant-embi` as a custom **Integration** repository.
+2. Install **Emby Integration - EMBi**.
+3. Restart Home Assistant.
+4. Add or configure EMBi under **Settings → Devices & services**.
 
-EMBi is distributed through stable GitHub releases. HACS installs `embi.zip`; `embi.zip.sha256` contains the published checksum.
+Stable releases provide exactly `embi.zip` and `embi.zip.sha256`.
 
-## Configuration
+## Configuration and safety
 
-The connection and all runtime options are managed through the Home Assistant UI. Normal option pages update an in-memory draft; permanent changes are written only through **Review changes → Apply changes**.
+Normal option pages update an in-memory draft. **Review changes** appears only when a semantic change exists; **Apply changes** writes once and schedules one planned reload plus explicitly justified lifecycle or cleanup follow-up. Closing the dialog does not save.
 
-Direct edits to `.storage` are neither required nor supported.
-
-## Security model
-
-- Credentials are stored by Home Assistant and redacted from diagnostics.
-- Registry deletion requires exact config-entry, domain, platform, and unique-ID ownership.
-- Server-history deletion is explicit and revalidated immediately before execution.
-- EMBi does not delete media, libraries, users, or playback history.
-- No blanket registry cleanup is performed.
+Credentials are stored by Home Assistant and redacted from diagnostics. Registry deletion requires exact domain, platform, config-entry, and unique-ID ownership. Direct `.storage` edits are unsupported.
 
 ## Documentation
 

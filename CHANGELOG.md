@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0] - 2026-07-19
+
+- Consolidate the Options Flow, player-group UI, and reconciliation runtime into canonical unversioned modules.
+- Replace the failing sensor form with one serializable six-item multi-select that remains draft-only until final apply.
+- Hide the review step when no semantic changes exist and return stale direct review calls to the root menu.
+- Protect only freshly confirmed playing or paused clients; revalidate unknown playback per player and report named blockers.
+- Keep the technical master independent from individual player exceptions and remove disallowed entities from the entity platform, state machine, and exact EMBi registry ownership.
+- Advance bounded startup reconciliation to version 3 and safely remove inactive or stale-restored states before exact registry cleanup.
+- Complete idempotent active-viewer sensor identity migration, including exact duplicate-remnant cleanup and collision safety.
+- Standardize dependency-free version resolution through `scripts/read_version.py` before dependency installation in every package and release workflow.
+- Clean release-suffixed runtime modules and behavior tests while preserving frozen migration/specification coverage and legal files.
+
 ## [0.9.9] - 2026-07-19
 
 - Canonicalize the active-viewer sensor as `sensor.emby_users_watching` and migrate an exact EMBi-owned registry entry in place when the target is free.

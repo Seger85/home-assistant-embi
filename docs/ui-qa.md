@@ -1,16 +1,14 @@
 # UI quality assurance
 
-Changes to the options flow should be checked with the standard Home Assistant frontend on iPhone, iPad, and desktop.
+For Options Flow changes verify both German and English on iPhone-width and desktop-width layouts:
 
-Verify:
+- every root menu item opens and submits
+- the six-item sensor selector serializes normally
+- group labels remain one line: Device · App · last access
+- known access times sort oldest first; unknown times appear last
+- named playback blockers do not erase other submitted switches
+- explicit group Back navigation preserves the draft
+- Review changes is absent at zero semantic changes
+- no empty bullet or placeholder-only review form appears
 
-- root-menu labels and descriptions
-- all six sensor switches in both languages
-- draft-only navigation and final apply
-- two-line player labels without horizontal overflow
-- automatic-cleanup placeholders, including the dynamic age threshold
-- manual-cleanup age-independence wording
-- confirmation pages and inline errors
-- dark-theme readability without integration-specific CSS
-
-EMBi uses native Home Assistant selectors and does not inject frontend styling.
+Visual checks complement, but do not replace, flow serialization, registry, state-machine, reload, and restoration tests.

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "0.9.9"
+VERSION = "1.0.0"
 PLATFORMS = ["media_player", "sensor"]
 
 CONFIG_ENTRY_VERSION = 4
-CONFIG_ENTRY_MINOR_VERSION = 1
-OPTIONS_SCHEMA_VERSION = 3
+CONFIG_ENTRY_MINOR_VERSION = 2
+OPTIONS_SCHEMA_VERSION = 4
 CONF_OPTIONS_SCHEMA_VERSION = "options_schema_version"
 
 CONF_ENABLED_SENSORS = "enabled_sensors"
@@ -34,8 +34,10 @@ SENSOR_ENTITY_IDS = {
     SENSOR_SONG_COUNT: "emby_song_count",
     SENSOR_USERS_WATCHING: "emby_users_watching",
 }
+CONF_SENSOR_IDENTITY_VERSION = "sensor_identity_version"
+SENSOR_IDENTITY_VERSION = 2
 
-# Canonical 0.9 player-visibility model.
+# Canonical player-visibility model.
 CONF_GLOBAL_PLAYER_MODE = "global_player_mode"
 PLAYER_MODE_PERSISTENT = "persistent"
 PLAYER_MODE_ACTIVE_ONLY = "active_only"
@@ -46,8 +48,6 @@ CONF_HIDDEN_EXACT_PLAYERS = "hidden_exact_players"
 CONF_HIDDEN_WHOLE_DEVICES = "hidden_whole_devices"
 CONF_USER_MASTER_VISIBILITY = "user_master_visibility"
 CONF_UNRESOLVED_LEGACY_RULES = "unresolved_legacy_rules"
-
-# Existing allow-list data remains useful when new players must not appear automatically.
 CONF_ALLOWED_DEVICE_IDS = "allowed_device_ids"
 
 # Legacy 0.3 keys are read only by the idempotent migration.
@@ -60,10 +60,13 @@ CLIENT_MODE_ACTIVE_ONLY = "active_only"
 CLIENT_MODE_ALLOWLIST = "allowlist"
 CLIENT_MODES = [CLIENT_MODE_ALL, CLIENT_MODE_ACTIVE_ONLY, CLIENT_MODE_ALLOWLIST]
 
-# Native Options Flow fields which are intentionally not persisted as duplicate state.
-
-# 0.9.1 compact navigation and pagination fields.
-CONF_BACK = "back"  # Legacy input name; never exposed or persisted by 0.9.2 forms.
+# Native Options Flow fields; these are never persisted as duplicate runtime state.
+CONF_BACK = "back"
+CONF_SEARCH_QUERY = "search_query"
+CONF_PLAYER_SORT_ORDER = "player_sort_order"
+PLAYER_SORT_OLDEST = "oldest_first"
+PLAYER_SORT_NEWEST = "newest_first"
+PLAYER_SORT_ORDERS = {PLAYER_SORT_OLDEST, PLAYER_SORT_NEWEST}
 CONF_FLOW_ACTION = "flow_action"
 FLOW_ACTION_SAVE = "save"
 FLOW_ACTION_BACK = "back"
@@ -88,11 +91,6 @@ REVIEW_ACTION_DISCARD = "discard_changes"
 REVIEW_ACTION_BACK = "back_to_init"
 PLAYER_PAGE_SIZE = 12
 CONF_ONLY_DURING_PLAYBACK = "only_during_playback"
-CONF_SEARCH_QUERY = "search_query"
-CONF_PLAYER_SORT_ORDER = "player_sort_order"
-PLAYER_SORT_OLDEST = "oldest_first"
-PLAYER_SORT_NEWEST = "newest_first"
-PLAYER_SORT_ORDERS = {PLAYER_SORT_OLDEST, PLAYER_SORT_NEWEST}
 CONF_SELECTED_GROUP = "selected_group"
 CONF_VISIBLE_PLAYER_KEYS = "visible_player_keys"
 CONF_ENABLE_ENTITY_IDS = "enable_entity_ids"
@@ -108,7 +106,9 @@ CONF_CONFIRM_SERVER_DELETION = "confirm_server_deletion"
 
 CONF_MAINTENANCE_STORE_INITIALIZED = "maintenance_store_initialized"
 CONF_REGISTRY_RECONCILIATION_VERSION = "registry_reconciliation_version"
-REGISTRY_RECONCILIATION_VERSION = 2
+CONF_REGISTRY_RECONCILIATION_FAILURES = "registry_reconciliation_failures"
+REGISTRY_RECONCILIATION_VERSION = 3
+REGISTRY_RECONCILIATION_MAX_FAILURES = 3
 CONF_CLEANUP_ENTITY_IDS = "cleanup_entity_ids"
 CONF_CONFIRM_CLEANUP = "confirm_cleanup"
 CONF_CONFIRM_BULK = "confirm_bulk"
@@ -194,7 +194,6 @@ FOLLOW_UP_STATUSES = {
     FOLLOW_UP_SKIPPED,
 }
 
-# Keep the Home Assistant Store envelope version stable and migrate the internal schema.
 MAINTENANCE_STORE_STORAGE_VERSION = 1
 MAINTENANCE_STORE_VERSION = 2
 MAINTENANCE_STORE_KEY_PREFIX = f"{DOMAIN}.maintenance"
