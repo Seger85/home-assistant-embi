@@ -28,11 +28,11 @@ def test_every_build_workflow_resolves_version_before_dependencies() -> None:
         assert 'python -c "from custom_components.emby' not in workflow
 
 
-def test_stable_publisher_is_autonomous_sha_bound_regular_latest_release() -> None:
+def test_stable_publisher_is_scheduled_sha_bound_regular_latest_release() -> None:
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    assert "push:" in workflow and "- main" in workflow
+    assert "schedule:" in workflow and 'cron: "47 */6 * * *"' in workflow
     assert "pull_request:" not in workflow
-    assert "sleep 300" in workflow
+    assert "push:" not in workflow
     assert "scripts/prepare_automatic_release.py" in workflow
     assert "git merge-base --is-ancestor" in workflow
     assert "Pin candidate release commit" in workflow
@@ -43,4 +43,4 @@ def test_stable_publisher_is_autonomous_sha_bound_regular_latest_release() -> No
     assert "make_latest: true" in workflow
     assert "gh release download" in workflow
     assert "cmp dist/embi.zip" in workflow
-    assert "cancel-in-progress: true" in workflow
+    assert "cancel-in-progress: false" in workflow
