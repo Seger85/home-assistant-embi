@@ -179,15 +179,12 @@ persistent_notification.async_dismiss = lambda hass, notification_id: hass.notif
 components.media_player = media_player
 components.persistent_notification = persistent_notification
 
-for name in (
-    "CONF_API_KEY",
-    "CONF_HOST",
-    "CONF_NAME",
-    "CONF_PORT",
-    "CONF_SSL",
-    "DEVICE_DEFAULT_NAME",
-):
-    setattr(const, name, name.lower())
+const.CONF_API_KEY = "api_key"
+const.CONF_HOST = "host"
+const.CONF_NAME = "name"
+const.CONF_PORT = "port"
+const.CONF_SSL = "ssl"
+const.DEVICE_DEFAULT_NAME = "Emby device"
 
 dt.utcnow = lambda: datetime.now(UTC)
 dt.as_local = lambda value: value
