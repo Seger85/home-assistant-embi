@@ -203,6 +203,11 @@ def main() -> None:
     require("workflow_dispatch:" not in release, "manual release path remains")
     require("cancel-in-progress: false" in release, "release concurrency differs")
     require(
+        'test "${HEAD_BRANCH}" = "release/${version}"' in release,
+        "canonical release branch gate missing",
+    )
+    require("release/${version}-final" not in release, "temporary release branch fallback remains")
+    require(
         "git tag -a" in release and "make_latest: true" in release,
         "stable release differs",
     )
