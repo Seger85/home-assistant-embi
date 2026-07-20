@@ -6,6 +6,7 @@ on:
       - main
       - develop
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -82,6 +83,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import yaml
+
           paths = [Path(".github/dependabot.yml")]
           paths.extend(sorted(Path(".github/workflows").glob("*.yml")))
           for path in paths:
