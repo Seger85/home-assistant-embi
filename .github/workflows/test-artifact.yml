@@ -39,7 +39,7 @@ jobs:
 
       - name: Validate contracts and repository references
         run: |
-          python scripts/validate_spec_contract.py
+          python scripts/validate_legacy_migration_contract.py
           python scripts/validate_stable_contract.py
           python scripts/validate_repository_references.py
 
