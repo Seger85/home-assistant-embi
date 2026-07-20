@@ -171,8 +171,8 @@ def main() -> None:
     )
 
     for contract in (
-        '"options_flow_contract": "1.0.1"',
-        '"sensor_contract": "1.0.1"',
+        '"options_flow_contract": "1.0.0"',
+        '"sensor_contract": "1.0.0"',
         '"player_visibility_contract": "1.0.1"',
     ):
         require(contract in diagnostics, f"diagnostics contract missing: {contract}")
