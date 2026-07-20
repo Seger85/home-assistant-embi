@@ -34,7 +34,10 @@ def main() -> None:
     tests = MIGRATION_TEST.read_text(encoding="utf-8")
     functions = local_names(MIGRATION)
 
-    require({"legacy_cleanup_completed", "migrate_options"} <= functions, "migration API differs")
+    require(
+        {"legacy_cleanup_completed", "migrate_options"} <= functions,
+        "migration API differs",
+    )
     for legacy_key in (
         "client_mode",
         "ignored_player_keys",
@@ -43,7 +46,9 @@ def main() -> None:
         "ignored_device_ids",
         "server_cleanup_api_key",
     ):
-        require(legacy_key in migration, f"legacy key is no longer handled: {legacy_key}")
+        require(
+            legacy_key in migration, f"legacy key is no longer handled: {legacy_key}"
+        )
 
     for behavior in (
         "test_published_upgrade_preserves_cleanup_values",
@@ -67,9 +72,15 @@ def main() -> None:
         "ignored_device_ids",
         "server_cleanup_api_key",
     ):
-        require(legacy_name not in current_runtime, f"legacy key escaped isolation: {legacy_name}")
+        require(
+            legacy_name not in current_runtime,
+            f"legacy key escaped isolation: {legacy_name}",
+        )
 
-    require(not (ROOT / "docs" / "specs").exists(), "historical product specifications remain public")
+    require(
+        not (ROOT / "docs" / "specs").exists(),
+        "historical product specifications remain public",
+    )
     print("Isolated legacy migration contract passed")
 
 
