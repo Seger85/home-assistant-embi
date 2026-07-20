@@ -99,8 +99,9 @@ def test_documentation_is_current_and_has_one_release_source() -> None:
     assert "sensor.emby_users_watching" in readme
     assert "entity registry" in readme
     assert "python -I scripts/read_version.py" in releasing
+    assert "scripts/prepare_automatic_release.py" in releasing
     assert "embi.zip" in releasing and "embi.zip.sha256" in releasing
-    assert "Signed-off-by: Seger" in releasing
+    assert "HACS can install an earlier tagged EMBi version" in releasing
     for removed in (
         "docs/PROJECT_STATE.md",
         "docs/development.md",
@@ -111,9 +112,28 @@ def test_documentation_is_current_and_has_one_release_source() -> None:
         assert not (ROOT / removed).exists()
 
 
+def test_dependabot_runs_daily_and_merges_only_after_complete_validation() -> None:
+    dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    automerge = (ROOT / ".github" / "workflows" / "dependabot-automerge.yml").read_text(
+        encoding="utf-8"
+    )
+    assert dependabot.count("interval: daily") == 2
+    assert dependabot.count("timezone: Europe/Berlin") == 2
+    assert 'time: "03:00"' in dependabot and 'time: "03:15"' in dependabot
+    assert "pull_request_target:" in automerge
+    assert 'cron: "17 * * * *"' in automerge
+    assert 'dependabot[bot]' in automerge
+    for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
+        assert f'"{workflow_name}"' in automerge
+    assert "rerun-failed-jobs" in automerge
+    assert "merge_method=squash" in automerge
+    assert "pulls/${pr_number}/merge" in automerge
+
+
 def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     workflow_dir = ROOT / ".github" / "workflows"
     assert {path.name for path in workflow_dir.glob("*.yml")} == {
+        "dependabot-automerge.yml",
         "hacs.yml",
         "hassfest.yml",
         "quality.yml",
@@ -128,10 +148,9 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     assert "build_package.py" not in quality
     assert "build_package.py" in package
     assert "github.event.pull_request.head.sha || github.sha" in package
-    assert "workflow_dispatch:" not in release
-    assert "startsWith(github.event.pull_request.head.ref, 'release/')" in release
-    assert 'test "${HEAD_BRANCH}" = "release/${version}"' in release
-    assert "release/${version}-final" not in release
+    assert "pull_request:" not in release
+    assert "push:" in release and "- main" in release
+    assert "prepare_automatic_release.py" in release
     assert "make_latest: true" in release
     assert "gh release download" in release
     assert "cmp dist/embi.zip" in release

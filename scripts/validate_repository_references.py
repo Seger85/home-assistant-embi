@@ -109,9 +109,10 @@ def main() -> None:
 
     expected_scripts = {
         "build_package.py",
+        "prepare_automatic_release.py",
         "read_version.py",
-        "validate_legacy_migration_contract.py",
         "secret_scan.py",
+        "validate_legacy_migration_contract.py",
         "validate_repository_references.py",
         "validate_stable_contract.py",
     }
@@ -122,6 +123,7 @@ def main() -> None:
     )
 
     expected_workflows = {
+        "dependabot-automerge.yml",
         "hacs.yml",
         "hassfest.yml",
         "quality.yml",
@@ -183,18 +185,40 @@ def main() -> None:
             f"duplicate contract work remains in test package: {validator}",
         )
 
+    dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    require(dependabot.count("interval: daily") == 2, "Dependabot is not daily")
+    require(
+        dependabot.count("timezone: Europe/Berlin") == 2,
+        "Dependabot timezone differs",
+    )
+    require(
+        'time: "03:00"' in dependabot and 'time: "03:15"' in dependabot,
+        "Dependabot schedule differs",
+    )
+
+    automerge = workflow_text["dependabot-automerge.yml"]
+    require("pull_request_target:" in automerge, "Dependabot event trigger missing")
+    require('cron: "17 * * * *"' in automerge, "Dependabot hourly recovery sweep missing")
+    require('dependabot[bot]' in automerge, "Dependabot actor gate missing")
+    for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
+        require(f'"{workflow_name}"' in automerge, f"required check missing: {workflow_name}")
+    require("rerun-failed-jobs" in automerge, "failed workflow retry missing")
+    require("merge_method=squash" in automerge, "Dependabot squash merge missing")
+
     release = workflow_text["release.yml"]
-    require("workflow_dispatch:" not in release, "manual stable publication path remains")
+    require("pull_request:" not in release, "legacy release PR trigger remains")
+    require("push:" in release and "- main" in release, "main push release trigger missing")
+    require("sleep 300" in release, "release debounce missing")
     require(
-        "startsWith(github.event.pull_request.head.ref, 'release/')" in release,
-        "release branch gate missing",
+        "scripts/prepare_automatic_release.py" in release,
+        "automatic patch preparation missing",
     )
+    require("cancel-in-progress: true" in release, "obsolete release run may survive")
     require(
-        'test "${HEAD_BRANCH}" = "release/${version}"' in release
-        and "release/${version}-final" not in release,
-        "canonical release branch identity differs",
+        "Pin candidate release commit" in release
+        and "git push origin HEAD:main" in release,
+        "validated release commit publication differs",
     )
-    require("cancel-in-progress: false" in release, "stable publication may be cancelled")
     require(
         "git tag -a" in release and "make_latest: true" in release,
         "stable publication contract differs",
@@ -208,7 +232,8 @@ def main() -> None:
     for script in expected_scripts:
         require(
             f"scripts/{script}" in all_text
-            or f"scripts/{script}" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8"),
+            or f"scripts/{script}" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+            or f"scripts/{script}" in (ROOT / "RELEASING.md").read_text(encoding="utf-8"),
             f"script has no workflow or documented caller: {script}",
         )
 
