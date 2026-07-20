@@ -22,7 +22,7 @@ from custom_components.emby.const import (
 from custom_components.emby.entry_lifecycle import async_update_listener
 from custom_components.emby.models import CleanupRunReport, EmbiRuntimeData, MaintenanceState
 from custom_components.emby.options_flow import EmbyOptionsFlow
-from custom_components.emby.options_model import default_options_090
+from custom_components.emby.options_model import default_options
 
 
 class FakeApi:
@@ -134,7 +134,7 @@ def setup_flow(options: dict | None = None, devices: list[EmbyDeviceRecord] | No
         maintenance_store=store,
         maintenance_state=MaintenanceState(),
     )
-    entry = FakeEntry(options or default_options_090(), runtime)
+    entry = FakeEntry(options or default_options(), runtime)
     hass = FakeHass()
     hass.config_entries.entry = entry
     flow = EmbyOptionsFlow(entry)
