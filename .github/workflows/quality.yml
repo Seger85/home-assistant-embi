@@ -7,6 +7,10 @@ on:
       - develop
   pull_request:
 
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -21,11 +25,13 @@ jobs:
           - "3.13"
           - "3.14"
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out source
+        uses: actions/checkout@v7
         with:
           show-progress: false
 
-      - uses: actions/setup-python@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -35,7 +41,33 @@ jobs:
         run: |
           VERSION="$(python -I scripts/read_version.py)"
           test -n "${VERSION}"
-          echo "EMBI_VERSION=${VERSION}" >> "${GITHUB_ENV}"
+
+      - name: Install test dependencies
+        run: python -m pip install -q --upgrade pip -r requirements_test.txt
+
+      - name: Run full test suite
+        run: pytest -q
+
+  static:
+    name: Static analysis and contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+
+      - name: Resolve version without integration imports
+        run: |
+          VERSION="$(python -I scripts/read_version.py)"
+          test -n "${VERSION}"
 
       - name: Install validation dependencies
         run: python -m pip install -q --upgrade pip -r requirements_test.txt
@@ -59,7 +91,7 @@ jobs:
       - name: Compile Python
         run: python -m compileall -q custom_components/emby scripts tests
 
-      - name: Static type check
+      - name: Run MyPy
         run: >-
           mypy --ignore-missing-imports --follow-imports=skip
           custom_components/emby/options_model.py
@@ -70,96 +102,15 @@ jobs:
           custom_components/emby/player_reconciliation.py
           custom_components/emby/sensor_registry.py
 
-      - name: Capture Ruff lint
-        id: ruff_lint
-        shell: bash
+      - name: Run Ruff check
+        run: ruff check .
+
+      - name: Run Ruff format check
+        run: ruff format --check .
+
+      - name: Validate repository contracts
         run: |
-          set +e
-          ruff check . > ruff-lint-report.txt 2>&1
-          status=$?
-          echo "status=${status}" >> "${GITHUB_OUTPUT}"
-          cat ruff-lint-report.txt
-          exit 0
-
-      - name: Upload Ruff lint report
-        if: ${{ steps.ruff_lint.outputs.status != '0' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ruff-lint-report-${{ matrix.python-version }}-${{ github.sha }}
-          path: ruff-lint-report.txt
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce Ruff lint
-        if: ${{ steps.ruff_lint.outputs.status != '0' }}
-        run: exit 1
-
-      - name: Capture Ruff format check
-        id: ruff_format
-        shell: bash
-        run: |
-          set +e
-          ruff format --check . > ruff-format-report.txt 2>&1
-          status=$?
-          echo "status=${status}" >> "${GITHUB_OUTPUT}"
-          cat ruff-format-report.txt
-          exit 0
-
-      - name: Upload Ruff format report
-        if: ${{ steps.ruff_format.outputs.status != '0' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ruff-format-report-${{ matrix.python-version }}-${{ github.sha }}
-          path: ruff-format-report.txt
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce Ruff format
-        if: ${{ steps.ruff_format.outputs.status != '0' }}
-        run: exit 1
-
-      - name: Capture unit and flow tests
-        id: pytest
-        shell: bash
-        run: |
-          set +e
-          pytest -q > pytest-report.txt 2>&1
-          status=$?
-          echo "status=${status}" >> "${GITHUB_OUTPUT}"
-          cat pytest-report.txt
-          exit 0
-
-      - name: Upload unit-test report
-        if: ${{ steps.pytest.outputs.status != '0' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-report-${{ matrix.python-version }}-${{ github.sha }}
-          path: pytest-report.txt
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Enforce unit and flow tests
-        if: ${{ steps.pytest.outputs.status != '0' }}
-        run: exit 1
-
-      - name: Validate legacy migration contract
-        run: python scripts/validate_legacy_migration_contract.py
-
-      - name: Validate stable contract
-        run: python scripts/validate_stable_contract.py
-
-      - name: Validate repository references
-        run: python scripts/validate_repository_references.py
-
-      - name: Secret and privacy scan
-        run: python scripts/secret_scan.py
-
-      - name: Build and verify release-equivalent asset
-        run: |
-          rm -rf dist
-          python scripts/build_package.py \
-            --output-dir dist \
-            --expected-version "${EMBI_VERSION}" \
-            --commit "${GITHUB_SHA}"
-          (cd dist && sha256sum --check embi.zip.sha256)
-          test "$(cat dist/BUILD_COMMIT)" = "${GITHUB_SHA}"
+          python scripts/validate_legacy_migration_contract.py
+          python scripts/validate_stable_contract.py
+          python scripts/validate_repository_references.py
+          python scripts/secret_scan.py
