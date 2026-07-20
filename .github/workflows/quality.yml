@@ -70,8 +70,29 @@ jobs:
           custom_components/emby/player_reconciliation.py
           custom_components/emby/sensor_registry.py
 
-      - name: Ruff lint
-        run: ruff check .
+      - name: Capture Ruff lint
+        id: ruff_lint
+        shell: bash
+        run: |
+          set +e
+          ruff check . > ruff-lint-report.txt 2>&1
+          status=$?
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          cat ruff-lint-report.txt
+          exit 0
+
+      - name: Upload Ruff lint report
+        if: ${{ steps.ruff_lint.outputs.status != '0' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-lint-report-${{ matrix.python-version }}-${{ github.sha }}
+          path: ruff-lint-report.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce Ruff lint
+        if: ${{ steps.ruff_lint.outputs.status != '0' }}
+        run: exit 1
 
       - name: Capture Ruff format check
         id: ruff_format
