@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+
 from custom_components.emby import player_reconciliation
 from custom_components.emby.const import (
     CONF_OPTIONS_SCHEMA_VERSION,
@@ -14,8 +15,8 @@ from custom_components.emby.const import (
     OPTIONS_SCHEMA_VERSION,
     REGISTRY_RECONCILIATION_VERSION,
 )
-from custom_components.emby.legacy_migration import migrate_options
 from custom_components.emby.options_devices import _player_toggle_fields, _sort_group_players
+from custom_components.emby.options_model import migrate_options
 from custom_components.emby.player_actions import PlayerActionResult
 from custom_components.emby.registry_state import (
     state_blocks_registry_removal,
