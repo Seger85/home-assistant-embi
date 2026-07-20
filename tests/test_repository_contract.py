@@ -129,6 +129,8 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     assert "github.event.pull_request.head.sha || github.sha" in package
     assert "workflow_dispatch:" not in release
     assert "startsWith(github.event.pull_request.head.ref, 'release/')" in release
+    assert 'test "${HEAD_BRANCH}" = "release/${version}"' in release
+    assert "release/${version}-final" not in release
     assert "make_latest: true" in release
     assert "gh release download" in release
     assert "cmp dist/embi.zip" in release
