@@ -36,9 +36,7 @@ def _manifest_version() -> str:
 
 def _constant_version() -> str:
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    match = re.search(
-        r'^VERSION = "([0-9]+\.[0-9]+\.[0-9]+)"$', constants, re.MULTILINE
-    )
+    match = re.search(r'^VERSION = "([0-9]+\.[0-9]+\.[0-9]+)"$', constants, re.MULTILINE)
     if match is None:
         raise RuntimeError("const.py does not contain the canonical VERSION assignment")
     return match.group(1)

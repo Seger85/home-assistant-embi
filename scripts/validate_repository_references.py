@@ -37,9 +37,7 @@ def local_import_targets(path: Path) -> set[str]:
 
 def markdown_paths() -> list[Path]:
     return sorted(
-        path
-        for path in ROOT.rglob("*.md")
-        if ".git" not in path.parts and "dist" not in path.parts
+        path for path in ROOT.rglob("*.md") if ".git" not in path.parts and "dist" not in path.parts
     )
 
 
@@ -64,9 +62,7 @@ def main() -> None:
         for path in COMPONENT.glob("*.py")
         if re.search(r"_(?:0\d{2}|1\d{2})\.py$", path.name)
     )
-    require(
-        not versioned_runtime, f"versioned runtime modules remain: {versioned_runtime}"
-    )
+    require(not versioned_runtime, f"versioned runtime modules remain: {versioned_runtime}")
 
     modules = {path.stem for path in COMPONENT.glob("*.py")}
     missing_imports: dict[str, list[str]] = {}
@@ -90,9 +86,7 @@ def main() -> None:
         "CONF_IGNORED_PLAYER_KEYS",
         "CONF_IGNORED_REPORTED_DEVICE_IDS",
     ):
-        require(
-            old_name not in current_runtime, f"legacy runtime name remains: {old_name}"
-        )
+        require(old_name not in current_runtime, f"legacy runtime name remains: {old_name}")
     require(
         (COMPONENT / "legacy_migration.py").exists(),
         "legacy migration isolation missing",
@@ -145,9 +139,7 @@ def main() -> None:
     workflow_text = {
         path.name: path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml")
     }
-    build_workflows = {
-        name: text for name, text in workflow_text.items() if "pip install" in text
-    }
+    build_workflows = {name: text for name, text in workflow_text.items() if "pip install" in text}
     require(
         set(build_workflows) == {"quality.yml", "release.yml", "test-artifact.yml"},
         "build workflow inventory differs",
@@ -170,12 +162,8 @@ def main() -> None:
         '"3.13"' in quality and '"3.14"' in quality,
         "supported Python test matrix differs",
     )
-    require(
-        "cancel-in-progress: true" in quality, "PR concurrency cancellation missing"
-    )
-    require(
-        quality.count("pytest -q") == 1, "Pytest matrix command should be defined once"
-    )
+    require("cancel-in-progress: true" in quality, "PR concurrency cancellation missing")
+    require(quality.count("pytest -q") == 1, "Pytest matrix command should be defined once")
     require("build_package.py" not in quality, "package build is duplicated in Quality")
 
     package = workflow_text["test-artifact.yml"]
@@ -210,9 +198,7 @@ def main() -> None:
 
     automerge = workflow_text["dependabot-automerge.yml"]
     require("pull_request_target:" in automerge, "Dependabot event trigger missing")
-    require(
-        'cron: "17 * * * *"' in automerge, "Dependabot hourly recovery sweep missing"
-    )
+    require('cron: "17 * * * *"' in automerge, "Dependabot hourly recovery sweep missing")
     require("dependabot[bot]" in automerge, "Dependabot actor gate missing")
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         require(
@@ -224,9 +210,7 @@ def main() -> None:
 
     release = workflow_text["release.yml"]
     require("pull_request:" not in release, "legacy release PR trigger remains")
-    require(
-        "push:" in release and "- main" in release, "main push release trigger missing"
-    )
+    require("push:" in release and "- main" in release, "main push release trigger missing")
     require("sleep 300" in release, "release debounce missing")
     require(
         "scripts/prepare_automatic_release.py" in release,
@@ -234,8 +218,7 @@ def main() -> None:
     )
     require("cancel-in-progress: true" in release, "obsolete release run may survive")
     require(
-        "Pin candidate release commit" in release
-        and "git push origin HEAD:main" in release,
+        "Pin candidate release commit" in release and "git push origin HEAD:main" in release,
         "validated release commit publication differs",
     )
     require(
@@ -251,10 +234,8 @@ def main() -> None:
     for script in expected_scripts:
         require(
             f"scripts/{script}" in all_text
-            or f"scripts/{script}"
-            in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-            or f"scripts/{script}"
-            in (ROOT / "RELEASING.md").read_text(encoding="utf-8"),
+            or f"scripts/{script}" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+            or f"scripts/{script}" in (ROOT / "RELEASING.md").read_text(encoding="utf-8"),
             f"script has no workflow or documented caller: {script}",
         )
 
@@ -268,12 +249,8 @@ def main() -> None:
         "tests/migration/test_frozen_spec_contract.py",
     )
     for relative in removed_paths:
-        require(
-            not (ROOT / relative).exists(), f"obsolete duplicate remains: {relative}"
-        )
-    require(
-        (ROOT / "RELEASING.md").exists(), "authoritative release documentation missing"
-    )
+        require(not (ROOT / relative).exists(), f"obsolete duplicate remains: {relative}")
+    require((ROOT / "RELEASING.md").exists(), "authoritative release documentation missing")
 
     current_public_docs = [
         ROOT / "README.md",
@@ -299,12 +276,8 @@ def main() -> None:
     validate_markdown_links()
 
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
-    english = json.loads(
-        (COMPONENT / "translations" / "en.json").read_text(encoding="utf-8")
-    )
-    german = json.loads(
-        (COMPONENT / "translations" / "de.json").read_text(encoding="utf-8")
-    )
+    english = json.loads((COMPONENT / "translations" / "en.json").read_text(encoding="utf-8"))
+    german = json.loads((COMPONENT / "translations" / "de.json").read_text(encoding="utf-8"))
     require(strings == english, "strings.json and English translation differ")
     require(
         translation_paths(strings) == translation_paths(german),
