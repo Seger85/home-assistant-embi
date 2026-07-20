@@ -28,9 +28,7 @@ def test_every_frozen_legacy_requirement_has_traceable_acceptance_evidence() -> 
     requirements = yaml.safe_load(
         (LEGACY_SPEC_DIR / "requirements.yaml").read_text(encoding="utf-8")
     )
-    matrix = (LEGACY_SPEC_DIR / "10-test-and-acceptance-matrix.md").read_text(
-        encoding="utf-8"
-    )
+    matrix = (LEGACY_SPEC_DIR / "10-test-and-acceptance-matrix.md").read_text(encoding="utf-8")
     requirement_ids = _collect_requirement_ids(requirements)
     assert requirement_ids
     assert "EMBI-0.9-EVIDENCE-START" in matrix
