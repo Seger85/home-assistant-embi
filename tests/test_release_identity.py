@@ -12,8 +12,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 def test_dependency_free_version_reader_matches_repository() -> None:
-    assert MODULE.manifest_version() == "1.0.2"
-    assert MODULE.constant_version() == "1.0.2"
+    assert MODULE.manifest_version() == "1.0.3"
+    assert MODULE.constant_version() == "1.0.3"
 
 
 def test_every_build_workflow_resolves_version_before_dependencies() -> None:
@@ -32,6 +32,8 @@ def test_stable_publisher_is_single_sha_bound_regular_latest_release() -> None:
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     assert "pull_request:" in workflow and "closed" in workflow
     assert "release_sha" in workflow and "MERGE_SHA" in workflow
+    assert 'test "${HEAD_BRANCH}" = "release/${version}"' in workflow
+    assert "release/${version}-final" not in workflow
     assert "git tag -a" in workflow
     assert "prerelease: false" in workflow
     assert "draft: false" in workflow

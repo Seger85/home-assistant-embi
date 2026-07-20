@@ -189,6 +189,11 @@ def main() -> None:
         "startsWith(github.event.pull_request.head.ref, 'release/')" in release,
         "release branch gate missing",
     )
+    require(
+        'test "${HEAD_BRANCH}" = "release/${version}"' in release
+        and "release/${version}-final" not in release,
+        "canonical release branch identity differs",
+    )
     require("cancel-in-progress: false" in release, "stable publication may be cancelled")
     require(
         "git tag -a" in release and "make_latest: true" in release,
@@ -254,8 +259,8 @@ def main() -> None:
 
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    require(manifest["version"] == "1.0.2", "cleanup changed manifest version")
-    require('VERSION = "1.0.2"' in constants, "cleanup changed runtime version")
+    require(manifest["version"] == "1.0.3", "cleanup changed manifest version")
+    require('VERSION = "1.0.3"' in constants, "cleanup changed runtime version")
     print("Repository baseline and translation parity passed")
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 
 
 def require(condition: bool, message: str) -> None:
@@ -158,8 +158,8 @@ def main() -> None:
     require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
     require(
         'and getattr(entity, "domain", None) == "media_player"' in player_actions
-        and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions
-        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions,
+        and "and getattr(entity, \"platform\", None) == DOMAIN" in player_actions
+        and "and getattr(entity, \"config_entry_id\", None) == entry.entry_id" in player_actions,
         "exact registry ownership contract missing",
     )
     require(
@@ -203,10 +203,10 @@ def main() -> None:
     require("workflow_dispatch:" not in release, "manual release path remains")
     require("cancel-in-progress: false" in release, "release concurrency differs")
     require(
-        'test "${HEAD_BRANCH}" = "release/${version}"' in release,
-        "canonical release branch gate missing",
+        'test "${HEAD_BRANCH}" = "release/${version}"' in release
+        and "release/${version}-final" not in release,
+        "canonical release branch identity differs",
     )
-    require("release/${version}-final" not in release, "temporary release branch fallback remains")
     require(
         "git tag -a" in release and "make_latest: true" in release,
         "stable release differs",
