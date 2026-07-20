@@ -158,8 +158,8 @@ def main() -> None:
     require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
     require(
         'and getattr(entity, "domain", None) == "media_player"' in player_actions
-        and "and getattr(entity, \"platform\", None) == DOMAIN" in player_actions
-        and "and getattr(entity, \"config_entry_id\", None) == entry.entry_id" in player_actions,
+        and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions
+        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions,
         "exact registry ownership contract missing",
     )
     require(
