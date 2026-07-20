@@ -130,7 +130,7 @@ def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         assert f'"{workflow_name}"' in automerge
     assert "rerun-failed-jobs" in automerge
-    assert 'ruff==${RUFF_VERSION}' in automerge
+    assert "ruff==${RUFF_VERSION}" in automerge
     assert "ruff format ." in automerge
     assert "ruff check --fix ." in automerge
     assert "gh workflow run" in automerge

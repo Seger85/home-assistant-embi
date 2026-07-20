@@ -37,9 +37,7 @@ def local_import_targets(path: Path) -> set[str]:
 
 def markdown_paths() -> list[Path]:
     return sorted(
-        path
-        for path in ROOT.rglob("*.md")
-        if ".git" not in path.parts and "dist" not in path.parts
+        path for path in ROOT.rglob("*.md") if ".git" not in path.parts and "dist" not in path.parts
     )
 
 
@@ -207,8 +205,7 @@ def main() -> None:
         "Dependabot timezone differs",
     )
     require(
-        'cronjob: "0 3 6 * *"' in dependabot
-        and 'cronjob: "15 3 6 * *"' in dependabot,
+        'cronjob: "0 3 6 * *"' in dependabot and 'cronjob: "15 3 6 * *"' in dependabot,
         "Dependabot day-six schedule differs",
     )
     require(
@@ -231,7 +228,7 @@ def main() -> None:
         )
     for repair_contract in (
         "rerun-failed-jobs",
-        'ruff==${RUFF_VERSION}',
+        "ruff==${RUFF_VERSION}",
         "ruff format .",
         "ruff check --fix .",
         "gh workflow run",

@@ -205,8 +205,7 @@ def main() -> None:
 
     require(dependabot.count("interval: cron") == 2, "Dependabot cron schedule differs")
     require(
-        'cronjob: "0 3 6 * *"' in dependabot
-        and 'cronjob: "15 3 6 * *"' in dependabot,
+        'cronjob: "0 3 6 * *"' in dependabot and 'cronjob: "15 3 6 * *"' in dependabot,
         "Dependabot day-six schedule differs",
     )
     require(
@@ -226,7 +225,7 @@ def main() -> None:
         )
     for repair_contract in (
         "rerun-failed-jobs",
-        'ruff==${RUFF_VERSION}',
+        "ruff==${RUFF_VERSION}",
         "ruff format .",
         "ruff check --fix .",
         "gh workflow run",
