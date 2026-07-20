@@ -80,12 +80,8 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
 
 
 def test_release_assets_and_storage_safety_remain_exact() -> None:
-    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(
-        encoding="utf-8"
-    )
-    publish_block = release.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[
-        0
-    ]
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    publish_block = release.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[0]
     assert "dist/embi.zip" in publish_block
     assert "dist/embi.zip.sha256" in publish_block
     assert "BUILD_COMMIT" not in publish_block
