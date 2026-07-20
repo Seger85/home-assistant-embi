@@ -64,9 +64,7 @@ def main() -> None:
         f"script inventory differs: {sorted(actual_scripts ^ expected_scripts)}",
     )
 
-    workflow_text = "\n".join(
-        path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml")
-    )
+    workflow_text = "\n".join(path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml"))
     required_references = {
         "build_package.py": 3,
         "read_version.py": 4,
