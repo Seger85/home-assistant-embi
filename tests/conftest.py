@@ -36,6 +36,7 @@ selector = ModuleType("homeassistant.helpers.selector")
 aiohttp_client = ModuleType("homeassistant.helpers.aiohttp_client")
 util = ModuleType("homeassistant.util")
 dt = ModuleType("homeassistant.util.dt")
+pyemby = ModuleType("pyemby")
 
 
 def callback(func):
@@ -131,6 +132,10 @@ class MediaPlayerEntity:
         return None
 
 
+class EmbyServer:
+    """Placeholder replaced by focused media-player tests."""
+
+
 selector.TextSelector = _Selector
 selector.NumberSelector = _Selector
 selector.BooleanSelector = _Selector
@@ -147,6 +152,7 @@ media_player.MediaPlayerEntityFeature = MediaPlayerEntityFeature
 media_player.MediaPlayerState = MediaPlayerState
 media_player.MediaType = MediaType
 entity_platform.AddEntitiesCallback = object
+pyemby.EmbyServer = EmbyServer
 
 config_entries.ConfigEntry = object
 config_entries.ConfigEntryState = ConfigEntryState
@@ -212,6 +218,7 @@ modules = {
     "homeassistant.helpers.aiohttp_client": aiohttp_client,
     "homeassistant.util": util,
     "homeassistant.util.dt": dt,
+    "pyemby": pyemby,
 }
 for name, module in modules.items():
     sys.modules.setdefault(name, module)
