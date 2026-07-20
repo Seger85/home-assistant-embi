@@ -133,7 +133,7 @@ class MediaPlayerEntity:
 
 
 class EmbyServer:
-    """Placeholder replaced by focused media-player tests."""
+    """Import placeholder replaced by controlled fakes in runtime tests."""
 
 
 selector.TextSelector = _Selector
