@@ -53,6 +53,8 @@ def main() -> None:
     release = text(".github/workflows/release.yml")
     automerge = text(".github/workflows/dependabot-automerge.yml")
     dependabot = text(".github/dependabot.yml")
+    hacs_workflow = text(".github/workflows/hacs.yml")
+    hassfest_workflow = text(".github/workflows/hassfest.yml")
 
     require(manifest["version"] == VERSION, "manifest version differs")
     require(f'VERSION = "{VERSION}"' in constants, "runtime version differs")
@@ -201,25 +203,48 @@ def main() -> None:
         )
         require("embi.zip.sha256" in workflow, "checksum validation missing")
 
-    require(dependabot.count("interval: daily") == 2, "Dependabot is not daily")
+    require(dependabot.count("interval: cron") == 2, "Dependabot cron schedule differs")
     require(
-        dependabot.count("timezone: Europe/Berlin") == 2,
-        "Dependabot timezone differs",
+        'cronjob: "0 3 6 * *"' in dependabot
+        and 'cronjob: "15 3 6 * *"' in dependabot,
+        "Dependabot day-six schedule differs",
+    )
+    require(
+        dependabot.count("open-pull-requests-limit: 10") == 2,
+        "Dependabot pull-request limit differs",
+    )
+    require(
+        dependabot.count("rebase-strategy: auto") == 2,
+        "Dependabot rebase strategy differs",
     )
     require("pull_request_target:" in automerge, "Dependabot merge trigger missing")
-    require('cron: "17 * * * *"' in automerge, "Dependabot recovery schedule missing")
+    require('cron: "23 */6 * * *"' in automerge, "Dependabot recovery schedule missing")
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         require(
             f'"{workflow_name}"' in automerge,
             f"required merge check missing: {workflow_name}",
         )
-    require("rerun-failed-jobs" in automerge, "failed workflow retry missing")
+    for repair_contract in (
+        "rerun-failed-jobs",
+        'ruff==${RUFF_VERSION}',
+        "ruff format .",
+        "ruff check --fix .",
+        "gh workflow run",
+        "embi-autonomous-repair",
+    ):
+        require(repair_contract in automerge, f"repair contract missing: {repair_contract}")
     require("merge_method=squash" in automerge, "Dependabot squash merge missing")
 
+    for workflow in (quality, package, hacs_workflow, hassfest_workflow):
+        require("workflow_dispatch:" in workflow, "repair validation dispatch missing")
+
     require("pull_request:" not in release, "legacy release PR trigger remains")
-    require("push:" in release and "- main" in release, "main release trigger missing")
-    require("sleep 300" in release, "release debounce missing")
-    require("cancel-in-progress: true" in release, "obsolete release run is not cancelled")
+    require("push:" not in release, "per-push release trigger remains")
+    require(
+        "schedule:" in release and 'cron: "47 */6 * * *"' in release,
+        "scheduled release trigger missing",
+    )
+    require("cancel-in-progress: false" in release, "stable release may be cancelled")
     require(
         "scripts/prepare_automatic_release.py" in release,
         "automatic patch preparation missing",
