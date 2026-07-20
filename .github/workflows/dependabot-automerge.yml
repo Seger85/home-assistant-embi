@@ -8,11 +8,11 @@ on:
       - reopened
       - ready_for_review
   schedule:
-    - cron: "17 * * * *"
+    - cron: "23 */6 * * *"
 
 concurrency:
-  group: dependabot-auto-merge-${{ github.event.pull_request.number || 'scheduled' }}
-  cancel-in-progress: true
+  group: dependabot-auto-merge
+  cancel-in-progress: false
 
 permissions:
   actions: write
@@ -21,26 +21,90 @@ permissions:
 
 jobs:
   merge:
-    name: Merge validated Dependabot updates
+    name: Repair and merge validated Dependabot updates
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
       EVENT_NAME: ${{ github.event_name }}
       EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+      RUFF_VERSION: "0.15.22"
     steps:
-      - name: Wait for required checks and squash-merge
+      - name: Repair, validate and squash-merge
         shell: bash
         run: |
           set -euo pipefail
 
           required=("Quality" "Test package" "HACS validation" "Hassfest")
+          workflow_files=("quality.yml" "test-artifact.yml" "hacs.yml" "hassfest.yml")
+
+          mark_exhausted() {
+            local pr_number="$1"
+            local head_sha="$2"
+            local marker="<!-- embi-autonomous-repair:${head_sha} -->"
+            local comments
+
+            comments="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments?per_page=100")"
+            if jq -e --arg marker "${marker}" '.[] | select(.body | contains($marker))' <<<"${comments}" >/dev/null; then
+              return 0
+            fi
+
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" \
+              -f body="${marker}
+          Autonomous maintenance exhausted transient retries and deterministic Ruff repair for this exact commit. The pull request remains safely unmerged and will be reconsidered automatically when Dependabot updates or rebases its head commit. No user action is required."
+          }
+
+          dispatch_validation() {
+            local head_ref="$1"
+            local workflow_file
+
+            for workflow_file in "${workflow_files[@]}"; do
+              gh workflow run "${workflow_file}" --ref "${head_ref}"
+            done
+          }
+
+          apply_deterministic_repair() {
+            local pr_number="$1"
+            local head_ref="$2"
+            local head_sha="$3"
+            local workdir new_sha
+
+            workdir="$(mktemp -d)"
+            gh repo clone "${GITHUB_REPOSITORY}" "${workdir}" -- --filter=blob:none --no-checkout
+            git -C "${workdir}" fetch origin "${head_ref}"
+            git -C "${workdir}" checkout -B "repair-${pr_number}" FETCH_HEAD
+            test "$(git -C "${workdir}" rev-parse HEAD)" = "${head_sha}"
+
+            python -m pip install -q "ruff==${RUFF_VERSION}"
+            (
+              cd "${workdir}"
+              ruff format .
+              ruff check --fix .
+            )
+
+            if git -C "${workdir}" diff --quiet; then
+              rm -rf "${workdir}"
+              return 1
+            fi
+
+            git -C "${workdir}" config user.name "github-actions[bot]"
+            git -C "${workdir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "${workdir}" add --all
+            git -C "${workdir}" commit \
+              -m "Apply deterministic maintenance repair" \
+              -m $'Run the repository-pinned Ruff formatter and safe lint fixes.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
+            git -C "${workdir}" push origin "HEAD:${head_ref}"
+            new_sha="$(git -C "${workdir}" rev-parse HEAD)"
+            rm -rf "${workdir}"
+            printf '%s\n' "${new_sha}"
+          }
 
           process_pr() {
             local pr_number="$1"
-            local pr head_sha title wait_seconds deadline retried
-            local response run status conclusion run_id run_attempt
-            local waiting failed result
+            local pr head_ref head_sha title response run status conclusion run_id run_attempt
+            local wait_seconds deadline waiting failed result marker comments repaired_sha
+            local retried=0
+            local repaired=0
             local -a failed_run_ids=()
 
             pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
@@ -53,17 +117,23 @@ jobs:
               (.head.ref | startswith("dependabot/"))
             ' <<<"${pr}" >/dev/null || return 0
 
+            head_ref="$(jq -r '.head.ref' <<<"${pr}")"
             head_sha="$(jq -r '.head.sha' <<<"${pr}")"
             title="$(jq -r '.title' <<<"${pr}")"
+            marker="<!-- embi-autonomous-repair:${head_sha} -->"
+            comments="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments?per_page=100")"
+            if jq -e --arg marker "${marker}" '.[] | select(.body | contains($marker))' <<<"${comments}" >/dev/null; then
+              return 0
+            fi
+
             wait_seconds=0
             if [[ "${EVENT_NAME}" == "pull_request_target" ]]; then
-              wait_seconds=2100
+              wait_seconds=2400
             fi
             deadline=$((SECONDS + wait_seconds))
-            retried=0
 
             while true; do
-              response="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${head_sha}&event=pull_request&per_page=100")"
+              response="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${head_sha}&per_page=100")"
               waiting=0
               failed=0
               failed_run_ids=()
@@ -72,7 +142,7 @@ jobs:
                 run="$(
                   jq -c --arg name "${workflow_name}" '
                     [.workflow_runs[] | select(.name == $name)]
-                    | sort_by(.run_number)
+                    | sort_by(.run_number, .run_attempt)
                     | last // empty
                   ' <<<"${response}"
                 )"
@@ -120,8 +190,20 @@ jobs:
                 done
                 retried=1
                 waiting=1
+              elif (( failed == 1 && repaired == 0 )); then
+                if repaired_sha="$(apply_deterministic_repair "${pr_number}" "${head_ref}" "${head_sha}")"; then
+                  repaired=1
+                  retried=0
+                  head_sha="${repaired_sha}"
+                  dispatch_validation "${head_ref}"
+                  deadline=$((SECONDS + 2400))
+                  waiting=1
+                else
+                  mark_exhausted "${pr_number}" "${head_sha}"
+                  return 0
+                fi
               elif (( failed == 1 )); then
-                echo "Dependabot PR #${pr_number} remains open because required checks failed."
+                mark_exhausted "${pr_number}" "${head_sha}"
                 return 0
               fi
 
