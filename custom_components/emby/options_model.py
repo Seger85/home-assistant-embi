@@ -168,9 +168,3 @@ def should_expose_player(
     if not bool(options.get(CONF_AUTO_SHOW_NEW_PLAYERS, DEFAULT_AUTO_SHOW_NEW_PLAYERS)):
         return player_key in {str(value) for value in options.get(CONF_ALLOWED_DEVICE_IDS, [])}
     return True
-
-
-# Compatibility aliases remain only while current callers are migrated in the same
-# release branch. They are removed before the stable release.
-default_options_090 = default_options
-migrate_options_090 = migrate_options
