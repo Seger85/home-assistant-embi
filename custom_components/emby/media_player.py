@@ -111,9 +111,7 @@ async def async_setup_entry(
             if not isinstance(session.get("NowPlayingItem"), dict):
                 continue
             play_state = session.get("PlayState")
-            if not isinstance(play_state, dict) or not isinstance(
-                play_state.get("IsPaused"), bool
-            ):
+            if not isinstance(play_state, dict) or not isinstance(play_state.get("IsPaused"), bool):
                 return None
             return True
         return False
@@ -172,9 +170,7 @@ async def async_setup_entry(
             if not allowed(device_id):
                 if device_id not in visibility_removals:
                     visibility_removals.add(device_id)
-                    entity = active_entities.get(device_id) or inactive_entities.get(
-                        device_id
-                    )
+                    entity = active_entities.get(device_id) or inactive_entities.get(device_id)
                     task = (
                         _async_remove_for_visibility(device_id, entity)
                         if entity is not None
