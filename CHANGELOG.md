@@ -2,12 +2,12 @@
 
 ## [1.0.1] - 2026-07-20
 
-- Enforce saved player visibility after every config-entry setup, reload and restart-equivalent setup instead of treating reconciliation as a one-time migration.
-- Remove exact disallowed EMBi player entities even when a freshly initialized media-player platform has no local entity object yet.
-- Preserve playing and paused clients, retry visibility after playback ends, and keep Emby server history and unrelated entities untouched.
-- Record the latest no-op, successful, protected, failed or refresh-failed reconciliation in privacy-safe diagnostics.
-- Isolate historical upgrade translation in `legacy_migration.py` while keeping current runtime, workflows, tests and documentation version-neutral.
-- Remove duplicate versioned specification workflows, obsolete release-request records and redundant version-bound tests.
+- Enforce saved media-player visibility after every config-entry setup, reload, and restart instead of treating reconciliation as a one-time migration.
+- Remove disallowed technical clients safely even when a fresh media-player platform has not yet rebuilt its local entity maps.
+- Keep playing and paused clients protected while continuing to remove idle, off, standby, unavailable, and safely revalidated inactive clients.
+- Refresh reconciliation diagnostics after every setup, including idempotent no-op runs, without changing Emby server history or causing reload loops.
+- Restore technical clients with their stable unique IDs when the master or exact player option is enabled again.
+- Isolate published legacy option upgrades in `legacy_migration.py` and keep current runtime names, tests, workflows, and documentation version-neutral.
 
 ## [1.0.0] - 2026-07-19
 
