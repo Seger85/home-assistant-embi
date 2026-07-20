@@ -4,8 +4,8 @@ updates:
     directory: "/"
     target-branch: main
     schedule:
-      interval: daily
-      time: "03:00"
+      interval: cron
+      cronjob: "0 3 6 * *"
       timezone: Europe/Berlin
     open-pull-requests-limit: 10
     rebase-strategy: auto
@@ -18,8 +18,8 @@ updates:
     directory: "/"
     target-branch: main
     schedule:
-      interval: daily
-      time: "03:15"
+      interval: cron
+      cronjob: "15 3 6 * *"
       timezone: Europe/Berlin
     open-pull-requests-limit: 10
     rebase-strategy: auto

@@ -6,14 +6,17 @@ This is the single authoritative maintenance and release procedure for EMBi.
 
 EMBi is maintained without routine manual approval:
 
-- Dependabot checks GitHub Actions every day at 03:00 Europe/Berlin.
-- Dependabot checks Python development dependencies every day at 03:15 Europe/Berlin.
+- Dependabot checks GitHub Actions on the sixth day of every month at 03:00 Europe/Berlin.
+- Dependabot checks Python development dependencies on the sixth day of every month at 03:15 Europe/Berlin.
+- Security updates may still be opened outside the monthly version-update window.
 - All update levels, including major updates, are eligible for automatic integration.
+- Each ecosystem remains grouped, rebases automatically, and may keep up to ten pull requests open.
 - A Dependabot pull request is squash-merged only after every required validation succeeds.
-- A scheduled hourly sweep picks up validated Dependabot pull requests that were not merged during their initial event run.
-- Failed required workflows are retried once automatically. A persistently failing update remains open and cannot reach `main` or a release.
+- A six-hourly recovery sweep picks up validated or newly updated Dependabot pull requests.
+- Failed workflows are retried once. The automation then applies deterministic Ruff formatting and safe lint fixes, dispatches all required validation workflows again, and merges only after complete success.
+- A semantically incompatible update that cannot be repaired mechanically remains safely unmerged. The exact failed head is marked as exhausted and is reconsidered automatically when Dependabot updates or rebases it.
 
-No routine review, confirmation, release branch, release pull request, or manual merge is required.
+No routine review, confirmation, comment, push, release branch, release pull request, or manual merge is required.
 
 ## Dependency-safe validation order
 
@@ -57,7 +60,7 @@ No failing or incomplete pull request is merged.
 
 ## Autonomous stable publication
 
-Every accepted push to `main` starts the stable publisher. A five-minute debounce bundles closely spaced Dependabot merges into one patch release. A newer `main` push cancels the older pending publisher and becomes the only release candidate.
+The stable publisher runs every six hours. It publishes only when the current `main` commit is newer than the latest matching version tag. This batches the two monthly Dependabot groups into a single stable patch release whenever they complete within the same maintenance window.
 
 The publisher supports two paths:
 
@@ -80,7 +83,11 @@ The publisher must:
 12. download both assets again and verify SHA-256 and byte identity
 13. verify the tag target and Latest release
 
-A failed validation stops before the candidate commit, tag, or release is published.
+A failed validation stops before the candidate commit, tag, or release is published. The next scheduled run retries automatically.
+
+## HACS delivery
+
+HACS discovers the newest regular GitHub release and installs `embi.zip` because `hacs.json` declares `zip_release: true` and `filename: embi.zip`. A successfully verified release therefore appears as an EMBi update in Home Assistant without an additional repository action.
 
 ## Rollback and retention
 

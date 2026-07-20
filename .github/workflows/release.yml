@@ -1,13 +1,12 @@
 name: Publish autonomous stable release
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: "47 */6 * * *"
 
 concurrency:
   group: stable-release
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -16,12 +15,12 @@ jobs:
   publish:
     name: Prepare, publish and verify stable release
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
-      - name: Check out exact main commit
+      - name: Check out current main
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: main
           fetch-depth: 0
           show-progress: false
 
@@ -39,14 +38,10 @@ jobs:
           set -euo pipefail
           echo "publish=false" >> "${GITHUB_OUTPUT}"
 
-          # Bundle closely spaced Dependabot merges into one patch release. A newer
-          # push cancels this run through the workflow concurrency contract.
-          sleep 300
-
+          base_sha="$(git rev-parse HEAD)"
           git fetch --no-tags origin main
-          base_sha="$(git rev-parse FETCH_HEAD)"
-          if [[ "${base_sha}" != "${GITHUB_SHA}" ]]; then
-            echo "A newer main commit exists; the newer workflow run will publish it."
+          if [[ "$(git rev-parse FETCH_HEAD)" != "${base_sha}" ]]; then
+            echo "A newer main commit exists; the next scheduled run will publish it."
             exit 0
           fi
 
@@ -58,11 +53,11 @@ jobs:
 
           if git show-ref --verify --quiet "refs/tags/${current_tag}"; then
             current_tag_sha="$(git rev-list -n 1 "${current_tag}")"
-            if [[ "${current_tag_sha}" == "${GITHUB_SHA}" ]]; then
+            if [[ "${current_tag_sha}" == "${base_sha}" ]]; then
               echo "Current main commit is already published as ${current_tag}."
               exit 0
             fi
-            git merge-base --is-ancestor "${current_tag}" "${GITHUB_SHA}"
+            git merge-base --is-ancestor "${current_tag}" "${base_sha}"
             release_version="$(
               python -I scripts/prepare_automatic_release.py \
                 --expected-current "${current_version}"

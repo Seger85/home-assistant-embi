@@ -102,6 +102,7 @@ def test_documentation_is_current_and_has_one_release_source() -> None:
     assert "scripts/prepare_automatic_release.py" in releasing
     assert "embi.zip" in releasing and "embi.zip.sha256" in releasing
     assert "HACS can install an earlier tagged EMBi version" in releasing
+    assert "No routine review, confirmation, comment, push" in releasing
     for removed in (
         "docs/PROJECT_STATE.md",
         "docs/development.md",
@@ -112,20 +113,28 @@ def test_documentation_is_current_and_has_one_release_source() -> None:
         assert not (ROOT / removed).exists()
 
 
-def test_dependabot_runs_daily_and_merges_only_after_complete_validation() -> None:
+def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None:
     dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
     automerge = (ROOT / ".github" / "workflows" / "dependabot-automerge.yml").read_text(
         encoding="utf-8"
     )
-    assert dependabot.count("interval: daily") == 2
+    assert dependabot.count("interval: cron") == 2
     assert dependabot.count("timezone: Europe/Berlin") == 2
-    assert 'time: "03:00"' in dependabot and 'time: "03:15"' in dependabot
+    assert 'cronjob: "0 3 6 * *"' in dependabot
+    assert 'cronjob: "15 3 6 * *"' in dependabot
+    assert dependabot.count("open-pull-requests-limit: 10") == 2
+    assert dependabot.count("rebase-strategy: auto") == 2
     assert "pull_request_target:" in automerge
-    assert 'cron: "17 * * * *"' in automerge
+    assert 'cron: "23 */6 * * *"' in automerge
     assert "dependabot[bot]" in automerge
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         assert f'"{workflow_name}"' in automerge
     assert "rerun-failed-jobs" in automerge
+    assert "ruff==${RUFF_VERSION}" in automerge
+    assert "ruff format ." in automerge
+    assert "ruff check --fix ." in automerge
+    assert "gh workflow run" in automerge
+    assert "embi-autonomous-repair" in automerge
     assert "merge_method=squash" in automerge
     assert "pulls/${pr_number}/merge" in automerge
 
@@ -142,14 +151,19 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     }
     quality = (workflow_dir / "quality.yml").read_text(encoding="utf-8")
     package = (workflow_dir / "test-artifact.yml").read_text(encoding="utf-8")
+    hacs = (workflow_dir / "hacs.yml").read_text(encoding="utf-8")
+    hassfest = (workflow_dir / "hassfest.yml").read_text(encoding="utf-8")
     release = (workflow_dir / "release.yml").read_text(encoding="utf-8")
     assert '"3.13"' in quality and '"3.14"' in quality
     assert "cancel-in-progress: true" in quality
     assert "build_package.py" not in quality
     assert "build_package.py" in package
     assert "github.event.pull_request.head.sha || github.sha" in package
+    for workflow in (quality, package, hacs, hassfest):
+        assert "workflow_dispatch:" in workflow
+    assert "schedule:" in release and 'cron: "47 */6 * * *"' in release
     assert "pull_request:" not in release
-    assert "push:" in release and "- main" in release
+    assert "push:" not in release
     assert "prepare_automatic_release.py" in release
     assert "make_latest: true" in release
     assert "gh release download" in release
