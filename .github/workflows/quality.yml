@@ -73,8 +73,29 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
-      - name: Ruff format
-        run: ruff format --check .
+      - name: Capture Ruff format check
+        id: ruff_format
+        shell: bash
+        run: |
+          set +e
+          ruff format --check . > ruff-format-report.txt 2>&1
+          status=$?
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          cat ruff-format-report.txt
+          exit 0
+
+      - name: Upload Ruff format report
+        if: ${{ steps.ruff_format.outputs.status != '0' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruff-format-report-${{ matrix.python-version }}-${{ github.sha }}
+          path: ruff-format-report.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce Ruff format
+        if: ${{ steps.ruff_format.outputs.status != '0' }}
+        run: exit 1
 
       - name: Capture unit and flow tests
         id: pytest
