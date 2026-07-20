@@ -46,9 +46,7 @@ def main() -> None:
         "ignored_device_ids",
         "server_cleanup_api_key",
     ):
-        require(
-            legacy_key in migration, f"legacy key is no longer handled: {legacy_key}"
-        )
+        require(legacy_key in migration, f"legacy key is no longer handled: {legacy_key}")
 
     for behavior in (
         "test_published_upgrade_preserves_cleanup_values",
