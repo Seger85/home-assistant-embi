@@ -5,7 +5,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from custom_components.emby import entry_setup, media_player, player_actions, player_reconciliation
+
+from custom_components.emby import (
+    entry_setup,
+    media_player,
+    player_actions,
+    player_reconciliation,
+)
 from custom_components.emby.api import EmbyDeviceRecord
 from custom_components.emby.const import (
     CONF_HIDDEN_EXACT_PLAYERS,
