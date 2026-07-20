@@ -17,6 +17,31 @@ def test_manifest_and_runtime_versions_remain_aligned() -> None:
     assert manifest["requirements"] == ["pyEmby==1.10"]
 
 
+def test_legal_hacs_and_tooling_baseline() -> None:
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    notice = (ROOT / "NOTICE.md").read_text(encoding="utf-8")
+    hacs = json.loads((ROOT / "hacs.json").read_text(encoding="utf-8"))
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    requirements = (ROOT / "requirements_test.txt").read_text(encoding="utf-8")
+
+    assert "Apache License" in license_text and "Version 2.0" in license_text
+    assert "Home Assistant Core" in notice and "Apache License 2.0" in notice
+    assert "`pyEmby`" in notice and "MIT License" in notice
+    assert "independent community project" in notice
+    assert hacs == {
+        "name": "Emby Integration - EMBi",
+        "render_readme": True,
+        "homeassistant": "2026.7.2",
+        "hide_default_branch": True,
+        "zip_release": True,
+        "filename": "embi.zip",
+    }
+    assert 'target-version = "py313"' in pyproject
+    assert 'select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]' in pyproject
+    assert "ruff==0.15.21" in requirements
+    assert "pytest>=8.0.0" in requirements
+
+
 def test_runtime_and_normal_tests_are_version_neutral() -> None:
     versioned_runtime = [
         path.name
