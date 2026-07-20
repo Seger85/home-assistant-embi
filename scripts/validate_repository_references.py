@@ -64,7 +64,9 @@ def main() -> None:
         for path in COMPONENT.glob("*.py")
         if re.search(r"_(?:0\d{2}|1\d{2})\.py$", path.name)
     )
-    require(not versioned_runtime, f"versioned runtime modules remain: {versioned_runtime}")
+    require(
+        not versioned_runtime, f"versioned runtime modules remain: {versioned_runtime}"
+    )
 
     modules = {path.stem for path in COMPONENT.glob("*.py")}
     missing_imports: dict[str, list[str]] = {}
@@ -88,8 +90,13 @@ def main() -> None:
         "CONF_IGNORED_PLAYER_KEYS",
         "CONF_IGNORED_REPORTED_DEVICE_IDS",
     ):
-        require(old_name not in current_runtime, f"legacy runtime name remains: {old_name}")
-    require((COMPONENT / "legacy_migration.py").exists(), "legacy migration isolation missing")
+        require(
+            old_name not in current_runtime, f"legacy runtime name remains: {old_name}"
+        )
+    require(
+        (COMPONENT / "legacy_migration.py").exists(),
+        "legacy migration isolation missing",
+    )
 
     versioned_tests = sorted(
         str(path.relative_to(ROOT))
@@ -101,7 +108,10 @@ def main() -> None:
         (ROOT / "tests" / "migration" / "test_legacy_options.py").exists(),
         "published upgrade coverage is not isolated under tests/migration",
     )
-    require(not (ROOT / "docs" / "specs").exists(), "obsolete public specification tree remains")
+    require(
+        not (ROOT / "docs" / "specs").exists(),
+        "obsolete public specification tree remains",
+    )
 
     expected_scripts = {
         "build_package.py",
@@ -112,7 +122,10 @@ def main() -> None:
         "validate_stable_contract.py",
     }
     actual_scripts = {path.name for path in (ROOT / "scripts").glob("*.py")}
-    require(actual_scripts == expected_scripts, f"script inventory differs: {sorted(actual_scripts ^ expected_scripts)}")
+    require(
+        actual_scripts == expected_scripts,
+        f"script inventory differs: {sorted(actual_scripts ^ expected_scripts)}",
+    )
 
     expected_workflows = {
         "hacs.yml",
@@ -122,45 +135,92 @@ def main() -> None:
         "test-artifact.yml",
     }
     workflow_names = {path.name for path in WORKFLOWS.glob("*.yml")}
-    require(workflow_names == expected_workflows, f"workflow inventory differs: {sorted(workflow_names ^ expected_workflows)}")
+    require(
+        workflow_names == expected_workflows,
+        f"workflow inventory differs: {sorted(workflow_names ^ expected_workflows)}",
+    )
 
-    workflow_text = {path.name: path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml")}
-    build_workflows = {name: text for name, text in workflow_text.items() if "pip install" in text}
-    require(set(build_workflows) == {"quality.yml", "release.yml", "test-artifact.yml"}, "build workflow inventory differs")
+    workflow_text = {
+        path.name: path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml")
+    }
+    build_workflows = {
+        name: text for name, text in workflow_text.items() if "pip install" in text
+    }
+    require(
+        set(build_workflows) == {"quality.yml", "release.yml", "test-artifact.yml"},
+        "build workflow inventory differs",
+    )
     for name, text in build_workflows.items():
         setup = text.find("actions/setup-python@")
         version = text.find("scripts/read_version.py")
         install = text.find("pip install")
-        require(-1 not in {setup, version, install} and setup < version < install, f"unsafe startup order: {name}")
-        require("from custom_components.emby" not in text, f"pre-dependency integration import: {name}")
+        require(
+            -1 not in {setup, version, install} and setup < version < install,
+            f"unsafe startup order: {name}",
+        )
+        require(
+            "from custom_components.emby" not in text,
+            f"pre-dependency integration import: {name}",
+        )
 
     quality = workflow_text["quality.yml"]
-    require('"3.13"' in quality and '"3.14"' in quality, "supported Python test matrix differs")
-    require("cancel-in-progress: true" in quality, "PR concurrency cancellation missing")
-    require(quality.count("pytest -q") == 1, "Pytest matrix command should be defined once")
+    require(
+        '"3.13"' in quality and '"3.14"' in quality,
+        "supported Python test matrix differs",
+    )
+    require(
+        "cancel-in-progress: true" in quality, "PR concurrency cancellation missing"
+    )
+    require(
+        quality.count("pytest -q") == 1, "Pytest matrix command should be defined once"
+    )
     require("build_package.py" not in quality, "package build is duplicated in Quality")
 
     package = workflow_text["test-artifact.yml"]
-    require("github.event.pull_request.head.sha || github.sha" in package, "test package is not commit-bound")
-    require("build_package.py" in package and "embi.zip.sha256" in package, "test package contract differs")
+    require(
+        "github.event.pull_request.head.sha || github.sha" in package,
+        "test package is not commit-bound",
+    )
+    require(
+        "build_package.py" in package and "embi.zip.sha256" in package,
+        "test package contract differs",
+    )
     for validator in (
         "validate_legacy_migration_contract.py",
         "validate_stable_contract.py",
         "validate_repository_references.py",
     ):
-        require(validator not in package, f"duplicate contract work remains in test package: {validator}")
+        require(
+            validator not in package,
+            f"duplicate contract work remains in test package: {validator}",
+        )
 
     release = workflow_text["release.yml"]
-    require("workflow_dispatch:" not in release, "manual stable publication path remains")
-    require("startsWith(github.event.pull_request.head.ref, 'release/')" in release, "release branch gate missing")
-    require("cancel-in-progress: false" in release, "stable publication may be cancelled")
-    require("git tag -a" in release and "make_latest: true" in release, "stable publication contract differs")
-    require("gh release download" in release and "cmp dist/embi.zip" in release, "asset provenance verification missing")
+    require(
+        "workflow_dispatch:" not in release, "manual stable publication path remains"
+    )
+    require(
+        "startsWith(github.event.pull_request.head.ref, 'release/')" in release,
+        "release branch gate missing",
+    )
+    require(
+        "cancel-in-progress: false" in release, "stable publication may be cancelled"
+    )
+    require(
+        "git tag -a" in release and "make_latest: true" in release,
+        "stable publication contract differs",
+    )
+    require(
+        "gh release download" in release and "cmp dist/embi.zip" in release,
+        "asset provenance verification missing",
+    )
 
     all_text = "\n".join(workflow_text.values())
     for script in expected_scripts:
         require(
-            f"scripts/{script}" in all_text or f"scripts/{script}" in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8"),
+            f"scripts/{script}" in all_text
+            or f"scripts/{script}"
+            in (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8"),
             f"script has no workflow or documented caller: {script}",
         )
 
@@ -174,8 +234,12 @@ def main() -> None:
         "tests/migration/test_frozen_spec_contract.py",
     )
     for relative in removed_paths:
-        require(not (ROOT / relative).exists(), f"obsolete duplicate remains: {relative}")
-    require((ROOT / "RELEASING.md").exists(), "authoritative release documentation missing")
+        require(
+            not (ROOT / relative).exists(), f"obsolete duplicate remains: {relative}"
+        )
+    require(
+        (ROOT / "RELEASING.md").exists(), "authoritative release documentation missing"
+    )
 
     current_public_docs = [
         ROOT / "README.md",
@@ -187,17 +251,31 @@ def main() -> None:
     ]
     for path in current_public_docs:
         content = path.read_text(encoding="utf-8")
-        require(not re.search(r"\bv?0\.[0-8]\.", content), f"obsolete public version reference: {path.relative_to(ROOT)}")
-        for forbidden in ("ChatGPT", "AI agent"):
-            require(forbidden not in content, f"internal language remains in {path.relative_to(ROOT)}")
+        require(
+            not re.search(r"\bv?0\.[0-8]\.", content),
+            f"obsolete public version reference: {path.relative_to(ROOT)}",
+        )
+        for forbidden in ("ChatGPT", "AI agent", "release-request PR", "finalizer PR"):
+            if path.name != "RELEASING.md":
+                require(
+                    forbidden not in content,
+                    f"internal release language remains in {path.relative_to(ROOT)}",
+                )
 
     validate_markdown_links()
 
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
-    english = json.loads((COMPONENT / "translations" / "en.json").read_text(encoding="utf-8"))
-    german = json.loads((COMPONENT / "translations" / "de.json").read_text(encoding="utf-8"))
+    english = json.loads(
+        (COMPONENT / "translations" / "en.json").read_text(encoding="utf-8")
+    )
+    german = json.loads(
+        (COMPONENT / "translations" / "de.json").read_text(encoding="utf-8")
+    )
     require(strings == english, "strings.json and English translation differ")
-    require(translation_paths(strings) == translation_paths(german), "German translation key structure differs")
+    require(
+        translation_paths(strings) == translation_paths(german),
+        "German translation key structure differs",
+    )
 
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
