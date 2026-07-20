@@ -11,8 +11,8 @@ COMPONENT = ROOT / "custom_components" / "emby"
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    assert manifest["version"] == "1.0.1"
-    assert 'VERSION = "1.0.1"' in constants
+    assert manifest["version"] == "1.0.2"
+    assert 'VERSION = "1.0.2"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["requirements"] == ["pyEmby==1.10"]
 
@@ -58,6 +58,32 @@ def test_runtime_and_normal_tests_are_version_neutral() -> None:
     assert (COMPONENT / "legacy_migration.py").exists()
     assert (ROOT / "tests" / "migration" / "test_legacy_options.py").exists()
     assert not (ROOT / "docs" / "specs").exists()
+
+
+def test_confirmed_dead_runtime_surfaces_remain_removed() -> None:
+    common = (COMPONENT / "player_action_common.py").read_text(encoding="utf-8")
+    actions = (COMPONENT / "player_actions.py").read_text(encoding="utf-8")
+    reconciliation = (COMPONENT / "player_reconciliation.py").read_text(encoding="utf-8")
+    context = (COMPONENT / "player_context.py").read_text(encoding="utf-8")
+    options_runtime = (COMPONENT / "options_runtime.py").read_text(encoding="utf-8")
+
+    assert "def owned_exact(" in common
+    for symbol in (
+        "class PlayerActionItem",
+        "class PlayerActionResult",
+        "def find_context(",
+        "def fresh_catalog(",
+        "def update_options_and_reload(",
+        "def record_action(",
+    ):
+        assert symbol not in common
+    assert "def async_enable_ha_entities(" not in actions
+    assert "def async_reconcile_invisible_player_entities(" not in actions
+    assert "def async_reconcile_invisible_player_entities(" not in reconciliation
+    assert "def group_label(" not in context
+    assert "def filter_player_catalog(" not in context
+    assert "def options_for_flow(" not in options_runtime
+    assert "def render_player_rows(" not in options_runtime
 
 
 def test_documentation_is_current_and_has_one_release_source() -> None:
