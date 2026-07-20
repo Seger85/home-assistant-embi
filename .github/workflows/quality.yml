@@ -100,8 +100,8 @@ jobs:
         if: ${{ steps.pytest.outputs.status != '0' }}
         run: exit 1
 
-      - name: Validate specification contract
-        run: python scripts/validate_spec_contract.py
+      - name: Validate legacy migration contract
+        run: python scripts/validate_legacy_migration_contract.py
 
       - name: Validate stable contract
         run: python scripts/validate_stable_contract.py
