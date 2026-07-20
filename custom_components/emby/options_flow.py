@@ -141,8 +141,7 @@ class EmbyOptionsFlow(
             for value in self._original_options.get(CONF_ENABLED_SENSORS, list(SENSOR_KEYS))
         }
         after_sensors = {
-            str(value)
-            for value in self._draft_options.get(CONF_ENABLED_SENSORS, list(SENSOR_KEYS))
+            str(value) for value in self._draft_options.get(CONF_ENABLED_SENSORS, list(SENSOR_KEYS))
         }
         for key in SENSOR_KEYS:
             if (key in before_sensors) == (key in after_sensors):
@@ -235,17 +234,13 @@ class EmbyOptionsFlow(
                             {
                                 "value": FLOW_ACTION_APPLY,
                                 "label": (
-                                    "Änderungen übernehmen"
-                                    if self._is_de()
-                                    else "Apply changes"
+                                    "Änderungen übernehmen" if self._is_de() else "Apply changes"
                                 ),
                             },
                             {
                                 "value": FLOW_ACTION_DISCARD,
                                 "label": (
-                                    "Änderungen verwerfen"
-                                    if self._is_de()
-                                    else "Discard changes"
+                                    "Änderungen verwerfen" if self._is_de() else "Discard changes"
                                 ),
                             },
                             {
