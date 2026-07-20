@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 def require(condition: bool, message: str) -> None:
@@ -40,8 +40,10 @@ def main() -> None:
     player_actions = text("custom_components/emby/player_actions.py")
     reconciliation = text("custom_components/emby/player_reconciliation.py")
     media_player = text("custom_components/emby/media_player.py")
+    entry_setup = text("custom_components/emby/entry_setup.py")
     diagnostics = text("custom_components/emby/diagnostics.py")
     options_model = text("custom_components/emby/options_model.py")
+    legacy_migration = text("custom_components/emby/legacy_migration.py")
     readme = text("README.md")
     hacs = json.loads(text("hacs.json"))
     workflows = {
@@ -114,24 +116,41 @@ def main() -> None:
         "entity-platform visibility removal missing",
     )
     require(
-        'self._request("GET", "/Sessions")' not in player_actions
-        or '"GET", "/Sessions"' in player_actions,
-        "unknown playback session revalidation missing",
+        "requested_keys=(device_id,)" in media_player,
+        "fresh-platform exact visibility reconciliation missing",
+    )
+    require(
+        "await _async_enforce_player_visibility(hass, entry, migrated_options)" in entry_setup,
+        "visibility is not enforced on every setup",
+    )
+    require(
+        "migration_pending = reconciliation_version < REGISTRY_RECONCILIATION_VERSION"
+        in entry_setup,
+        "migration marker is not separated from recurring visibility enforcement",
     )
     require("state_is_restored" in reconciliation, "stale-restored handling missing")
+    require(
+        "requested_keys: Iterable[str] | None = None" in reconciliation,
+        "exact reconciliation scope missing",
+    )
     require(
         "duplicates_removed" in sensor_registry
         and "unrelated entity remains untouched" in sensor_registry,
         "sensor duplicate migration safety missing",
     )
     require(
-        "migrated.pop(user_name, None)" in options_model,
-        "duplicate user option cleanup missing",
+        "apply_legacy_option_migration" in options_model
+        and "LEGACY_OPTION_KEYS" in legacy_migration,
+        "isolated legacy migration adapter missing",
+    )
+    require(
+        "default_options_090" not in options_model and "migrate_options_090" not in options_model,
+        "versioned option aliases remain",
     )
     for contract in (
         '"options_flow_contract": "1.0.0"',
         '"sensor_contract": "1.0.0"',
-        '"player_visibility_contract": "1.0.0"',
+        '"player_visibility_contract": "1.0.1"',
     ):
         require(contract in diagnostics, f"diagnostics contract missing: {contract}")
     require(
@@ -156,6 +175,10 @@ def main() -> None:
             "shared package builder missing",
         )
         require("embi.zip.sha256" in workflow, "checksum validation missing")
+        require(
+            "validate_legacy_migration_contract.py" in workflow,
+            "legacy migration contract is not validated",
+        )
 
     release = workflows["release.yml"]
     require("pull_request:" in release and "closed" in release, "merged PR trigger missing")
