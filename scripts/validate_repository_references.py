@@ -84,7 +84,6 @@ def main() -> None:
         "validate_legacy_migration_contract.py",
         "secret_scan.py",
         "validate_repository_references.py",
-        "validate_spec_contract.py",
         "validate_stable_contract.py",
     }
     actual_scripts = {path.name for path in (ROOT / "scripts").glob("*.py")}
@@ -100,18 +99,18 @@ def main() -> None:
         "duplicate migration/specification workflow remains",
     )
     workflow_text = "\n".join(path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml"))
-    for script in expected_scripts:
-        if script == "read_version.py":
-            require(
-                workflow_text.count("scripts/read_version.py") >= 3,
-                "version reader is not used by every build/release workflow",
-            )
-        else:
-            require(
-                f"scripts/{script}" in workflow_text
-                or script in {"build_package.py", "validate_spec_contract.py"},
-                f"script is not referenced by CI: {script}",
-            )
+    require(
+        workflow_text.count("scripts/read_version.py") >= 3,
+        "version reader is not used by every build/release workflow",
+    )
+    for script in (
+        "build_package.py",
+        "validate_legacy_migration_contract.py",
+        "secret_scan.py",
+        "validate_repository_references.py",
+        "validate_stable_contract.py",
+    ):
+        require(f"scripts/{script}" in workflow_text, f"script is not referenced by CI: {script}")
 
     for value in (
         "from custom_components.emby.const import VERSION",
