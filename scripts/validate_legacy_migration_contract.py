@@ -1,79 +1,77 @@
 #!/usr/bin/env python3
-"""Validate the frozen historical upgrade contract used by legacy migration."""
+"""Validate the isolated published-upgrade contract."""
 
-import sys
+from __future__ import annotations
+
+import ast
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "docs" / "specs" / "0.9.0"
-REQ = SPEC / "requirements.yaml"
-
-REQUIRED_FILES = [
-    "README.md",
-    "00-master-specification.md",
-    "01-domain-and-state-model.md",
-    "02-devices-and-players.md",
-    "03-cleanup.md",
-    "04-options-flow-and-navigation.md",
-    "05-ui-copy-de.md",
-    "06-ui-copy-en.md",
-    "07-migration-from-0.3.0.md",
-    "08-security-and-safety-contract.md",
-    "09-diagnostics-and-logging.md",
-    "10-test-and-acceptance-matrix.md",
-    "11-release-contract.md",
-    "12-data-model-and-persistence.md",
-    "13-documentation-and-community.md",
-    "requirements.yaml",
-]
+COMPONENT = ROOT / "custom_components" / "emby"
+MIGRATION = COMPONENT / "legacy_migration.py"
+MIGRATION_TEST = ROOT / "tests" / "migration" / "test_legacy_options.py"
 
 
-def fail(message: str) -> None:
-    print(f"ERROR: {message}", file=sys.stderr)
-    raise SystemExit(1)
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
 
 
-for name in REQUIRED_FILES:
-    path = SPEC / name
-    if not path.is_file():
-        fail(f"missing required legacy fixture: {path.relative_to(ROOT)}")
-    if path.stat().st_size == 0:
-        fail(f"empty required legacy fixture: {path.relative_to(ROOT)}")
+def local_names(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    return {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+    }
 
-data = yaml.safe_load(REQ.read_text(encoding="utf-8"))
-if data.get("version") != "0.9.0":
-    fail("historical fixture version must remain 0.9.0")
-if data.get("status") != "frozen":
-    fail("historical fixture status must remain frozen")
-if data.get("release_type") != "stable":
-    fail("historical fixture release_type must remain stable")
 
-requirements = data.get("requirements")
-if not isinstance(requirements, list) or not requirements:
-    fail("requirements list missing or empty")
+def main() -> None:
+    require(MIGRATION.is_file(), "legacy migration module is missing")
+    require(MIGRATION_TEST.is_file(), "legacy migration behavior tests are missing")
 
-ids = [item.get("id") for item in requirements]
-if any(not requirement_id for requirement_id in ids):
-    fail("every requirement needs an id")
-if len(ids) != len(set(ids)):
-    fail("requirement IDs must be unique")
+    migration = MIGRATION.read_text(encoding="utf-8")
+    tests = MIGRATION_TEST.read_text(encoding="utf-8")
+    functions = local_names(MIGRATION)
 
-required_keys = {
-    "id",
-    "area",
-    "priority",
-    "summary",
-    "automated_test_required",
-    "live_verification_required",
-    "visual_verification_required",
-}
-for item in requirements:
-    missing = required_keys - set(item)
-    if missing:
-        fail(f"{item.get('id')} missing keys: {sorted(missing)}")
-    if item["priority"] == "blocker" and not item["automated_test_required"]:
-        fail(f"blocker {item['id']} must require an automated test")
+    require({"legacy_cleanup_completed", "migrate_options"} <= functions, "migration API differs")
+    for legacy_key in (
+        "client_mode",
+        "ignored_player_keys",
+        "ignored_reported_device_ids",
+        "unresolved_ignored_ids",
+        "ignored_device_ids",
+        "server_cleanup_api_key",
+    ):
+        require(legacy_key in migration, f"legacy key is no longer handled: {legacy_key}")
 
-print(f"Validated frozen legacy migration contract: {len(requirements)} requirements.")
+    for behavior in (
+        "test_published_upgrade_preserves_cleanup_values",
+        "test_published_visibility_modes_keep_effective_behavior",
+        "test_published_ignore_rules_are_normalized_without_data_loss",
+        "test_ambiguous_numeric_history_id_remains_unresolved",
+        "test_published_upgrade_is_idempotent",
+    ):
+        require(behavior in tests, f"legacy migration coverage is missing: {behavior}")
+
+    current_runtime = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in COMPONENT.glob("*.py")
+        if path.name != "legacy_migration.py"
+    )
+    for legacy_name in (
+        "client_mode",
+        "ignored_player_keys",
+        "ignored_reported_device_ids",
+        "unresolved_ignored_ids",
+        "ignored_device_ids",
+        "server_cleanup_api_key",
+    ):
+        require(legacy_name not in current_runtime, f"legacy key escaped isolation: {legacy_name}")
+
+    require(not (ROOT / "docs" / "specs").exists(), "historical product specifications remain public")
+    print("Isolated legacy migration contract passed")
+
+
+if __name__ == "__main__":
+    main()

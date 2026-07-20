@@ -1,24 +1,12 @@
 # EMBi Roadmap
 
-## Stable contract
+EMBi is maintained against a stable lifecycle, identity, cleanup, and release contract. Published release history is documented in [CHANGELOG.md](CHANGELOG.md).
 
-EMBi maintains the supported long-term contract for:
+Potential future work must preserve that contract:
 
-- stable player and sensor unique IDs
-- canonical Options Flow and player lifecycle modules
-- exact technical master and individual exception behavior
-- reload-stable Home Assistant registry and Emby server-history separation
-- upgrades from published EMBi configurations through isolated migration code
-- deterministic HACS ZIP releases on Python 3.13 and 3.14
+- expand the tested Home Assistant and Emby compatibility matrix
+- add a report-only server-cleanup mode
+- add carefully scoped aggregate media statistics
+- improve accessibility, mobile-flow, and localization coverage
 
-Published release history remains in [CHANGELOG.md](CHANGELOG.md).
-
-## Future candidates
-
-Future work is intentionally uncommitted and must preserve the current migration and safety contract:
-
-- broader Emby and Home Assistant compatibility matrix
-- report-only cleanup mode
-- recently added media and additional aggregate statistics
-- further accessibility and mobile-flow testing
-- community support and localization expansion
+These items are candidates, not commitments.

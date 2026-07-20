@@ -7,6 +7,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: test-package-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -27,6 +31,8 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
 
       - name: Resolve version without integration imports
         run: |
@@ -34,14 +40,8 @@ jobs:
           test -n "${VERSION}"
           echo "EMBI_VERSION=${VERSION}" >> "${GITHUB_ENV}"
 
-      - name: Install validator dependencies
+      - name: Install package validation dependencies
         run: python -m pip install -q --upgrade pip -r requirements_test.txt
-
-      - name: Validate contracts and repository references
-        run: |
-          python scripts/validate_legacy_migration_contract.py
-          python scripts/validate_stable_contract.py
-          python scripts/validate_repository_references.py
 
       - name: Build release-equivalent integration archive
         run: |

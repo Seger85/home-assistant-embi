@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+No unreleased product changes.
+
 ## [1.0.1] - 2026-07-20
 
 - Enforce saved media-player visibility after every config-entry setup, reload, and restart instead of treating reconciliation as a one-time migration.
@@ -19,7 +23,7 @@
 - Advance bounded startup reconciliation to version 3 and safely remove inactive or stale-restored states before exact registry cleanup.
 - Complete idempotent active-viewer sensor identity migration, including exact duplicate-remnant cleanup and collision safety.
 - Standardize dependency-free version resolution through `scripts/read_version.py` before dependency installation in every package and release workflow.
-- Clean release-suffixed runtime modules and behavior tests while preserving frozen migration/specification coverage and legal files.
+- Clean release-suffixed runtime modules and behavior tests while preserving migration coverage and legal files.
 
 ## [0.9.9] - 2026-07-19
 

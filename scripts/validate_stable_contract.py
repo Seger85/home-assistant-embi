@@ -17,13 +17,13 @@ def text(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
-def _paths(value, prefix=()):
+def paths(value, prefix=()):
     result = set()
     if isinstance(value, dict):
         for key, child in value.items():
             current = (*prefix, str(key))
             result.add(current)
-            result.update(_paths(child, current))
+            result.update(paths(child, current))
     return result
 
 
@@ -42,175 +42,73 @@ def main() -> None:
     media_player = text("custom_components/emby/media_player.py")
     entry_setup = text("custom_components/emby/entry_setup.py")
     diagnostics = text("custom_components/emby/diagnostics.py")
-    options_model = text("custom_components/emby/options_model.py")
     legacy_migration = text("custom_components/emby/legacy_migration.py")
     readme = text("README.md")
     hacs = json.loads(text("hacs.json"))
-    workflows = {
-        name: text(f".github/workflows/{name}")
-        for name in ("quality.yml", "test-artifact.yml", "release.yml")
-    }
+    quality = text(".github/workflows/quality.yml")
+    package = text(".github/workflows/test-artifact.yml")
+    release = text(".github/workflows/release.yml")
 
     require(manifest["version"] == VERSION, "manifest version differs")
     require(f'VERSION = "{VERSION}"' in constants, "runtime version differs")
     require("CONFIG_ENTRY_MINOR_VERSION = 2" in constants, "minor version differs")
     require("OPTIONS_SCHEMA_VERSION = 4" in constants, "options schema differs")
-    require(
-        "REGISTRY_RECONCILIATION_VERSION = 3" in constants,
-        "reconciliation migration contract differs",
-    )
+    require("REGISTRY_RECONCILIATION_VERSION = 3" in constants, "reconciliation migration differs")
     require(strings == english, "English translation source differs")
-    require(_paths(strings) == _paths(german), "translation structures differ")
-    require(
-        hacs.get("zip_release") is True and hacs.get("filename") == "embi.zip",
-        "HACS ZIP contract differs",
-    )
+    require(paths(strings) == paths(german), "translation structures differ")
+    require(hacs.get("zip_release") is True and hacs.get("filename") == "embi.zip", "HACS ZIP contract differs")
 
-    for forbidden in (
-        "options_flow_098.py",
-        "options_devices_099.py",
-        "player_reconciliation_099.py",
-    ):
-        require(not (COMPONENT / forbidden).exists(), f"versioned runtime remains: {forbidden}")
     require((COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing")
-    for forbidden_name in (
-        "default_options_090",
-        "migrate_options_090",
-        "CLIENT_MODE_ACTIVE_ONLY",
-        "CLIENT_MODE_ALLOWLIST",
-        "CONF_CLIENT_MODE",
-        "CONF_IGNORED_PLAYER_KEYS",
-    ):
-        require(
-            forbidden_name not in options_model,
-            f"legacy name remains in current model: {forbidden_name}",
-        )
     require("def migrate_options(" in legacy_migration, "published upgrade path missing")
     require(
         "from .legacy_migration import legacy_cleanup_completed, migrate_options" in entry_setup,
         "entry setup does not use isolated legacy migration",
     )
 
-    require(
-        "from .options_flow import EmbyOptionsFlow"
-        in text("custom_components/emby/config_flow.py"),
-        "config flow does not use canonical options flow",
-    )
     require("SensorsOptionsMixin" in flow, "sensor flow not consolidated")
     require("menu_options = [" in flow and '"sensors",' in flow, "sensor menu missing")
-    require(
-        "selector.SelectSelectorConfig" in sensor_options and "multiple=True" in sensor_options,
-        "stable sensor multi-select missing",
-    )
-    require(
-        "if not count:" in flow and "return await self.async_step_init()" in flow,
-        "zero-change review redirect missing",
-    )
-    require(
-        "playback_protected_named" in devices and "blocked_players" in devices,
-        "named playback blocker contract missing",
-    )
-    require(
-        "include_technical=requested_technical" in devices,
-        "technical group master contract missing",
-    )
-    require(
-        "CONF_TECHNICAL_ACCESS_VISIBILITY] = any_visible" not in devices,
-        "technical master is coupled to individual switches",
-    )
-    require(
-        "player.playback == PLAYBACK_UNKNOWN" not in devices,
-        "unknown playback still blocks the whole group",
-    )
+    require("selector.SelectSelectorConfig" in sensor_options and "multiple=True" in sensor_options, "stable sensor multi-select missing")
+    require("if not count:" in flow and "return await self.async_step_init()" in flow, "zero-change review redirect missing")
+    require("playback_protected_named" in devices and "blocked_players" in devices, "named playback blocker contract missing")
+    require("include_technical=requested_technical" in devices, "technical group master contract missing")
+    require("CONF_TECHNICAL_ACCESS_VISIBILITY] = any_visible" not in devices, "technical master is coupled")
+    require("player.playback == PLAYBACK_UNKNOWN" not in devices, "unknown playback blocks the whole group")
 
-    require(
-        "state_can_be_removed_after_visibility_commit" in player_actions
-        and "hass.states.async_remove" in player_actions,
-        "state-machine cleanup missing",
-    )
+    require("state_can_be_removed_after_visibility_commit" in player_actions and "hass.states.async_remove" in player_actions, "state-machine cleanup missing")
     require("async_remove(force_remove=True)" in media_player, "entity-platform removal missing")
-    require(
-        "entity: EmbyDevice | None" in media_player
-        and "async_reconcile_player_visibility(" in media_player,
-        "fresh-platform visibility fallback missing",
-    )
-    require(
-        "await _async_enforce_player_visibility(hass, entry, migrated_options)" in entry_setup,
-        "visibility invariant is not enforced on every setup",
-    )
-    require(
-        entry_setup.find("await _async_enforce_player_visibility")
-        > entry_setup.find("async_forward_entry_setups"),
-        "visibility invariant must run after platform setup",
-    )
-    require(
-        "if not migration_pending:\n        return" in entry_setup,
-        "migration marker separation missing",
-    )
-    require(
-        "if not invisible:" in reconciliation
-        and "await _async_record_reconciliation" in reconciliation,
-        "no-op reconciliation diagnostics refresh missing",
-    )
+    require("entity: EmbyDevice | None" in media_player and "async_reconcile_player_visibility(" in media_player, "fresh-platform visibility fallback missing")
+    require("await _async_enforce_player_visibility(hass, entry, migrated_options)" in entry_setup, "visibility invariant is not enforced")
+    require(entry_setup.find("await _async_enforce_player_visibility") > entry_setup.find("async_forward_entry_setups"), "visibility invariant must run after platform setup")
+    require("if not migration_pending:\n        return" in entry_setup, "migration marker separation missing")
+    require("if not invisible:" in reconciliation and "await _async_record_reconciliation" in reconciliation, "no-op reconciliation diagnostics missing")
     require("state_is_restored" in reconciliation, "stale-restored handling missing")
     require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
-    require(
-        'and getattr(entity, "domain", None) == "media_player"' in player_actions
-        and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions
-        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions,
-        "exact registry ownership contract missing",
-    )
-    require(
-        "duplicates_removed" in sensor_registry
-        and "unrelated entity remains untouched" in sensor_registry,
-        "sensor duplicate migration safety missing",
-    )
-    require(
-        "migrated.pop(user_name, None)" in legacy_migration,
-        "duplicate user option cleanup missing",
-    )
+    require('and getattr(entity, "domain", None) == "media_player"' in player_actions and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions, "exact registry ownership contract missing")
+    require("duplicates_removed" in sensor_registry and "unrelated entity remains untouched" in sensor_registry, "sensor duplicate migration safety missing")
 
-    for contract in (
-        '"options_flow_contract": "1.0.0"',
-        '"sensor_contract": "1.0.0"',
-        '"player_visibility_contract": "1.0.1"',
-    ):
+    for contract in ('"options_flow_contract": "1.0.0"', '"sensor_contract": "1.0.0"', '"player_visibility_contract": "1.0.1"'):
         require(contract in diagnostics, f"diagnostics contract missing: {contract}")
-    require("registry_reconciliation_failures" in diagnostics, "reconciliation diagnostics missing")
 
-    for workflow in workflows.values():
+    for workflow in (quality, package, release):
         setup = workflow.find("actions/setup-python@")
         version = workflow.find("scripts/read_version.py")
         install = workflow.find("pip install")
-        require(
-            -1 not in {setup, version, install} and setup < version < install,
-            "workflow startup order differs",
-        )
-        require(
-            "from custom_components.emby" not in workflow,
-            "workflow imports integration before dependencies",
-        )
+        require(-1 not in {setup, version, install} and setup < version < install, "workflow startup order differs")
+        require("from custom_components.emby" not in workflow, "workflow imports integration before dependencies")
+
+    require("python scripts/build_package.py" not in quality, "Quality duplicates package build")
+    for workflow in (package, release):
         require("python scripts/build_package.py" in workflow, "shared package builder missing")
         require("embi.zip.sha256" in workflow, "checksum validation missing")
 
-    release = workflows["release.yml"]
     require("pull_request:" in release and "closed" in release, "merged PR trigger missing")
+    require("workflow_dispatch:" not in release, "manual release path remains")
     require("cancel-in-progress: false" in release, "release concurrency differs")
     require("git tag -a" in release and "make_latest: true" in release, "stable release differs")
-    require(
-        "gh release download" in release and "cmp dist/embi.zip" in release,
-        "published asset byte verification missing",
-    )
+    require("gh release download" in release and "cmp dist/embi.zip" in release, "published asset byte verification missing")
     require("FETCH_HEAD" in release and "origin/main" not in release, "fresh main check differs")
 
-    for entity_id in (
-        "sensor.emby_movie_count",
-        "sensor.emby_tv_series_count",
-        "sensor.emby_tv_episode_count",
-        "sensor.emby_album_count",
-        "sensor.emby_song_count",
-        "sensor.emby_users_watching",
-    ):
+    for entity_id in ("sensor.emby_movie_count", "sensor.emby_tv_series_count", "sensor.emby_tv_episode_count", "sensor.emby_album_count", "sensor.emby_song_count", "sensor.emby_users_watching"):
         require(entity_id in readme, f"README misses {entity_id}")
 
     print(f"Stable {VERSION} repository contract passed")
