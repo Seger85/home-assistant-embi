@@ -15,11 +15,8 @@ from custom_components.emby.const import (
     OPTIONS_SCHEMA_VERSION,
     REGISTRY_RECONCILIATION_VERSION,
 )
-from custom_components.emby.options_devices import (
-    _player_toggle_fields,
-    _sort_group_players,
-)
-from custom_components.emby.options_model import migrate_options_090
+from custom_components.emby.options_devices import _player_toggle_fields, _sort_group_players
+from custom_components.emby.options_model import migrate_options
 from custom_components.emby.player_actions import PlayerActionResult
 from custom_components.emby.registry_state import (
     state_blocks_registry_removal,
@@ -28,11 +25,7 @@ from custom_components.emby.registry_state import (
 
 
 def player(name: str, activity: datetime | None):
-    return SimpleNamespace(
-        selector_label=name,
-        last_activity=activity,
-        player_key=name,
-    )
+    return SimpleNamespace(selector_label=name, last_activity=activity, player_key=name)
 
 
 def test_player_labels_are_single_line_oldest_first_unknown_last() -> None:
@@ -41,14 +34,7 @@ def test_player_labels_are_single_line_oldest_first_unknown_last() -> None:
     unknown = player("Phone · Emby", None)
     players = _sort_group_players([newest, unknown, oldest])
     assert players == [oldest, newest, unknown]
-    labels = [
-        label
-        for label, _ in _player_toggle_fields(
-            players,
-            german=True,
-            time_zone="UTC",
-        )
-    ]
+    labels = [label for label, _ in _player_toggle_fields(players, german=True, time_zone="UTC")]
     assert labels[0] == "Tablet · Emby · zuletzt 18.07.2026 10:00"
     assert labels[-1] == "Phone · Emby · zuletzt unbekannt"
     assert all("\n" not in label and "media_player." not in label for label in labels)
@@ -128,13 +114,9 @@ async def test_reconciliation_prevalidates_inactive_and_restored_but_not_playbac
     )
     states = {
         "media_player.restored": SimpleNamespace(
-            state="unavailable",
-            attributes={"restored": True},
+            state="unavailable", attributes={"restored": True}
         ),
-        "media_player.unclear": SimpleNamespace(
-            state="unknown",
-            attributes={},
-        ),
+        "media_player.unclear": SimpleNamespace(state="unknown", attributes={}),
     }
     hass = SimpleNamespace(states=SimpleNamespace(get=lambda entity_id: states.get(entity_id)))
     await player_reconciliation.async_reconcile_player_visibility(hass, object())
@@ -143,7 +125,7 @@ async def test_reconciliation_prevalidates_inactive_and_restored_but_not_playbac
     assert REGISTRY_RECONCILIATION_VERSION == 3
 
 
-def test_099_options_upgrade_is_idempotent_and_preserves_master() -> None:
+def test_published_options_upgrade_is_idempotent_and_preserves_master() -> None:
     source = {
         CONF_OPTIONS_SCHEMA_VERSION: 3,
         CONF_USER_MASTER_VISIBILITY: {"Alex": True, "Sam": False},
@@ -151,16 +133,13 @@ def test_099_options_upgrade_is_idempotent_and_preserves_master() -> None:
         "Alex": False,
         "Sam": True,
     }
-    migrated, changed = migrate_options_090(source, [])
+    migrated, changed = migrate_options(source, [])
     assert changed
     assert migrated[CONF_OPTIONS_SCHEMA_VERSION] == OPTIONS_SCHEMA_VERSION == 4
-    assert migrated[CONF_USER_MASTER_VISIBILITY] == {
-        "Alex": True,
-        "Sam": False,
-    }
+    assert migrated[CONF_USER_MASTER_VISIBILITY] == {"Alex": True, "Sam": False}
     assert migrated[CONF_TECHNICAL_ACCESS_VISIBILITY] is True
     assert "Alex" not in migrated and "Sam" not in migrated
-    repeated, changed_again = migrate_options_090(migrated, [])
+    repeated, changed_again = migrate_options(migrated, [])
     assert repeated == migrated
     assert changed_again is False
 

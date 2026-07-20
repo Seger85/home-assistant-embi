@@ -30,7 +30,7 @@ from .options_cleanup import CleanupOptionsMixin
 from .options_devices import DevicesOptionsMixin
 from .options_draft import OptionsDraft
 from .options_ha_cleanup import HomeAssistantCleanupOptionsMixin
-from .options_model import migrate_options_090
+from .options_model import migrate_options
 from .options_navigation import action_selector
 from .options_review import semantic_changes
 from .options_runtime import fresh_catalog, player_label_map, registry_entries
@@ -69,7 +69,7 @@ class EmbyOptionsFlow(
     HomeAssistantCleanupOptionsMixin,
     config_entries.OptionsFlow,
 ):
-    """Canonical EMBi 1.0 Options Flow with one in-memory draft."""
+    """Canonical EMBi Options Flow with one in-memory draft."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._entry = config_entry
@@ -364,8 +364,8 @@ class EmbyOptionsFlow(
             self._review_error = "cannot_connect"
             return await self.async_step_review_changes()
 
-        updated, _ = migrate_options_090(self._draft_options, devices)
-        original, _ = migrate_options_090(self._original_options, devices)
+        updated, _ = migrate_options(self._draft_options, devices)
+        original, _ = migrate_options(self._original_options, devices)
 
         def _catalog(options: dict[str, Any]):
             return build_player_catalog(

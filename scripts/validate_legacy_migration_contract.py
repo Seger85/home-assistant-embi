@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the frozen EMBi 0.9.0 product and release contract."""
+"""Validate the frozen historical upgrade contract used by legacy migration."""
 
 import sys
 from pathlib import Path
@@ -31,7 +31,6 @@ REQUIRED_FILES = [
 
 
 def fail(message: str) -> None:
-    """Print a validation error and terminate with a failing exit status."""
     print(f"ERROR: {message}", file=sys.stderr)
     raise SystemExit(1)
 
@@ -39,18 +38,17 @@ def fail(message: str) -> None:
 for name in REQUIRED_FILES:
     path = SPEC / name
     if not path.is_file():
-        fail(f"missing required file: {path.relative_to(ROOT)}")
+        fail(f"missing required legacy fixture: {path.relative_to(ROOT)}")
     if path.stat().st_size == 0:
-        fail(f"empty required file: {path.relative_to(ROOT)}")
+        fail(f"empty required legacy fixture: {path.relative_to(ROOT)}")
 
 data = yaml.safe_load(REQ.read_text(encoding="utf-8"))
-
 if data.get("version") != "0.9.0":
-    fail("version must be 0.9.0")
+    fail("historical fixture version must remain 0.9.0")
 if data.get("status") != "frozen":
-    fail("status must be frozen")
+    fail("historical fixture status must remain frozen")
 if data.get("release_type") != "stable":
-    fail("release_type must be stable")
+    fail("historical fixture release_type must remain stable")
 
 requirements = data.get("requirements")
 if not isinstance(requirements, list) or not requirements:
@@ -71,7 +69,6 @@ required_keys = {
     "live_verification_required",
     "visual_verification_required",
 }
-
 for item in requirements:
     missing = required_keys - set(item)
     if missing:
@@ -79,4 +76,4 @@ for item in requirements:
     if item["priority"] == "blocker" and not item["automated_test_required"]:
         fail(f"blocker {item['id']} must require an automated test")
 
-print(f"Validated EMBi 0.9.0 contract: {len(requirements)} requirements.")
+print(f"Validated frozen legacy migration contract: {len(requirements)} requirements.")

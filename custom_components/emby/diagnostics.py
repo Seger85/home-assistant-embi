@@ -108,7 +108,7 @@ async def async_get_config_entry_diagnostics(
         "runtime": {
             "options_flow_contract": "1.0.0",
             "sensor_contract": "1.0.0",
-            "player_visibility_contract": "1.0.0",
+            "player_visibility_contract": "1.0.1",
             "manual_cleanup_policy": "all_safe_inactive_age_independent",
             "server_history_records": stats.server_history_records,
             "home_assistant_players": stats.ha_players,

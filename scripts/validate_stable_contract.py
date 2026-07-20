@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 
 def require(condition: bool, message: str) -> None:
@@ -40,8 +40,10 @@ def main() -> None:
     player_actions = text("custom_components/emby/player_actions.py")
     reconciliation = text("custom_components/emby/player_reconciliation.py")
     media_player = text("custom_components/emby/media_player.py")
+    entry_setup = text("custom_components/emby/entry_setup.py")
     diagnostics = text("custom_components/emby/diagnostics.py")
     options_model = text("custom_components/emby/options_model.py")
+    legacy_migration = text("custom_components/emby/legacy_migration.py")
     readme = text("README.md")
     hacs = json.loads(text("hacs.json"))
     workflows = {
@@ -55,7 +57,7 @@ def main() -> None:
     require("OPTIONS_SCHEMA_VERSION = 4" in constants, "options schema differs")
     require(
         "REGISTRY_RECONCILIATION_VERSION = 3" in constants,
-        "reconciliation contract differs",
+        "reconciliation migration contract differs",
     )
     require(strings == english, "English translation source differs")
     require(_paths(strings) == _paths(german), "translation structures differ")
@@ -69,10 +71,26 @@ def main() -> None:
         "options_devices_099.py",
         "player_reconciliation_099.py",
     ):
+        require(not (COMPONENT / forbidden).exists(), f"versioned runtime remains: {forbidden}")
+    require((COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing")
+    for forbidden_name in (
+        "default_options_090",
+        "migrate_options_090",
+        "CLIENT_MODE_ACTIVE_ONLY",
+        "CLIENT_MODE_ALLOWLIST",
+        "CONF_CLIENT_MODE",
+        "CONF_IGNORED_PLAYER_KEYS",
+    ):
         require(
-            not (COMPONENT / forbidden).exists(),
-            f"versioned runtime remains: {forbidden}",
+            forbidden_name not in options_model,
+            f"legacy name remains in current model: {forbidden_name}",
         )
+    require("def migrate_options(" in legacy_migration, "published upgrade path missing")
+    require(
+        "from .legacy_migration import legacy_cleanup_completed, migrate_options" in entry_setup,
+        "entry setup does not use isolated legacy migration",
+    )
+
     require(
         "from .options_flow import EmbyOptionsFlow"
         in text("custom_components/emby/config_flow.py"),
@@ -98,46 +116,67 @@ def main() -> None:
     )
     require(
         "CONF_TECHNICAL_ACCESS_VISIBILITY] = any_visible" not in devices,
-        "technical master is still coupled to individual switches",
+        "technical master is coupled to individual switches",
     )
     require(
         "player.playback == PLAYBACK_UNKNOWN" not in devices,
         "unknown playback still blocks the whole group",
     )
+
     require(
         "state_can_be_removed_after_visibility_commit" in player_actions
         and "hass.states.async_remove" in player_actions,
         "state-machine cleanup missing",
     )
+    require("async_remove(force_remove=True)" in media_player, "entity-platform removal missing")
     require(
-        "async_remove(force_remove=True)" in media_player,
-        "entity-platform visibility removal missing",
+        "entity: EmbyDevice | None" in media_player
+        and "async_reconcile_player_visibility(" in media_player,
+        "fresh-platform visibility fallback missing",
     )
     require(
-        'self._request("GET", "/Sessions")' not in player_actions
-        or '"GET", "/Sessions"' in player_actions,
-        "unknown playback session revalidation missing",
+        "await _async_enforce_player_visibility(hass, entry, migrated_options)" in entry_setup,
+        "visibility invariant is not enforced on every setup",
+    )
+    require(
+        entry_setup.find("await _async_enforce_player_visibility")
+        > entry_setup.find("async_forward_entry_setups"),
+        "visibility invariant must run after platform setup",
+    )
+    require(
+        "if not migration_pending:\n        return" in entry_setup,
+        "migration marker separation missing",
+    )
+    require(
+        "if not invisible:" in reconciliation
+        and "await _async_record_reconciliation" in reconciliation,
+        "no-op reconciliation diagnostics refresh missing",
     )
     require("state_is_restored" in reconciliation, "stale-restored handling missing")
+    require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
+    require(
+        'and getattr(entity, "domain", None) == "media_player"' in player_actions
+        and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions
+        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions,
+        "exact registry ownership contract missing",
+    )
     require(
         "duplicates_removed" in sensor_registry
         and "unrelated entity remains untouched" in sensor_registry,
         "sensor duplicate migration safety missing",
     )
     require(
-        "migrated.pop(user_name, None)" in options_model,
+        "migrated.pop(user_name, None)" in legacy_migration,
         "duplicate user option cleanup missing",
     )
+
     for contract in (
         '"options_flow_contract": "1.0.0"',
         '"sensor_contract": "1.0.0"',
-        '"player_visibility_contract": "1.0.0"',
+        '"player_visibility_contract": "1.0.1"',
     ):
         require(contract in diagnostics, f"diagnostics contract missing: {contract}")
-    require(
-        "registry_reconciliation_failures" in diagnostics,
-        "bounded reconciliation diagnostics missing",
-    )
+    require("registry_reconciliation_failures" in diagnostics, "reconciliation diagnostics missing")
 
     for workflow in workflows.values():
         setup = workflow.find("actions/setup-python@")
@@ -151,27 +190,18 @@ def main() -> None:
             "from custom_components.emby" not in workflow,
             "workflow imports integration before dependencies",
         )
-        require(
-            "python scripts/build_package.py" in workflow,
-            "shared package builder missing",
-        )
+        require("python scripts/build_package.py" in workflow, "shared package builder missing")
         require("embi.zip.sha256" in workflow, "checksum validation missing")
 
     release = workflows["release.yml"]
     require("pull_request:" in release and "closed" in release, "merged PR trigger missing")
     require("cancel-in-progress: false" in release, "release concurrency differs")
-    require(
-        "git tag -a" in release and "make_latest: true" in release,
-        "stable release differs",
-    )
+    require("git tag -a" in release and "make_latest: true" in release, "stable release differs")
     require(
         "gh release download" in release and "cmp dist/embi.zip" in release,
         "published asset byte verification missing",
     )
-    require(
-        "FETCH_HEAD" in release and "origin/main" not in release,
-        "fresh main check differs",
-    )
+    require("FETCH_HEAD" in release and "origin/main" not in release, "fresh main check differs")
 
     for entity_id in (
         "sensor.emby_movie_count",

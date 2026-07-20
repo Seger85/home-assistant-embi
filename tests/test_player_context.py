@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from custom_components.emby.api import EmbyDeviceRecord
-from custom_components.emby.options_model import default_options_090
+from custom_components.emby.options_model import default_options
 from custom_components.emby.player_context import (
     CLIENT_CLASS_PLAYBACK,
     CLIENT_CLASS_TECHNICAL,
@@ -114,7 +114,7 @@ def test_known_user_shared_and_special_groups() -> None:
         registry_entries=entries,
         states=States(),
         entry_id="entry",
-        options=default_options_090(),
+        options=default_options(),
     )
     grouped = group_player_catalog(players)
 
@@ -168,7 +168,7 @@ def test_disabled_valid_entity_is_not_orphaned() -> None:
         registry_entries=[registry],
         states=States(),
         entry_id="entry",
-        options=default_options_090(),
+        options=default_options(),
     )
 
     assert player.registry_enabled is False
@@ -186,7 +186,7 @@ def test_registry_player_without_current_server_record_uses_server_missing_seman
         registry_entries=[registry],
         states=States(),
         entry_id="entry",
-        options=default_options_090(),
+        options=default_options(),
     )
 
     assert player.server_missing is True
@@ -213,7 +213,7 @@ def test_playing_and_paused_are_both_protected_from_removal() -> None:
             }
         ),
         entry_id="entry",
-        options=default_options_090(),
+        options=default_options(),
     )
 
     by_id = {player.entity_id: player for player in players}
@@ -242,7 +242,7 @@ def test_selector_label_is_compact_and_details_are_separate() -> None:
         registry_entries=[registry],
         states=States({registry.entity_id: "idle"}),
         entry_id="entry",
-        options=default_options_090(),
+        options=default_options(),
     )
 
     assert player.selector_label == "Living room TV · Emby TV"
@@ -314,7 +314,7 @@ def test_technical_catalog_resolves_non_playing_but_ambiguous_remains_protected(
         registry_entries=[technical_entity, ambiguous_entity],
         states=States(),
         entry_id="entry",
-        options=default_options_090(),
+        options=default_options(),
     )
     by_id = {player.entity_id: player for player in players}
     assert by_id["media_player.technical"].client_class == CLIENT_CLASS_TECHNICAL

@@ -80,7 +80,7 @@ def test_translation_structures_remain_identical() -> None:
     assert _key_paths(strings) == _key_paths(german)
 
 
-def test_legacy_back_is_not_a_boolean_selector_in_options_sources() -> None:
+def test_back_navigation_is_not_a_boolean_selector_in_options_sources() -> None:
     for name in ("options_devices.py", "options_cleanup.py", "options_ha_cleanup.py"):
         source = (ROOT / "custom_components/emby" / name).read_text(encoding="utf-8")
         assert "vol.Optional(CONF_BACK" not in source

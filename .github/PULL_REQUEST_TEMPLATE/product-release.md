@@ -1,35 +1,34 @@
 ## Scope
 
 - Target version:
-- Specification path:
-- Specification commit SHA:
 - Implementation branch:
+- Supported migration baseline:
 
 ## Requirement evidence
 
-- [ ] Every blocker ID in `docs/specs/0.9.0/requirements.yaml` is represented in the acceptance matrix.
-- [ ] No product behavior was invented outside the specification.
-- [ ] Migration from 0.3.0 is covered.
-- [ ] German and English UI copy are complete.
-- [ ] Desktop visual QA is attached.
-- [ ] Live Home Assistant QA is attached where required.
-- [ ] HACS/release contract is covered.
+- [ ] Product behavior is covered by current behavior tests.
+- [ ] Published upgrade paths are covered under `tests/migration`.
+- [ ] German and English UI copy are complete and schema-identical.
+- [ ] Desktop and mobile visual QA is attached or explicitly marked as a post-installation check.
+- [ ] HACS and release contracts are covered.
 
 ## Safety
 
 - [ ] Playing and paused players cannot be removed.
-- [ ] Disabled but valid entities are not classified as orphans.
-- [ ] Removed players remain absent after reload.
-- [ ] Existing entity IDs and custom names are preserved.
+- [ ] Saved visibility remains enforced after setup, reload, and restart.
+- [ ] Entity removal checks exact domain, platform, config entry, and unique ID.
+- [ ] Emby server history is not modified by Home Assistant visibility reconciliation.
+- [ ] Existing entity IDs, names, areas, labels, and aliases are preserved where applicable.
 - [ ] No direct `.storage` edits.
 
 ## Release readiness
 
-- [ ] Manifest/runtime/tag versions agree.
-- [ ] `embi.zip` built.
-- [ ] `embi.zip.sha256` verified.
-- [ ] Release is stable, latest, not draft and not prerelease.
+- [ ] Python 3.13 and 3.14 quality jobs pass.
+- [ ] HACS Validation and Hassfest pass.
+- [ ] Manifest, runtime, tag, and release versions agree.
+- [ ] `embi.zip` and `embi.zip.sha256` are published and byte-verified.
+- [ ] Release is stable, latest, not draft, and not prerelease.
 
-## Deviations
+## Repository cleanup
 
-List any requirement not implemented exactly as specified. A blocker deviation requires explicit approval.
+Document what was deleted, consolidated, updated, and intentionally retained.

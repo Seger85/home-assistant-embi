@@ -18,7 +18,7 @@ from .const import (
     DOMAIN,
 )
 from .options_flow import EmbyOptionsFlow
-from .options_model import default_options_090
+from .options_model import default_options
 
 
 def _text_selector(*, password: bool = False) -> selector.TextSelector:
@@ -111,7 +111,7 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(
                     title=title,
                     data=data,
-                    options=default_options_090(),
+                    options=default_options(),
                 )
 
         return self.async_show_form(

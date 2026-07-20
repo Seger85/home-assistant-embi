@@ -11,7 +11,7 @@ EMBi connects a local Emby server to Home Assistant. It provides controllable me
 - Remove safely inactive EMBi entities from the entity platform, state machine, and entity registry without deleting Emby server history.
 - Restore a hidden player with the same stable unique ID.
 
-Playing and paused clients are protected. Unknown playback is freshly revalidated for the specific client; it is not a permanent group-wide blocker. Names, areas, labels, aliases, and unrelated entities are never rewritten by player cleanup.
+Saved visibility is enforced after every setup, config-entry reload, and restart. Playing and paused clients are protected. Unknown playback is freshly revalidated for the specific client; it is not a permanent group-wide blocker. Names, areas, labels, aliases, and unrelated entities are never rewritten by player cleanup.
 
 ## Emby sensors
 
@@ -48,6 +48,8 @@ Stable releases provide exactly `embi.zip` and `embi.zip.sha256`.
 Normal option pages update an in-memory draft. **Review changes** appears only when a semantic change exists; **Apply changes** writes once and schedules one planned reload plus explicitly justified lifecycle or cleanup follow-up. Closing the dialog does not save.
 
 Credentials are stored by Home Assistant and redacted from diagnostics. Registry deletion requires exact domain, platform, config-entry, and unique-ID ownership. Direct `.storage` edits are unsupported.
+
+Published upgrade paths remain supported through an isolated legacy-migration module. Current runtime, workflows, documentation, and normal tests use version-neutral names; historical fixtures are confined to `tests/migration`.
 
 ## Documentation
 

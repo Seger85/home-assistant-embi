@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.components.media_player import (
@@ -25,6 +26,7 @@ from .const import CONF_GLOBAL_PLAYER_MODE, PLAYER_MODE_PERSISTENT
 from .models import EmbiRuntimeData
 from .options_model import should_expose_player
 from .player_context import CLIENT_CLASS_TECHNICAL, classify_client
+from .player_reconciliation import async_reconcile_player_visibility
 
 MEDIA_TYPE_TRAILER = "trailer"
 SUPPORT_EMBY = (
@@ -36,6 +38,7 @@ SUPPORT_EMBY = (
     | MediaPlayerEntityFeature.PLAY
 )
 _ACTIVE_STATES = {"playing", "paused"}
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -112,23 +115,40 @@ async def async_setup_entry(
             return True
         return False
 
-    async def _async_remove_for_visibility(device_id: str, entity: EmbyDevice) -> None:
-        """Remove one disallowed entity only after current playback validation."""
-        removed = False
+    async def _async_enforce_visibility(
+        device_id: str,
+        entity: EmbyDevice | None,
+    ) -> None:
+        """Remove one disallowed player even during a fresh platform reload."""
+        removed_from_platform = False
         try:
-            device = emby.devices.get(device_id)
-            state = str(getattr(device, "state", "")).casefold()
-            if state in _ACTIVE_STATES:
-                return
-            if state not in {"idle", "off", "standby", "unavailable"}:
-                active_session = await _unknown_has_active_session(device_id)
-                if active_session is not False:
+            if entity is not None:
+                device = emby.devices.get(device_id)
+                state = str(getattr(device, "state", "")).casefold()
+                if state in _ACTIVE_STATES:
                     return
-            if entity.hass is not None:
-                await entity.async_remove(force_remove=True)
-            removed = True
+                if state not in {"idle", "off", "standby", "unavailable"}:
+                    active_session = await _unknown_has_active_session(device_id)
+                    if active_session is not False:
+                        return
+                if entity.hass is not None:
+                    await entity.async_remove(force_remove=True)
+                removed_from_platform = True
+                active_entities.pop(device_id, None)
+                inactive_entities.pop(device_id, None)
+
+            await async_reconcile_player_visibility(
+                hass,
+                entry,
+                requested_keys=(device_id,),
+            )
+        except Exception:
+            _LOGGER.exception(
+                "EMBi failed to enforce hidden player %s after a runtime update",
+                device_id,
+            )
         finally:
-            if removed:
+            if removed_from_platform:
                 active_entities.pop(device_id, None)
                 inactive_entities.pop(device_id, None)
             visibility_removals.discard(device_id)
@@ -139,11 +159,11 @@ async def async_setup_entry(
         for device_id in list(emby.devices):
             if not allowed(device_id):
                 entity = active_entities.get(device_id) or inactive_entities.get(device_id)
-                if entity is not None and device_id not in visibility_removals:
+                if device_id not in visibility_removals:
                     visibility_removals.add(device_id)
                     hass.async_create_task(
-                        _async_remove_for_visibility(device_id, entity),
-                        "Remove hidden EMBi player",
+                        _async_enforce_visibility(device_id, entity),
+                        "Enforce hidden EMBi player",
                     )
                 continue
 

@@ -97,7 +97,7 @@ jobs:
           ruff check .
           ruff format --check .
           pytest -q
-          python scripts/validate_spec_contract.py
+          python scripts/validate_legacy_migration_contract.py
           python scripts/validate_stable_contract.py
           python scripts/validate_repository_references.py
           python scripts/secret_scan.py
