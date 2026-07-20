@@ -1,0 +1,145 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: "17 * * * *"
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number || 'scheduled' }}
+  cancel-in-progress: true
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    name: Merge validated Dependabot updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EVENT_NAME: ${{ github.event_name }}
+      EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Wait for required checks and squash-merge
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required=("Quality" "Test package" "HACS validation" "Hassfest")
+
+          process_pr() {
+            local pr_number="$1"
+            local pr head_sha title wait_seconds deadline retried
+            local response run status conclusion run_id run_attempt
+            local waiting failed
+            local -a failed_run_ids=()
+
+            pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
+            jq -e '
+              .state == "open" and
+              .draft == false and
+              .user.login == "dependabot[bot]" and
+              .base.ref == "main" and
+              .head.repo.full_name == .base.repo.full_name and
+              (.head.ref | startswith("dependabot/"))
+            ' <<<"${pr}" >/dev/null || return 0
+
+            head_sha="$(jq -r '.head.sha' <<<"${pr}")"
+            title="$(jq -r '.title' <<<"${pr}")"
+            wait_seconds=0
+            if [[ "${EVENT_NAME}" == "pull_request_target" ]]; then
+              wait_seconds=2100
+            fi
+            deadline=$((SECONDS + wait_seconds))
+            retried=0
+
+            while true; do
+              response="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${head_sha}&event=pull_request&per_page=100")"
+              waiting=0
+              failed=0
+              failed_run_ids=()
+
+              for workflow_name in "${required[@]}"; do
+                run="$(
+                  jq -c --arg name "${workflow_name}" '
+                    [.workflow_runs[] | select(.name == $name)]
+                    | sort_by(.run_number)
+                    | last // empty
+                  ' <<<"${response}"
+                )"
+                if [[ -z "${run}" ]]; then
+                  waiting=1
+                  continue
+                fi
+
+                status="$(jq -r '.status' <<<"${run}")"
+                conclusion="$(jq -r '.conclusion // ""' <<<"${run}")"
+                if [[ "${status}" != "completed" ]]; then
+                  waiting=1
+                  continue
+                fi
+                if [[ "${conclusion}" != "success" ]]; then
+                  failed=1
+                  run_id="$(jq -r '.id' <<<"${run}")"
+                  run_attempt="$(jq -r '.run_attempt // 1' <<<"${run}")"
+                  if (( run_attempt < 2 )); then
+                    failed_run_ids+=("${run_id}")
+                  fi
+                fi
+              done
+
+              if (( failed == 0 && waiting == 0 )); then
+                pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
+                jq -e --arg sha "${head_sha}" '
+                  .state == "open" and .draft == false and .head.sha == $sha
+                ' <<<"${pr}" >/dev/null || return 0
+
+                result="$(
+                  gh api --method PUT "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/merge" \
+                    -f sha="${head_sha}" \
+                    -f merge_method=squash \
+                    -f commit_title="${title} (#${pr_number})" \
+                    -f commit_message=$'Automatically merged after all required checks passed.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
+                )"
+                jq -e '.merged == true' <<<"${result}" >/dev/null
+                return 0
+              fi
+
+              if (( failed == 1 && retried == 0 && ${#failed_run_ids[@]} > 0 )); then
+                for run_id in "${failed_run_ids[@]}"; do
+                  gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/rerun-failed-jobs"
+                done
+                retried=1
+                waiting=1
+              elif (( failed == 1 )); then
+                echo "Dependabot PR #${pr_number} remains open because required checks failed."
+                return 0
+              fi
+
+              if (( SECONDS >= deadline )); then
+                return 0
+              fi
+              sleep 20
+            done
+          }
+
+          if [[ "${EVENT_NAME}" == "pull_request_target" ]]; then
+            process_pr "${EVENT_PR_NUMBER}"
+          else
+            while read -r pr_number; do
+              [[ -n "${pr_number}" ]] || continue
+              process_pr "${pr_number}"
+            done < <(
+              gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+                --jq '.[] | select(.user.login == "dependabot[bot]") | .number'
+            )
+          fi
