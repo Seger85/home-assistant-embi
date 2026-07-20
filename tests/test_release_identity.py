@@ -29,7 +29,9 @@ def test_every_build_workflow_resolves_version_before_dependencies() -> None:
 
 
 def test_stable_publisher_is_autonomous_sha_bound_regular_latest_release() -> None:
-    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8"
+    )
     assert "push:" in workflow and "- main" in workflow
     assert "pull_request:" not in workflow
     assert "sleep 300" in workflow

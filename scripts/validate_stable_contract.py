@@ -69,14 +69,21 @@ def main() -> None:
         "HACS ZIP contract differs",
     )
 
-    require((COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing")
-    require("def migrate_options(" in legacy_migration, "published upgrade path missing")
     require(
-        "from .legacy_migration import legacy_cleanup_completed, migrate_options" in entry_setup,
+        (COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing"
+    )
+    require(
+        "def migrate_options(" in legacy_migration, "published upgrade path missing"
+    )
+    require(
+        "from .legacy_migration import legacy_cleanup_completed, migrate_options"
+        in entry_setup,
         "entry setup does not use isolated legacy migration",
     )
 
-    require("def owned_exact(" in player_action_common, "exact ownership helper missing")
+    require(
+        "def owned_exact(" in player_action_common, "exact ownership helper missing"
+    )
     for symbol in (
         "class PlayerActionItem",
         "class PlayerActionResult",
@@ -85,7 +92,9 @@ def main() -> None:
         "def update_options_and_reload(",
         "def record_action(",
     ):
-        require(symbol not in player_action_common, f"dead common helper remains: {symbol}")
+        require(
+            symbol not in player_action_common, f"dead common helper remains: {symbol}"
+        )
     for symbol, content in (
         ("def async_enable_ha_entities(", player_actions),
         ("def async_reconcile_invisible_player_entities(", player_actions),
@@ -100,7 +109,8 @@ def main() -> None:
     require("SensorsOptionsMixin" in flow, "sensor flow not consolidated")
     require("menu_options = [" in flow and '"sensors",' in flow, "sensor menu missing")
     require(
-        "selector.SelectSelectorConfig" in sensor_options and "multiple=True" in sensor_options,
+        "selector.SelectSelectorConfig" in sensor_options
+        and "multiple=True" in sensor_options,
         "stable sensor multi-select missing",
     )
     require(
@@ -139,7 +149,8 @@ def main() -> None:
         "fresh-platform visibility fallback missing",
     )
     require(
-        "await _async_enforce_player_visibility(hass, entry, migrated_options)" in entry_setup,
+        "await _async_enforce_player_visibility(hass, entry, migrated_options)"
+        in entry_setup,
         "visibility invariant is not enforced on every setup",
     )
     require(
@@ -157,11 +168,14 @@ def main() -> None:
         "no-op reconciliation diagnostics refresh missing",
     )
     require("state_is_restored" in reconciliation, "stale-restored handling missing")
-    require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
+    require(
+        '"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing"
+    )
     require(
         'and getattr(entity, "domain", None) == "media_player"' in player_actions
         and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions
-        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions,
+        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id'
+        in player_actions,
         "exact registry ownership contract missing",
     )
     require(
@@ -209,14 +223,19 @@ def main() -> None:
     require("pull_request_target:" in automerge, "Dependabot merge trigger missing")
     require('cron: "17 * * * *"' in automerge, "Dependabot recovery schedule missing")
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
-        require(f'"{workflow_name}"' in automerge, f"required merge check missing: {workflow_name}")
+        require(
+            f'"{workflow_name}"' in automerge,
+            f"required merge check missing: {workflow_name}",
+        )
     require("rerun-failed-jobs" in automerge, "failed workflow retry missing")
     require("merge_method=squash" in automerge, "Dependabot squash merge missing")
 
     require("pull_request:" not in release, "legacy release PR trigger remains")
     require("push:" in release and "- main" in release, "main release trigger missing")
     require("sleep 300" in release, "release debounce missing")
-    require("cancel-in-progress: true" in release, "obsolete release run is not cancelled")
+    require(
+        "cancel-in-progress: true" in release, "obsolete release run is not cancelled"
+    )
     require(
         "scripts/prepare_automatic_release.py" in release,
         "automatic patch preparation missing",

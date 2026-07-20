@@ -68,7 +68,9 @@ def test_runtime_and_normal_tests_are_version_neutral() -> None:
 def test_confirmed_dead_runtime_surfaces_remain_removed() -> None:
     common = (COMPONENT / "player_action_common.py").read_text(encoding="utf-8")
     actions = (COMPONENT / "player_actions.py").read_text(encoding="utf-8")
-    reconciliation = (COMPONENT / "player_reconciliation.py").read_text(encoding="utf-8")
+    reconciliation = (COMPONENT / "player_reconciliation.py").read_text(
+        encoding="utf-8"
+    )
     context = (COMPONENT / "player_context.py").read_text(encoding="utf-8")
     options_runtime = (COMPONENT / "options_runtime.py").read_text(encoding="utf-8")
 
@@ -122,7 +124,7 @@ def test_dependabot_runs_daily_and_merges_only_after_complete_validation() -> No
     assert 'time: "03:00"' in dependabot and 'time: "03:15"' in dependabot
     assert "pull_request_target:" in automerge
     assert 'cron: "17 * * * *"' in automerge
-    assert 'dependabot[bot]' in automerge
+    assert "dependabot[bot]" in automerge
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         assert f'"{workflow_name}"' in automerge
     assert "rerun-failed-jobs" in automerge
@@ -162,8 +164,12 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
 
 
 def test_release_assets_and_storage_safety_remain_exact() -> None:
-    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    publish_block = release.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[0]
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8"
+    )
+    publish_block = release.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[
+        0
+    ]
     assert "dist/embi.zip" in publish_block
     assert "dist/embi.zip.sha256" in publish_block
     assert "BUILD_COMMIT" not in publish_block
