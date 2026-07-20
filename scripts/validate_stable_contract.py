@@ -51,6 +51,8 @@ def main() -> None:
     quality = text(".github/workflows/quality.yml")
     package = text(".github/workflows/test-artifact.yml")
     release = text(".github/workflows/release.yml")
+    automerge = text(".github/workflows/dependabot-automerge.yml")
+    dependabot = text(".github/dependabot.yml")
 
     require(manifest["version"] == VERSION, "manifest version differs")
     require(f'VERSION = "{VERSION}"' in constants, "runtime version differs")
@@ -199,13 +201,36 @@ def main() -> None:
         )
         require("embi.zip.sha256" in workflow, "checksum validation missing")
 
-    require("pull_request:" in release and "closed" in release, "merged PR trigger missing")
-    require("workflow_dispatch:" not in release, "manual release path remains")
-    require("cancel-in-progress: false" in release, "release concurrency differs")
+    require(dependabot.count("interval: daily") == 2, "Dependabot is not daily")
     require(
-        'test "${HEAD_BRANCH}" = "release/${version}"' in release
-        and "release/${version}-final" not in release,
-        "canonical release branch identity differs",
+        dependabot.count("timezone: Europe/Berlin") == 2,
+        "Dependabot timezone differs",
+    )
+    require("pull_request_target:" in automerge, "Dependabot merge trigger missing")
+    require('cron: "17 * * * *"' in automerge, "Dependabot recovery schedule missing")
+    for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
+        require(
+            f'"{workflow_name}"' in automerge,
+            f"required merge check missing: {workflow_name}",
+        )
+    require("rerun-failed-jobs" in automerge, "failed workflow retry missing")
+    require("merge_method=squash" in automerge, "Dependabot squash merge missing")
+
+    require("pull_request:" not in release, "legacy release PR trigger remains")
+    require("push:" in release and "- main" in release, "main release trigger missing")
+    require("sleep 300" in release, "release debounce missing")
+    require("cancel-in-progress: true" in release, "obsolete release run is not cancelled")
+    require(
+        "scripts/prepare_automatic_release.py" in release,
+        "automatic patch preparation missing",
+    )
+    require(
+        "Pin candidate release commit" in release and "git push origin HEAD:main" in release,
+        "validated candidate publication missing",
+    )
+    require(
+        "git merge-base --is-ancestor" in release,
+        "previous stable ancestry validation missing",
     )
     require(
         "git tag -a" in release and "make_latest: true" in release,
