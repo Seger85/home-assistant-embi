@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from .api import EmbyDeviceRecord
 from .const import (
     CONF_ALLOWED_DEVICE_IDS,
     CONF_AUTO_SHOW_NEW_PLAYERS,
@@ -57,6 +58,18 @@ def default_options() -> dict[str, Any]:
         CONF_REGISTRY_RECONCILIATION_FAILURES: 0,
         CONF_SENSOR_IDENTITY_VERSION: 0,
     }
+
+
+def migrate_options(
+    options: Mapping[str, Any],
+    devices: Iterable[EmbyDeviceRecord],
+    *,
+    new_install: bool = False,
+) -> tuple[dict[str, Any], bool]:
+    """Normalize current options through the isolated published-upgrade adapter."""
+    from .legacy_migration import migrate_options as migrate_published_options
+
+    return migrate_published_options(options, devices, new_install=new_install)
 
 
 def should_expose_player(
