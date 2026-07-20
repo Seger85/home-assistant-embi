@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from .api import EmbyDeviceRecord
 from .const import (
     CONF_ALLOWED_DEVICE_IDS,
     CONF_AUTO_SHOW_NEW_PLAYERS,
@@ -11,7 +10,6 @@ from .const import (
     CONF_GLOBAL_PLAYER_MODE,
     CONF_HIDDEN_EXACT_PLAYERS,
     CONF_HIDDEN_WHOLE_DEVICES,
-    CONF_MAINTENANCE_STORE_INITIALIZED,
     CONF_OPTIONS_SCHEMA_VERSION,
     CONF_REGISTRY_RECONCILIATION_FAILURES,
     CONF_REGISTRY_RECONCILIATION_VERSION,
@@ -33,13 +31,12 @@ from .const import (
     PLAYER_MODE_PERSISTENT,
     SENSOR_KEYS,
 )
-from .legacy_migration import apply_legacy_option_migration
 
 ACTIVE_STATES = {"playing", "paused"}
 
 
 def default_options() -> dict[str, Any]:
-    """Return safe canonical defaults for a newly configured EMBi installation."""
+    """Return safe defaults for a newly configured EMBi installation."""
     return {
         CONF_OPTIONS_SCHEMA_VERSION: OPTIONS_SCHEMA_VERSION,
         CONF_GLOBAL_PLAYER_MODE: PLAYER_MODE_PERSISTENT,
@@ -60,79 +57,6 @@ def default_options() -> dict[str, Any]:
         CONF_REGISTRY_RECONCILIATION_FAILURES: 0,
         CONF_SENSOR_IDENTITY_VERSION: 0,
     }
-
-
-def migrate_options(
-    options: Mapping[str, Any],
-    devices: Iterable[EmbyDeviceRecord],
-    *,
-    new_install: bool = False,
-) -> tuple[dict[str, Any], bool]:
-    """Idempotently normalize options and isolate historical-key translation."""
-    source = dict(options)
-    defaults = default_options()
-    migrated = dict(defaults)
-    migrated.update(source)
-
-    apply_legacy_option_migration(
-        migrated,
-        source,
-        devices,
-        new_install=new_install,
-    )
-    migrated[CONF_OPTIONS_SCHEMA_VERSION] = OPTIONS_SCHEMA_VERSION
-
-    migrated[CONF_SERVER_CLEANUP_ENABLED] = bool(
-        source.get(CONF_SERVER_CLEANUP_ENABLED, defaults[CONF_SERVER_CLEANUP_ENABLED])
-    )
-    migrated[CONF_SERVER_CLEANUP_AGE_DAYS] = int(
-        source.get(
-            CONF_SERVER_CLEANUP_AGE_DAYS,
-            defaults[CONF_SERVER_CLEANUP_AGE_DAYS],
-        )
-    )
-    migrated[CONF_SERVER_AUTO_CLEANUP_ENABLED] = bool(
-        source.get(
-            CONF_SERVER_AUTO_CLEANUP_ENABLED,
-            defaults[CONF_SERVER_AUTO_CLEANUP_ENABLED],
-        )
-    )
-    migrated[CONF_SERVER_AUTO_CLEANUP_AGE_DAYS] = int(
-        source.get(
-            CONF_SERVER_AUTO_CLEANUP_AGE_DAYS,
-            defaults[CONF_SERVER_AUTO_CLEANUP_AGE_DAYS],
-        )
-    )
-    migrated[CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES] = bool(
-        source.get(
-            CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
-            defaults[CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES],
-        )
-    )
-
-    configured_sensors = source.get(
-        CONF_ENABLED_SENSORS,
-        defaults[CONF_ENABLED_SENSORS],
-    )
-    if not isinstance(configured_sensors, (list, tuple, set)):
-        configured_sensors = defaults[CONF_ENABLED_SENSORS]
-    enabled_sensors = {str(value) for value in configured_sensors}
-    migrated[CONF_ENABLED_SENSORS] = [key for key in SENSOR_KEYS if key in enabled_sensors]
-
-    for key in (
-        CONF_REGISTRY_RECONCILIATION_VERSION,
-        CONF_REGISTRY_RECONCILIATION_FAILURES,
-        CONF_SENSOR_IDENTITY_VERSION,
-    ):
-        try:
-            migrated[key] = max(0, int(source.get(key, defaults[key]) or 0))
-        except (TypeError, ValueError):
-            migrated[key] = 0
-
-    if source.get(CONF_MAINTENANCE_STORE_INITIALIZED):
-        migrated[CONF_MAINTENANCE_STORE_INITIALIZED] = True
-
-    return migrated, migrated != source
 
 
 def should_expose_player(
