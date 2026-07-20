@@ -148,17 +148,6 @@ class PlayerContext:
         details.extend((f"Class: {self.client_class}", f"Status: {self.status}"))
         return " · ".join(details)
 
-    @property
-    def search_text(self) -> str:
-        values = [
-            self.app_name,
-            self.device_name,
-            self.ha_name,
-            self.entity_id or "",
-            *self.users,
-        ]
-        return " ".join(values).casefold()
-
 
 @dataclass(frozen=True, slots=True)
 class PlayerCatalogStats:
@@ -479,16 +468,6 @@ def group_player_catalog(players: Iterable[PlayerContext]) -> dict[str, list[Pla
     return grouped
 
 
-def filter_player_catalog(
-    players: Iterable[PlayerContext], query: str | None
-) -> list[PlayerContext]:
-    """Search only the user-facing fields required by the contract."""
-    normalized = str(query or "").strip().casefold()
-    if not normalized:
-        return list(players)
-    return [player for player in players if normalized in player.search_text]
-
-
 def catalog_stats(
     players: Iterable[PlayerContext], *, server_history_records: int
 ) -> PlayerCatalogStats:
@@ -510,9 +489,3 @@ def catalog_stats(
         server_missing=sum(player.server_missing for player in items),
         orphans=sum(player.orphan for player in items),
     )
-
-
-def group_label(group_key: str) -> str:
-    if group_key.startswith(GROUP_USER_PREFIX):
-        return group_key.removeprefix(GROUP_USER_PREFIX)
-    return group_key
