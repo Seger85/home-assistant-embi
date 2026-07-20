@@ -81,9 +81,7 @@ def apply_legacy_option_migration(
 
     known_player_keys = {device.player_key for device in records}
     known_reported_ids = {device.reported_device_id for device in records}
-    canonical_user_visibility = _user_visibility(
-        source.get(CONF_USER_MASTER_VISIBILITY, {})
-    )
+    canonical_user_visibility = _user_visibility(source.get(CONF_USER_MASTER_VISIBILITY, {}))
 
     allowed: set[str] = set()
     for configured_id in source.get(CONF_ALLOWED_DEVICE_IDS, []):
@@ -124,9 +122,7 @@ def apply_legacy_option_migration(
         )
     if CONF_AUTO_SHOW_NEW_PLAYERS not in source:
         migrated[CONF_AUTO_SHOW_NEW_PLAYERS] = (
-            False
-            if legacy_mode == _LEGACY_MODE_ALLOWLIST
-            else DEFAULT_AUTO_SHOW_NEW_PLAYERS
+            False if legacy_mode == _LEGACY_MODE_ALLOWLIST else DEFAULT_AUTO_SHOW_NEW_PLAYERS
         )
     if CONF_TECHNICAL_ACCESS_VISIBILITY not in source:
         migrated[CONF_TECHNICAL_ACCESS_VISIBILITY] = (
