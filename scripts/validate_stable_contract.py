@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 
 def require(condition: bool, message: str) -> None:
@@ -35,9 +35,12 @@ def main() -> None:
     german = json.loads(text("custom_components/emby/translations/de.json"))
     flow = text("custom_components/emby/options_flow.py")
     devices = text("custom_components/emby/options_devices.py")
+    options_runtime = text("custom_components/emby/options_runtime.py")
     sensor_options = text("custom_components/emby/options_sensors.py")
     sensor_registry = text("custom_components/emby/sensor_registry.py")
+    player_action_common = text("custom_components/emby/player_action_common.py")
     player_actions = text("custom_components/emby/player_actions.py")
+    player_context = text("custom_components/emby/player_context.py")
     reconciliation = text("custom_components/emby/player_reconciliation.py")
     media_player = text("custom_components/emby/media_player.py")
     entry_setup = text("custom_components/emby/entry_setup.py")
@@ -70,6 +73,27 @@ def main() -> None:
         "from .legacy_migration import legacy_cleanup_completed, migrate_options" in entry_setup,
         "entry setup does not use isolated legacy migration",
     )
+
+    require("def owned_exact(" in player_action_common, "exact ownership helper missing")
+    for symbol in (
+        "class PlayerActionItem",
+        "class PlayerActionResult",
+        "def find_context(",
+        "def fresh_catalog(",
+        "def update_options_and_reload(",
+        "def record_action(",
+    ):
+        require(symbol not in player_action_common, f"dead common helper remains: {symbol}")
+    for symbol, content in (
+        ("def async_enable_ha_entities(", player_actions),
+        ("def async_reconcile_invisible_player_entities(", player_actions),
+        ("def async_reconcile_invisible_player_entities(", reconciliation),
+        ("def group_label(", player_context),
+        ("def filter_player_catalog(", player_context),
+        ("def options_for_flow(", options_runtime),
+        ("def render_player_rows(", options_runtime),
+    ):
+        require(symbol not in content, f"dead runtime symbol remains: {symbol}")
 
     require("SensorsOptionsMixin" in flow, "sensor flow not consolidated")
     require("menu_options = [" in flow and '"sensors",' in flow, "sensor menu missing")
