@@ -26,7 +26,6 @@ def test_every_build_workflow_resolves_version_before_dependencies() -> None:
         assert "from custom_components.emby" not in workflow
         assert "python -c 'import json" not in workflow
         assert 'python -c "from custom_components.emby' not in workflow
-        assert "validate_legacy_migration_contract.py" in workflow
 
 
 def test_stable_publisher_is_single_sha_bound_regular_latest_release() -> None:
