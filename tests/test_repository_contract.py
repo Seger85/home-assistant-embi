@@ -18,8 +18,16 @@ def test_manifest_and_runtime_versions_remain_aligned() -> None:
 
 
 def test_runtime_and_normal_tests_are_version_neutral() -> None:
-    versioned_runtime = [path.name for path in COMPONENT.glob("*.py") if re.search(r"_(?:0\d{2}|1\d{2})\.py$", path.name)]
-    versioned_tests = [path.name for path in (ROOT / "tests").glob("*.py") if re.search(r"_(?:0\d{2}|1\d{2})\.py$", path.name)]
+    versioned_runtime = [
+        path.name
+        for path in COMPONENT.glob("*.py")
+        if re.search(r"_(?:0\d{2}|1\d{2})\.py$", path.name)
+    ]
+    versioned_tests = [
+        path.name
+        for path in (ROOT / "tests").glob("*.py")
+        if re.search(r"_(?:0\d{2}|1\d{2})\.py$", path.name)
+    ]
     assert versioned_runtime == []
     assert versioned_tests == []
     assert (COMPONENT / "legacy_migration.py").exists()
@@ -37,13 +45,25 @@ def test_documentation_is_current_and_has_one_release_source() -> None:
     assert "python -I scripts/read_version.py" in releasing
     assert "embi.zip" in releasing and "embi.zip.sha256" in releasing
     assert "Signed-off-by: Seger" in releasing
-    for removed in ("docs/PROJECT_STATE.md", "docs/development.md", "docs/migration-from-core.md", "docs/release-checklist.md", "docs/repository-governance.md"):
+    for removed in (
+        "docs/PROJECT_STATE.md",
+        "docs/development.md",
+        "docs/migration-from-core.md",
+        "docs/release-checklist.md",
+        "docs/repository-governance.md",
+    ):
         assert not (ROOT / removed).exists()
 
 
 def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     workflow_dir = ROOT / ".github" / "workflows"
-    assert {path.name for path in workflow_dir.glob("*.yml")} == {"hacs.yml", "hassfest.yml", "quality.yml", "release.yml", "test-artifact.yml"}
+    assert {path.name for path in workflow_dir.glob("*.yml")} == {
+        "hacs.yml",
+        "hassfest.yml",
+        "quality.yml",
+        "release.yml",
+        "test-artifact.yml",
+    }
     quality = (workflow_dir / "quality.yml").read_text(encoding="utf-8")
     package = (workflow_dir / "test-artifact.yml").read_text(encoding="utf-8")
     release = (workflow_dir / "release.yml").read_text(encoding="utf-8")
@@ -60,10 +80,18 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
 
 
 def test_release_assets_and_storage_safety_remain_exact() -> None:
-    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    publish_block = release.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[0]
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8"
+    )
+    publish_block = release.split("files: |", 1)[1].split("fail_on_unmatched_files", 1)[
+        0
+    ]
     assert "dist/embi.zip" in publish_block
     assert "dist/embi.zip.sha256" in publish_block
     assert "BUILD_COMMIT" not in publish_block
-    component_text = "\n".join(path.read_text(encoding="utf-8") for path in COMPONENT.rglob("*") if path.is_file() and path.suffix in {".py", ".json"})
+    component_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in COMPONENT.rglob("*")
+        if path.is_file() and path.suffix in {".py", ".json"}
+    )
     assert "/config/.storage" not in component_text
