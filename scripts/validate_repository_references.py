@@ -37,7 +37,9 @@ def local_import_targets(path: Path) -> set[str]:
 
 def markdown_paths() -> list[Path]:
     return sorted(
-        path for path in ROOT.rglob("*.md") if ".git" not in path.parts and "dist" not in path.parts
+        path
+        for path in ROOT.rglob("*.md")
+        if ".git" not in path.parts and "dist" not in path.parts
     )
 
 
@@ -141,10 +143,17 @@ def main() -> None:
     }
     build_workflows = {name: text for name, text in workflow_text.items() if "pip install" in text}
     require(
-        set(build_workflows) == {"quality.yml", "release.yml", "test-artifact.yml"},
+        set(build_workflows)
+        == {
+            "dependabot-automerge.yml",
+            "quality.yml",
+            "release.yml",
+            "test-artifact.yml",
+        },
         "build workflow inventory differs",
     )
-    for name, text in build_workflows.items():
+    for name in ("quality.yml", "release.yml", "test-artifact.yml"):
+        text = build_workflows[name]
         setup = text.find("actions/setup-python@")
         version = text.find("scripts/read_version.py")
         install = text.find("pip install")
@@ -185,38 +194,64 @@ def main() -> None:
             f"duplicate contract work remains in test package: {validator}",
         )
 
+    for name in ("quality.yml", "test-artifact.yml", "hacs.yml", "hassfest.yml"):
+        require(
+            "workflow_dispatch:" in workflow_text[name],
+            f"repair validation dispatch missing: {name}",
+        )
+
     dependabot = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
-    require(dependabot.count("interval: daily") == 2, "Dependabot is not daily")
+    require(dependabot.count("interval: cron") == 2, "Dependabot cron schedule differs")
     require(
         dependabot.count("timezone: Europe/Berlin") == 2,
         "Dependabot timezone differs",
     )
     require(
-        'time: "03:00"' in dependabot and 'time: "03:15"' in dependabot,
-        "Dependabot schedule differs",
+        'cronjob: "0 3 6 * *"' in dependabot
+        and 'cronjob: "15 3 6 * *"' in dependabot,
+        "Dependabot day-six schedule differs",
+    )
+    require(
+        dependabot.count("open-pull-requests-limit: 10") == 2,
+        "Dependabot pull-request limit differs",
+    )
+    require(
+        dependabot.count("rebase-strategy: auto") == 2,
+        "Dependabot rebase strategy differs",
     )
 
     automerge = workflow_text["dependabot-automerge.yml"]
     require("pull_request_target:" in automerge, "Dependabot event trigger missing")
-    require('cron: "17 * * * *"' in automerge, "Dependabot hourly recovery sweep missing")
+    require('cron: "23 */6 * * *"' in automerge, "Dependabot recovery sweep missing")
     require("dependabot[bot]" in automerge, "Dependabot actor gate missing")
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         require(
             f'"{workflow_name}"' in automerge,
             f"required check missing: {workflow_name}",
         )
-    require("rerun-failed-jobs" in automerge, "failed workflow retry missing")
+    for repair_contract in (
+        "rerun-failed-jobs",
+        'ruff==${RUFF_VERSION}',
+        "ruff format .",
+        "ruff check --fix .",
+        "gh workflow run",
+        "embi-autonomous-repair",
+    ):
+        require(repair_contract in automerge, f"repair contract missing: {repair_contract}")
     require("merge_method=squash" in automerge, "Dependabot squash merge missing")
 
     release = workflow_text["release.yml"]
     require("pull_request:" not in release, "legacy release PR trigger remains")
-    require("push:" in release and "- main" in release, "main push release trigger missing")
-    require("sleep 300" in release, "release debounce missing")
+    require("push:" not in release, "per-push release trigger remains")
+    require(
+        "schedule:" in release and 'cron: "47 */6 * * *"' in release,
+        "scheduled release trigger missing",
+    )
     require(
         "scripts/prepare_automatic_release.py" in release,
         "automatic patch preparation missing",
     )
-    require("cancel-in-progress: true" in release, "obsolete release run may survive")
+    require("cancel-in-progress: false" in release, "stable release may be cancelled")
     require(
         "Pin candidate release commit" in release and "git push origin HEAD:main" in release,
         "validated release commit publication differs",
