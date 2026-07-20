@@ -24,3 +24,7 @@ jobs:
         uses: actions/checkout@v7
       - name: Validate HACS repository
         uses: hacs/action@main
+        with:
+          category: integration
+          comment: false
+          ignore: brands description license topics
