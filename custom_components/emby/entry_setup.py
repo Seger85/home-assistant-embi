@@ -57,9 +57,7 @@ async def _async_enforce_player_visibility(
     options: dict,
 ):
     """Enforce saved visibility on every setup while tracking migration progress separately."""
-    reconciliation_version = int(
-        options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0
-    )
+    reconciliation_version = int(options.get(CONF_REGISTRY_RECONCILIATION_VERSION, 0) or 0)
     failures = int(options.get(CONF_REGISTRY_RECONCILIATION_FAILURES, 0) or 0)
     migration_pending = reconciliation_version < REGISTRY_RECONCILIATION_VERSION
 
@@ -75,9 +73,7 @@ async def _async_enforce_player_visibility(
 
     if migration_pending:
         if not reconciliation.protected and not reconciliation.failed:
-            options[CONF_REGISTRY_RECONCILIATION_VERSION] = (
-                REGISTRY_RECONCILIATION_VERSION
-            )
+            options[CONF_REGISTRY_RECONCILIATION_VERSION] = REGISTRY_RECONCILIATION_VERSION
             options[CONF_REGISTRY_RECONCILIATION_FAILURES] = 0
         else:
             options[CONF_REGISTRY_RECONCILIATION_FAILURES] = min(
