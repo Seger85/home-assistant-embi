@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+
 from custom_components.emby.api import EmbyDeviceRecord
 from custom_components.emby.const import (
     AGE_PRESET_7,
