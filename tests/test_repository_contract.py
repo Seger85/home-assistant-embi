@@ -38,8 +38,12 @@ def test_legal_hacs_and_tooling_baseline() -> None:
     }
     assert 'target-version = "py313"' in pyproject
     assert 'select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]' in pyproject
-    assert "ruff==0.15.21" in requirements
-    assert "pytest>=8.0.0" in requirements
+    assert "mypy>=2.3.0,<3" in requirements
+    assert "pytest>=9.1.1" in requirements
+    assert "pytest-asyncio>=1.4.0" in requirements
+    assert "PyYAML>=6.0.3" in requirements
+    assert "ruff==0.15.22" in requirements
+    assert "voluptuous>=0.16.0" in requirements
 
 
 def test_runtime_and_normal_tests_are_version_neutral() -> None:
@@ -128,6 +132,11 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     assert "make_latest: true" in release
     assert "gh release download" in release
     assert "cmp dist/embi.zip" in release
+    for workflow in (quality, package, release):
+        assert "actions/setup-python@v7" in workflow
+        assert "actions/setup-python@v6" not in workflow
+    assert "actions/upload-artifact@v7" in package
+    assert "actions/upload-artifact@v4" not in package
 
 
 def test_release_assets_and_storage_safety_remain_exact() -> None:
