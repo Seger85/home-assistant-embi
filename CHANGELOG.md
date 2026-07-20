@@ -4,6 +4,14 @@
 
 No unreleased product changes.
 
+## [1.0.3] - 2026-07-20
+
+- Publish the complete post-cleanup maintenance baseline after the immutable `v1.0.2` tag was created before the final toolchain merge.
+- Update `actions/setup-python` to v7 and `actions/upload-artifact` to v7 across the canonical workflows.
+- Update the supported test and validation toolchain while retaining Python 3.13 and 3.14 coverage.
+- Restore the stable publisher to the canonical `release/${version}` branch contract.
+- Preserve the 1.0.2 runtime cleanup, entity and unique-ID contracts, player and sensor behavior, cleanup safety, diagnostics, and published legacy migrations.
+
 ## [1.0.2] - 2026-07-20
 
 - Remove confirmed dead player-action helpers, unused enable entry points, and obsolete reconciliation compatibility aliases.
@@ -36,7 +44,7 @@ No unreleased product changes.
 
 - Canonicalize the active-viewer sensor as `sensor.emby_users_watching` and migrate an exact EMBi-owned registry entry in place when the target is free.
 - Remove accidental duplicate top-level user visibility options while preserving the effective nested visibility map.
-- Use compact mobile-safe player labels with oldest-known activity first and unknown timestamps last.
+- Use compact mobile-safe player labels with oldest-known access first and unknown timestamps at the end.
 - Run registry reconciliation version 2 for safely removable hidden `stale_restored` players while preserving active, paused, live, and ambiguous protections.
 - Version cleanup reports so legacy runs without `skipped_recent` show that the value was not recorded instead of a false zero.
 - Extend translated error contracts and privacy-safe diagnostics for sensor identities, option duplicates, and report versions.
