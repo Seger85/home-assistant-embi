@@ -64,23 +64,17 @@ def main() -> None:
         "HACS ZIP contract differs",
     )
 
+    require((COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing")
+    require("def migrate_options(" in legacy_migration, "published upgrade path missing")
     require(
-        (COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing"
-    )
-    require(
-        "def migrate_options(" in legacy_migration, "published upgrade path missing"
-    )
-    require(
-        "from .legacy_migration import legacy_cleanup_completed, migrate_options"
-        in entry_setup,
+        "from .legacy_migration import legacy_cleanup_completed, migrate_options" in entry_setup,
         "entry setup does not use isolated legacy migration",
     )
 
     require("SensorsOptionsMixin" in flow, "sensor flow not consolidated")
     require("menu_options = [" in flow and '"sensors",' in flow, "sensor menu missing")
     require(
-        "selector.SelectSelectorConfig" in sensor_options
-        and "multiple=True" in sensor_options,
+        "selector.SelectSelectorConfig" in sensor_options and "multiple=True" in sensor_options,
         "stable sensor multi-select missing",
     )
     require(
@@ -119,8 +113,7 @@ def main() -> None:
         "fresh-platform visibility fallback missing",
     )
     require(
-        "await _async_enforce_player_visibility(hass, entry, migrated_options)"
-        in entry_setup,
+        "await _async_enforce_player_visibility(hass, entry, migrated_options)" in entry_setup,
         "visibility invariant is not enforced on every setup",
     )
     require(
@@ -138,14 +131,11 @@ def main() -> None:
         "no-op reconciliation diagnostics refresh missing",
     )
     require("state_is_restored" in reconciliation, "stale-restored handling missing")
-    require(
-        '"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing"
-    )
+    require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
     require(
         'and getattr(entity, "domain", None) == "media_player"' in player_actions
         and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions
-        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id'
-        in player_actions,
+        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions,
         "exact registry ownership contract missing",
     )
     require(
@@ -185,9 +175,7 @@ def main() -> None:
         )
         require("embi.zip.sha256" in workflow, "checksum validation missing")
 
-    require(
-        "pull_request:" in release and "closed" in release, "merged PR trigger missing"
-    )
+    require("pull_request:" in release and "closed" in release, "merged PR trigger missing")
     require("workflow_dispatch:" not in release, "manual release path remains")
     require("cancel-in-progress: false" in release, "release concurrency differs")
     require(
