@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, IntFlag
 from pathlib import Path
 from types import ModuleType
 
@@ -20,6 +20,7 @@ custom_components.emby = emby_package
 
 homeassistant = ModuleType("homeassistant")
 components = ModuleType("homeassistant.components")
+media_player = ModuleType("homeassistant.components.media_player")
 persistent_notification = ModuleType("homeassistant.components.persistent_notification")
 config_entries = ModuleType("homeassistant.config_entries")
 const = ModuleType("homeassistant.const")
@@ -64,6 +65,47 @@ class ConfigFlow:
         return super().__init_subclass__()
 
 
+class MediaPlayerEntityFeature(IntFlag):
+    PAUSE = 1
+    PREVIOUS_TRACK = 2
+    NEXT_TRACK = 4
+    STOP = 8
+    SEEK = 16
+    PLAY = 32
+
+
+class MediaPlayerState(str, Enum):
+    PAUSED = "paused"
+    PLAYING = "playing"
+    IDLE = "idle"
+    OFF = "off"
+
+
+class MediaType(str, Enum):
+    TVSHOW = "tvshow"
+    MOVIE = "movie"
+    MUSIC = "music"
+    VIDEO = "video"
+    CHANNEL = "channel"
+
+
+class MediaPlayerEntity:
+    hass = None
+
+    @property
+    def unique_id(self):
+        return getattr(self, "_attr_unique_id", None)
+
+    async def async_added_to_hass(self):
+        return None
+
+    async def async_remove(self, *, force_remove=False):
+        self.hass = None
+
+    def async_write_ha_state(self):
+        return None
+
+
 class _Config:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -100,6 +142,11 @@ selector.TextSelectorType = TextSelectorType
 selector.NumberSelectorMode = NumberSelectorMode
 selector.SelectSelectorMode = SelectSelectorMode
 
+media_player.MediaPlayerEntity = MediaPlayerEntity
+media_player.MediaPlayerEntityFeature = MediaPlayerEntityFeature
+media_player.MediaPlayerState = MediaPlayerState
+media_player.MediaType = MediaType
+
 config_entries.ConfigEntry = object
 config_entries.ConfigEntryState = ConfigEntryState
 config_entries.OptionsFlow = OptionsFlow
@@ -121,6 +168,7 @@ persistent_notification.async_create = lambda hass, message, **kwargs: hass.noti
 persistent_notification.async_dismiss = lambda hass, notification_id: hass.notifications.append(
     ("dismiss", notification_id, {})
 )
+components.media_player = media_player
 components.persistent_notification = persistent_notification
 
 for name in (
@@ -148,6 +196,7 @@ homeassistant.util = util
 modules = {
     "homeassistant": homeassistant,
     "homeassistant.components": components,
+    "homeassistant.components.media_player": media_player,
     "homeassistant.components.persistent_notification": persistent_notification,
     "homeassistant.config_entries": config_entries,
     "homeassistant.const": const,
