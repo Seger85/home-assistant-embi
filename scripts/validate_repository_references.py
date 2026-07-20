@@ -54,8 +54,8 @@ def main() -> None:
         "build_package.py",
         "read_version.py",
         "secret_scan.py",
+        "validate_legacy_migration_contract.py",
         "validate_repository_references.py",
-        "validate_spec_contract.py",
         "validate_stable_contract.py",
     }
     actual_scripts = {path.name for path in (ROOT / "scripts").glob("*.py")}
@@ -64,29 +64,33 @@ def main() -> None:
         f"script inventory differs: {sorted(actual_scripts ^ expected_scripts)}",
     )
 
-    workflow_text = "\n".join(path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml"))
-    for script in expected_scripts:
-        if script == "read_version.py":
-            require(
-                workflow_text.count("scripts/read_version.py") >= 3,
-                "version reader is not used by every build/release workflow",
-            )
-        else:
-            require(
-                f"scripts/{script}" in workflow_text
-                or script in {"build_package.py", "validate_spec_contract.py"},
-                f"script is not referenced by CI: {script}",
-            )
+    workflow_text = "\n".join(
+        path.read_text(encoding="utf-8") for path in WORKFLOWS.glob("*.yml")
+    )
+    required_references = {
+        "build_package.py": 3,
+        "read_version.py": 4,
+        "secret_scan.py": 2,
+        "validate_legacy_migration_contract.py": 4,
+        "validate_repository_references.py": 3,
+        "validate_stable_contract.py": 3,
+    }
+    for script, minimum in required_references.items():
+        require(
+            workflow_text.count(f"scripts/{script}") >= minimum,
+            f"script is not sufficiently referenced by CI: {script}",
+        )
 
     forbidden = (
         "from custom_components.emby.const import VERSION",
         'python -c "from custom_components.emby',
         "python -c 'from custom_components.emby",
+        "validate_spec_contract.py",
     )
     for value in forbidden:
         require(
             value not in workflow_text,
-            f"forbidden pre-dependency import remains: {value}",
+            f"forbidden workflow reference remains: {value}",
         )
 
     strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
