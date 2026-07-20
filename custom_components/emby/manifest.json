@@ -15,5 +15,5 @@
   "requirements": [
     "pyEmby==1.10"
   ],
-  "version": "1.0.1"
+  "version": "1.0.2"
 }

@@ -107,11 +107,3 @@ async def async_reconcile_player_visibility(
         prevalidated_non_playing_keys=prevalidated,
         action="reconcile",
     )
-
-
-async def async_reconcile_invisible_player_entities(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> PlayerActionResult:
-    """Backward-compatible name for startup callers."""
-    return await async_reconcile_player_visibility(hass, entry)

@@ -6,7 +6,6 @@ from typing import Any
 
 from homeassistant.helpers import entity_registry as er
 
-from .const import CONF_TECHNICAL_ACCESS_VISIBILITY
 from .player_context import (
     GROUP_SHARED,
     GROUP_TECHNICAL,
@@ -105,15 +104,6 @@ def group_options(
     return options
 
 
-def options_for_flow(flow: Any, players: list[PlayerContext]) -> list[dict[str, str]]:
-    """Return group options using the current technical master state."""
-    return group_options(
-        players,
-        german=flow._is_de(),
-        include_technical=bool(flow._draft_options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False)),
-    )
-
-
 def _compact_options(players: list[PlayerContext], *, value_getter) -> list[dict[str, str]]:
     base_counts = Counter(player.selector_label for player in players)
     seen: Counter[str] = Counter()
@@ -144,10 +134,6 @@ def entity_options(players: list[PlayerContext]) -> list[dict[str, str]]:
 
 def player_label_map(players: list[PlayerContext]) -> Mapping[str, str]:
     return {option["value"]: option["label"] for option in player_options(players)}
-
-
-def render_player_rows(players: list[PlayerContext]) -> str:
-    return "\n".join(option["label"] for option in player_options(players)) or "-"
 
 
 def render_player_details(players: list[PlayerContext], *, german: bool) -> str:

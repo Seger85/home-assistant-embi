@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.emby import player_actions
+from custom_components.emby import player_actions, player_reconciliation
 from custom_components.emby.maintenance_registry_evaluate import evaluate_registry_targets
 from custom_components.emby.models import PendingRegistryTarget
 from custom_components.emby.player_actions import PlayerActionResult
@@ -102,7 +102,7 @@ async def test_startup_reconciliation_targets_only_invisible_registered_players(
     )
     remove = AsyncMock(return_value=PlayerActionResult("remove", 1, (), (), ()))
     monkeypatch.setattr(player_actions, "async_remove_hidden_player_entities", remove)
-    result = await player_actions.async_reconcile_invisible_player_entities(object(), object())
+    result = await player_reconciliation.async_reconcile_player_visibility(object(), object())
     assert result.requested == 1
     args, kwargs = remove.await_args
     assert list(args[2]) == ["hidden"]

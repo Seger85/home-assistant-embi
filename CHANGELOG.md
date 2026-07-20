@@ -4,6 +4,13 @@
 
 No unreleased product changes.
 
+## [1.0.2] - 2026-07-20
+
+- Remove confirmed dead player-action helpers, unused enable entry points, and obsolete reconciliation compatibility aliases.
+- Remove unused player catalog and Options Flow rendering helpers together with their isolated test-only contract.
+- Preserve exact EMBi entity ownership checks, stable entity and unique IDs, player and sensor creation rules, active-playback protection, cleanup safety, and published legacy migrations.
+- Extend stable and repository contracts so removed runtime symbols cannot silently return.
+
 ## [1.0.1] - 2026-07-20
 
 - Enforce saved media-player visibility after every config-entry setup, reload, and restart instead of treating reconciliation as a one-time migration.

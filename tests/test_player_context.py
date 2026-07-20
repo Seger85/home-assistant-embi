@@ -17,7 +17,6 @@ from custom_components.emby.player_context import (
     build_player_catalog,
     catalog_stats,
     classify_client,
-    filter_player_catalog,
     group_player_catalog,
 )
 
@@ -253,8 +252,6 @@ def test_selector_label_is_compact_and_details_are_separate() -> None:
     assert "private-reported-id" not in player.selector_label
     assert "Wohnzimmer Fernseher" in player.technical_details
     assert "media_player.wohnzimmer_emby" in player.technical_details
-    assert filter_player_catalog([player], "wohnzimmer") == [player]
-    assert filter_player_catalog([player], "media_player.wohnzimmer") == [player]
 
 
 def test_known_technical_apps_use_combined_non_playback_evidence() -> None:
