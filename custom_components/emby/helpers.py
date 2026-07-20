@@ -7,6 +7,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from .api import EmbyDeviceRecord
 from .const import AGE_PRESET_CUSTOM, AGE_PRESETS
 
+ACTIVE_STATES = {"playing", "paused"}
+
 
 def age_preset_for_days(age_days: int) -> str:
     """Return a stable UI preset or custom for a numeric age."""
