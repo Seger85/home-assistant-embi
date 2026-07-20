@@ -20,13 +20,16 @@ custom_components.emby = emby_package
 
 homeassistant = ModuleType("homeassistant")
 components = ModuleType("homeassistant.components")
-media_player = ModuleType("homeassistant.components.media_player")
+components.__path__ = []
 persistent_notification = ModuleType("homeassistant.components.persistent_notification")
+media_player = ModuleType("homeassistant.components.media_player")
 config_entries = ModuleType("homeassistant.config_entries")
 const = ModuleType("homeassistant.const")
 core = ModuleType("homeassistant.core")
 exceptions = ModuleType("homeassistant.exceptions")
 helpers = ModuleType("homeassistant.helpers")
+helpers.__path__ = []
+entity_platform = ModuleType("homeassistant.helpers.entity_platform")
 entity_registry = ModuleType("homeassistant.helpers.entity_registry")
 event = ModuleType("homeassistant.helpers.event")
 selector = ModuleType("homeassistant.helpers.selector")
@@ -65,47 +68,6 @@ class ConfigFlow:
         return super().__init_subclass__()
 
 
-class MediaPlayerEntityFeature(IntFlag):
-    PAUSE = 1
-    PREVIOUS_TRACK = 2
-    NEXT_TRACK = 4
-    STOP = 8
-    SEEK = 16
-    PLAY = 32
-
-
-class MediaPlayerState(str, Enum):
-    PAUSED = "paused"
-    PLAYING = "playing"
-    IDLE = "idle"
-    OFF = "off"
-
-
-class MediaType(str, Enum):
-    TVSHOW = "tvshow"
-    MOVIE = "movie"
-    MUSIC = "music"
-    VIDEO = "video"
-    CHANNEL = "channel"
-
-
-class MediaPlayerEntity:
-    hass = None
-
-    @property
-    def unique_id(self):
-        return getattr(self, "_attr_unique_id", None)
-
-    async def async_added_to_hass(self):
-        return None
-
-    async def async_remove(self, *, force_remove=False):
-        self.hass = None
-
-    def async_write_ha_state(self):
-        return None
-
-
 class _Config:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -131,6 +93,44 @@ class _Selector:
         return value
 
 
+class MediaPlayerEntityFeature(IntFlag):
+    PAUSE = 1
+    PREVIOUS_TRACK = 2
+    NEXT_TRACK = 4
+    STOP = 8
+    SEEK = 16
+    PLAY = 32
+
+
+class MediaPlayerState(Enum):
+    PAUSED = "paused"
+    PLAYING = "playing"
+    IDLE = "idle"
+    OFF = "off"
+
+
+class MediaType(Enum):
+    TVSHOW = "tvshow"
+    MOVIE = "movie"
+    MUSIC = "music"
+    VIDEO = "video"
+    CHANNEL = "channel"
+
+
+class MediaPlayerEntity:
+    hass = None
+
+    @property
+    def unique_id(self):
+        return getattr(self, "_attr_unique_id", None)
+
+    async def async_added_to_hass(self) -> None:
+        return None
+
+    async def async_remove(self, *, force_remove: bool = False) -> None:
+        return None
+
+
 selector.TextSelector = _Selector
 selector.NumberSelector = _Selector
 selector.BooleanSelector = _Selector
@@ -146,6 +146,7 @@ media_player.MediaPlayerEntity = MediaPlayerEntity
 media_player.MediaPlayerEntityFeature = MediaPlayerEntityFeature
 media_player.MediaPlayerState = MediaPlayerState
 media_player.MediaType = MediaType
+entity_platform.AddEntitiesCallback = object
 
 config_entries.ConfigEntry = object
 config_entries.ConfigEntryState = ConfigEntryState
@@ -157,6 +158,7 @@ exceptions.ConfigEntryAuthFailed = RuntimeError
 exceptions.ConfigEntryNotReady = RuntimeError
 entity_registry.EntityRegistry = object
 entity_registry.async_get = lambda hass: hass.registry
+helpers.entity_platform = entity_platform
 helpers.entity_registry = entity_registry
 helpers.selector = selector
 event.async_track_point_in_utc_time = lambda hass, action, point: lambda: None
@@ -203,6 +205,7 @@ modules = {
     "homeassistant.core": core,
     "homeassistant.exceptions": exceptions,
     "homeassistant.helpers": helpers,
+    "homeassistant.helpers.entity_platform": entity_platform,
     "homeassistant.helpers.entity_registry": entity_registry,
     "homeassistant.helpers.event": event,
     "homeassistant.helpers.selector": selector,
