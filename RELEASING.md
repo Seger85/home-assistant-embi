@@ -64,7 +64,7 @@ The stable publisher runs every six hours and also supports an internal workflow
 
 The publisher supports two phases:
 
-1. If the current version is already tagged and `main` contains newer validated changes, it prepares the next patch version on `release/automatic-vX.Y.Z`, creates or reopens a release pull request, and dispatches the autonomous merge workflow.
+1. If the current version is already tagged and `main` contains newer validated changes, it prepares the next patch version with `scripts/prepare_automatic_release.py` on `release/automatic-vX.Y.Z`, creates or reopens a release pull request, and dispatches the autonomous merge workflow.
 2. The autonomous merge workflow dispatches all four required validations for that exact release branch, retries transient failures, applies deterministic Ruff repair when possible, and squash-merges only after complete success.
 3. After the protected release pull request is merged, the merge workflow dispatches the publisher again.
 4. If the version on `main` has no tag, the publisher validates that exact protected merge commit, builds the assets, creates the tag, and publishes the stable release.
