@@ -37,7 +37,7 @@ Before dependencies are installed, no module from EMBi, Home Assistant, or `pyem
 
 ## Required pull-request validation
 
-Every Dependabot or implementation pull request must pass:
+Every Dependabot, automated release, or implementation pull request must pass:
 
 - Pytest on Python 3.13 and 3.14
 - Ruff check and Ruff format check
@@ -58,32 +58,35 @@ The automatic merge workflow requires successful runs named:
 
 No failing or incomplete pull request is merged.
 
-## Autonomous stable publication
+## Protected autonomous stable publication
 
-The stable publisher runs every six hours. It publishes only when the current `main` commit is newer than the latest matching version tag. This batches the two monthly Dependabot groups into a single stable patch release whenever they complete within the same maintenance window.
+The stable publisher runs every six hours and also supports an internal workflow dispatch. It never pushes a generated version commit directly to protected `main`.
 
-The publisher supports two paths:
+The publisher supports two phases:
 
-1. If the version in `manifest.json` and `const.py` has no existing tag, publish that prepared version.
-2. If the current version is already tagged and `main` contains newer validated changes, increment the patch version automatically with `scripts/prepare_automatic_release.py`.
+1. If the current version is already tagged and `main` contains newer validated changes, it prepares the next patch version on `release/automatic-vX.Y.Z`, creates or reopens a release pull request, and dispatches the autonomous merge workflow.
+2. The autonomous merge workflow dispatches all four required validations for that exact release branch, retries transient failures, applies deterministic Ruff repair when possible, and squash-merges only after complete success.
+3. After the protected release pull request is merged, the merge workflow dispatches the publisher again.
+4. If the version on `main` has no tag, the publisher validates that exact protected merge commit, builds the assets, creates the tag, and publishes the stable release.
 
 The publisher must:
 
 1. verify that the checked-out commit is still the latest `main`
 2. resolve the current version dependency-free
 3. verify that the current release tag is an ancestor of the new candidate
-4. prepare the next patch identity and dated changelog section when required
-5. create a local immutable candidate commit before validation
-6. run the complete quality, contract, HACS, and Hassfest validation
-7. build deterministic `embi.zip` and `embi.zip.sha256` for the exact candidate commit
-8. push the candidate commit to `main` only after all validation succeeds
-9. create an annotated `vX.Y.Z` tag on that exact commit
-10. publish a regular, non-draft, non-prerelease release marked as Latest
-11. publish exactly `embi.zip` and `embi.zip.sha256`
-12. download both assets again and verify SHA-256 and byte identity
-13. verify the tag target and Latest release
+4. prepare the next patch identity and dated changelog section on an automation-owned branch
+5. create or reopen a protected release pull request instead of bypassing repository rules
+6. require Quality, Test package, HACS validation, and Hassfest on the exact release candidate
+7. merge the release candidate through the normal protected-branch pull-request path
+8. revalidate the resulting `main` commit before publication
+9. build deterministic `embi.zip` and `embi.zip.sha256` for that exact merge commit
+10. create an annotated `vX.Y.Z` tag on that exact commit
+11. publish a regular, non-draft, non-prerelease release marked as Latest
+12. publish exactly `embi.zip` and `embi.zip.sha256`
+13. download both assets again and verify SHA-256 and byte identity
+14. verify the tag target and Latest release
 
-A failed validation stops before the candidate commit, tag, or release is published. The next scheduled run retries automatically.
+A failed validation stops before merge, tag, or release publication. Transient failures are retried automatically. A persistent semantic failure remains safely isolated in its pull request and cannot reach `main`.
 
 ## HACS delivery
 
