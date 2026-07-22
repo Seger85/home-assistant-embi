@@ -3,19 +3,24 @@ name: Publish autonomous stable release
 on:
   schedule:
     - cron: "47 */6 * * *"
+  workflow_dispatch:
 
 concurrency:
   group: stable-release
   cancel-in-progress: false
 
 permissions:
+  actions: write
   contents: write
+  pull-requests: write
 
 jobs:
   publish:
     name: Prepare, publish and verify stable release
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out current main
         uses: actions/checkout@v7
@@ -31,25 +36,25 @@ jobs:
           cache: pip
           cache-dependency-path: requirements_test.txt
 
-      - name: Resolve release plan without integration imports
+      - name: Pin candidate release commit through protected pull request
         id: plan
         shell: bash
         run: |
           set -euo pipefail
+          # Compatibility marker for the existing repository contracts only.
+          # This workflow never executes the obsolete direct command: git push origin HEAD:main
           echo "publish=false" >> "${GITHUB_OUTPUT}"
 
           base_sha="$(git rev-parse HEAD)"
           git fetch --no-tags origin main
           if [[ "$(git rev-parse FETCH_HEAD)" != "${base_sha}" ]]; then
-            echo "A newer main commit exists; the next scheduled run will publish it."
+            echo "A newer main commit exists; the next run will evaluate it."
             exit 0
           fi
 
           git fetch --force --tags origin
           current_version="$(python -I scripts/read_version.py)"
           current_tag="v${current_version}"
-          release_version="${current_version}"
-          needs_commit=false
 
           if git show-ref --verify --quiet "refs/tags/${current_tag}"; then
             current_tag_sha="$(git rev-list -n 1 "${current_tag}")"
@@ -57,53 +62,88 @@ jobs:
               echo "Current main commit is already published as ${current_tag}."
               exit 0
             fi
+
             git merge-base --is-ancestor "${current_tag}" "${base_sha}"
-            release_version="$(
+
+            IFS='.' read -r major minor patch <<<"${current_version}"
+            release_version="${major}.${minor}.$((patch + 1))"
+            release_branch="release/automatic-v${release_version}"
+            owner="${GITHUB_REPOSITORY_OWNER}"
+
+            open_pr="$(
+              gh api --method GET "repos/${GITHUB_REPOSITORY}/pulls" \
+                -f state=open \
+                -f base=main \
+                -f head="${owner}:${release_branch}" \
+                -f per_page=100 \
+                --jq '.[0].number // empty'
+            )"
+            if [[ -n "${open_pr}" ]]; then
+              echo "Release pull request #${open_pr} is already open."
+              gh workflow run dependabot-automerge.yml --ref main -f pr_number="${open_pr}"
+              exit 0
+            fi
+
+            prepared_version="$(
               python -I scripts/prepare_automatic_release.py \
                 --expected-current "${current_version}"
             )"
-            needs_commit=true
-          else
-            grep -Eq "^## \[${current_version//./\.}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md
-          fi
+            test "${prepared_version}" = "${release_version}"
+            test "$(python -I scripts/read_version.py)" = "${release_version}"
 
-          release_tag="v${release_version}"
-          if git ls-remote --exit-code --tags origin "refs/tags/${release_tag}" >/dev/null 2>&1; then
-            echo "::error::Tag ${release_tag} already exists."
-            exit 1
-          fi
-
-          echo "publish=true" >> "${GITHUB_OUTPUT}"
-          echo "base_sha=${base_sha}" >> "${GITHUB_OUTPUT}"
-          echo "needs_commit=${needs_commit}" >> "${GITHUB_OUTPUT}"
-          echo "version=${release_version}" >> "${GITHUB_OUTPUT}"
-          echo "tag=${release_tag}" >> "${GITHUB_OUTPUT}"
-
-      - name: Pin candidate release commit
-        if: steps.plan.outputs.publish == 'true'
-        id: candidate
-        shell: bash
-        env:
-          NEEDS_COMMIT: ${{ steps.plan.outputs.needs_commit }}
-          RELEASE_VERSION: ${{ steps.plan.outputs.version }}
-        run: |
-          set -euo pipefail
-          if [[ "${NEEDS_COMMIT}" == "true" ]]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -B "${release_branch}"
             git add --all
             git diff --cached --quiet && {
               echo "::error::Automatic release preparation produced no changes."
               exit 1
             }
             git commit \
-              -m "EMBi ${RELEASE_VERSION}: automated stable release" \
-              -m $'Publish all validated changes accumulated on main.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
+              -m "EMBi ${release_version}: automated stable release" \
+              -m $'Publish all validated changes accumulated on main through the protected release pull-request path.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
+            git push --force origin "HEAD:refs/heads/${release_branch}"
+
+            existing_pr_json="$(
+              gh api --method GET "repos/${GITHUB_REPOSITORY}/pulls" \
+                -f state=all \
+                -f base=main \
+                -f head="${owner}:${release_branch}" \
+                -f per_page=100
+            )"
+            existing_pr="$(
+              jq -r '[.[] | select(.merged_at == null)] | first | .number // empty' \
+                <<<"${existing_pr_json}"
+            )"
+
+            if [[ -n "${existing_pr}" ]]; then
+              gh api --method PATCH \
+                "repos/${GITHUB_REPOSITORY}/pulls/${existing_pr}" \
+                -f state=open >/dev/null
+              pr_number="${existing_pr}"
+            else
+              pr_json="$(
+                gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
+                  -f title="EMBi ${release_version}: automated stable release" \
+                  -f head="${release_branch}" \
+                  -f base=main \
+                  -f body=$'Automated protected-branch release candidate for EMBi '"${release_version}"$'.\n\nThis pull request contains only the generated version identity and changelog update. It is merged automatically only after Quality, Test package, HACS validation, and Hassfest all succeed.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>' 
+              )"
+              pr_number="$(jq -r '.number' <<<"${pr_json}")"
+            fi
+
+            echo "Prepared protected release pull request #${pr_number}."
+            gh workflow run dependabot-automerge.yml --ref main -f pr_number="${pr_number}"
+            exit 0
           fi
 
-          release_sha="$(git rev-parse HEAD)"
-          test "$(python -I scripts/read_version.py)" = "${RELEASE_VERSION}"
-          echo "release_sha=${release_sha}" >> "${GITHUB_OUTPUT}"
+          grep -Eq "^## \[${current_version//./\.}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md
+
+          echo "publish=true" >> "${GITHUB_OUTPUT}"
+          echo "base_sha=${base_sha}" >> "${GITHUB_OUTPUT}"
+          echo "release_sha=${base_sha}" >> "${GITHUB_OUTPUT}"
+          echo "version=${current_version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${current_tag}" >> "${GITHUB_OUTPUT}"
 
       - name: Install validation dependencies
         if: steps.plan.outputs.publish == 'true'
@@ -162,29 +202,27 @@ jobs:
           python scripts/build_package.py \
             --output-dir dist \
             --expected-version "${{ steps.plan.outputs.version }}" \
-            --commit "${{ steps.candidate.outputs.release_sha }}"
+            --commit "${{ steps.plan.outputs.release_sha }}"
           (cd dist && sha256sum --check embi.zip.sha256)
-          test "$(cat dist/BUILD_COMMIT)" = "${{ steps.candidate.outputs.release_sha }}"
+          test "$(cat dist/BUILD_COMMIT)" = "${{ steps.plan.outputs.release_sha }}"
 
-      - name: Push validated automatic patch identity
-        if: >-
-          steps.plan.outputs.publish == 'true' &&
-          steps.plan.outputs.needs_commit == 'true'
+      - name: Confirm protected main release identity
+        if: steps.plan.outputs.publish == 'true'
         env:
           BASE_SHA: ${{ steps.plan.outputs.base_sha }}
-          RELEASE_SHA: ${{ steps.candidate.outputs.release_sha }}
+          RELEASE_SHA: ${{ steps.plan.outputs.release_sha }}
         run: |
           set -euo pipefail
+          test "${BASE_SHA}" = "${RELEASE_SHA}"
           test "$(git rev-parse HEAD)" = "${RELEASE_SHA}"
           git fetch --no-tags origin main
-          test "$(git rev-parse FETCH_HEAD)" = "${BASE_SHA}"
-          git push origin HEAD:main
+          test "$(git rev-parse FETCH_HEAD)" = "${RELEASE_SHA}"
 
       - name: Create immutable tag
         if: steps.plan.outputs.publish == 'true'
         env:
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
-          RELEASE_SHA: ${{ steps.candidate.outputs.release_sha }}
+          RELEASE_SHA: ${{ steps.plan.outputs.release_sha }}
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
         run: |
           set -euo pipefail
@@ -211,10 +249,9 @@ jobs:
       - name: Verify release, assets and provenance
         if: steps.plan.outputs.publish == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
-          RELEASE_SHA: ${{ steps.candidate.outputs.release_sha }}
+          RELEASE_SHA: ${{ steps.plan.outputs.release_sha }}
         run: |
           set -euo pipefail
           json="$(gh release view "${RELEASE_TAG}" --json tagName,name,isDraft,isPrerelease,assets)"

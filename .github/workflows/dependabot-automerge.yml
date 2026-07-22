@@ -1,4 +1,4 @@
-name: Dependabot auto-merge
+name: Autonomous pull request merge
 
 on:
   pull_request_target:
@@ -7,11 +7,17 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to process immediately
+        required: false
+        type: string
   schedule:
     - cron: "23 */6 * * *"
 
 concurrency:
-  group: dependabot-auto-merge
+  group: autonomous-pr-merge
   cancel-in-progress: false
 
 permissions:
@@ -21,13 +27,13 @@ permissions:
 
 jobs:
   merge:
-    name: Repair and merge validated Dependabot updates
+    name: Repair and merge validated autonomous updates
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
       EVENT_NAME: ${{ github.event_name }}
-      EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+      REQUESTED_PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number || '' }}
       RUFF_VERSION: "0.15.22"
     steps:
       - name: Repair, validate and squash-merge
@@ -50,8 +56,7 @@ jobs:
             fi
 
             gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" \
-              -f body="${marker}
-          Autonomous maintenance exhausted transient retries and deterministic Ruff repair for this exact commit. The pull request remains safely unmerged and will be reconsidered automatically when Dependabot updates or rebases its head commit. No user action is required."
+              -f body="${marker}"$'\nAutonomous maintenance exhausted transient retries and deterministic Ruff repair for this exact commit. The pull request remains safely unmerged and will be reconsidered automatically when its head commit changes. No user action is required.' 
           }
 
           dispatch_validation() {
@@ -101,21 +106,37 @@ jobs:
 
           process_pr() {
             local pr_number="$1"
-            local pr head_ref head_sha title response run status conclusion run_id run_attempt
-            local wait_seconds deadline waiting failed result marker comments repaired_sha
+            local pr kind head_ref head_sha title response run status conclusion run_id run_attempt
+            local wait_seconds deadline waiting failed missing result marker comments repaired_sha
+            local validation_dispatched=0
             local retried=0
             local repaired=0
             local -a failed_run_ids=()
 
             pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
-            jq -e '
-              .state == "open" and
-              .draft == false and
-              .user.login == "dependabot[bot]" and
-              .base.ref == "main" and
-              .head.repo.full_name == .base.repo.full_name and
-              (.head.ref | startswith("dependabot/"))
-            ' <<<"${pr}" >/dev/null || return 0
+            kind="$(
+              jq -r '
+                if (
+                  .state == "open" and
+                  .draft == false and
+                  .base.ref == "main" and
+                  .head.repo.full_name == .base.repo.full_name and
+                  .user.login == "dependabot[bot]" and
+                  (.head.ref | startswith("dependabot/"))
+                ) then "dependabot"
+                elif (
+                  .state == "open" and
+                  .draft == false and
+                  .base.ref == "main" and
+                  .head.repo.full_name == .base.repo.full_name and
+                  .user.login == "github-actions[bot]" and
+                  (.head.ref | startswith("release/automatic-v"))
+                ) then "release"
+                else ""
+                end
+              ' <<<"${pr}"
+            )"
+            [[ -n "${kind}" ]] || return 0
 
             head_ref="$(jq -r '.head.ref' <<<"${pr}")"
             head_sha="$(jq -r '.head.sha' <<<"${pr}")"
@@ -127,8 +148,8 @@ jobs:
             fi
 
             wait_seconds=0
-            if [[ "${EVENT_NAME}" == "pull_request_target" ]]; then
-              wait_seconds=2400
+            if [[ -n "${REQUESTED_PR_NUMBER}" ]]; then
+              wait_seconds=3000
             fi
             deadline=$((SECONDS + wait_seconds))
 
@@ -136,6 +157,7 @@ jobs:
               response="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${head_sha}&per_page=100")"
               waiting=0
               failed=0
+              missing=0
               failed_run_ids=()
 
               for workflow_name in "${required[@]}"; do
@@ -148,6 +170,7 @@ jobs:
                 )"
                 if [[ -z "${run}" ]]; then
                   waiting=1
+                  missing=1
                   continue
                 fi
 
@@ -181,10 +204,24 @@ jobs:
                     -f commit_message=$'Automatically merged after all required checks passed.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
                 )"
                 jq -e '.merged == true' <<<"${result}" >/dev/null
+
+                if [[ "${kind}" == "release" ]]; then
+                  gh api --method DELETE \
+                    "repos/${GITHUB_REPOSITORY}/git/refs/heads/${head_ref}" >/dev/null 2>&1 || true
+                  sleep 5
+                  gh workflow run release.yml --ref main
+                fi
                 return 0
               fi
 
-              if (( failed == 1 && retried == 0 && ${#failed_run_ids[@]} > 0 )); then
+              if (( missing == 1 && validation_dispatched == 0 )); then
+                dispatch_validation "${head_ref}"
+                validation_dispatched=1
+                waiting=1
+                if (( wait_seconds == 0 )); then
+                  return 0
+                fi
+              elif (( failed == 1 && retried == 0 && ${#failed_run_ids[@]} > 0 )); then
                 for run_id in "${failed_run_ids[@]}"; do
                   gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/rerun-failed-jobs"
                 done
@@ -194,9 +231,11 @@ jobs:
                 if repaired_sha="$(apply_deterministic_repair "${pr_number}" "${head_ref}" "${head_sha}")"; then
                   repaired=1
                   retried=0
+                  validation_dispatched=1
                   head_sha="${repaired_sha}"
                   dispatch_validation "${head_ref}"
-                  deadline=$((SECONDS + 2400))
+                  deadline=$((SECONDS + 3000))
+                  wait_seconds=3000
                   waiting=1
                 else
                   mark_exhausted "${pr_number}" "${head_sha}"
@@ -207,21 +246,31 @@ jobs:
                 return 0
               fi
 
-              if (( SECONDS >= deadline )); then
+              if (( wait_seconds == 0 || SECONDS >= deadline )); then
                 return 0
               fi
               sleep 20
             done
           }
 
-          if [[ "${EVENT_NAME}" == "pull_request_target" ]]; then
-            process_pr "${EVENT_PR_NUMBER}"
+          if [[ -n "${REQUESTED_PR_NUMBER}" ]]; then
+            process_pr "${REQUESTED_PR_NUMBER}"
           else
             while read -r pr_number; do
               [[ -n "${pr_number}" ]] || continue
               process_pr "${pr_number}"
             done < <(
               gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
-                --jq '.[] | select(.user.login == "dependabot[bot]") | .number'
+                --jq '.[] |
+                  select(
+                    (
+                      .user.login == "dependabot[bot]" and
+                      (.head.ref | startswith("dependabot/"))
+                    ) or (
+                      .user.login == "github-actions[bot]" and
+                      (.head.ref | startswith("release/automatic-v"))
+                    )
+                  ) |
+                  .number'
             )
           fi
