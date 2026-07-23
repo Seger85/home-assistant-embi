@@ -28,15 +28,17 @@ def test_every_build_workflow_resolves_version_before_dependencies() -> None:
         assert 'python -c "from custom_components.emby' not in workflow
 
 
-def test_stable_publisher_is_scheduled_sha_bound_regular_latest_release() -> None:
+def test_stable_publisher_is_protected_sha_bound_regular_latest_release() -> None:
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
-    assert "schedule:" in workflow and 'cron: "47 */6 * * *"' in workflow
+    assert "schedule:" in workflow and 'cron: "47 4 * * *"' in workflow
     assert "pull_request:" not in workflow
     assert "push:" not in workflow
     assert "scripts/prepare_automatic_release.py" in workflow
     assert "git merge-base --is-ancestor" in workflow
     assert "Pin candidate release commit" in workflow
-    assert "git push origin HEAD:main" in workflow
+    assert "git push origin HEAD:main" not in workflow
+    assert "git push --force-with-lease origin" in workflow
+    assert "Allow GitHub Actions to create and approve pull requests" in workflow
     assert "git tag -a" in workflow
     assert "prerelease: false" in workflow
     assert "draft: false" in workflow
