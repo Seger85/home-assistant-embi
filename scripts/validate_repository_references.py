@@ -219,7 +219,7 @@ def main() -> None:
 
     automerge = workflow_text["dependabot-automerge.yml"]
     require("pull_request_target:" in automerge, "Dependabot event trigger missing")
-    require('cron: "23 */6 * * *"' in automerge, "Dependabot recovery sweep missing")
+    require('cron: "23 5 * * *"' in automerge, "daily autonomous recovery missing")
     require("dependabot[bot]" in automerge, "Dependabot actor gate missing")
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         require(
@@ -228,21 +228,29 @@ def main() -> None:
         )
     for repair_contract in (
         "rerun-failed-jobs",
-        "ruff==${RUFF_VERSION}",
+        'ruff==${RUFF_VERSION}',
         "ruff format .",
         "ruff check --fix .",
         "gh workflow run",
         "embi-autonomous-repair",
     ):
         require(repair_contract in automerge, f"repair contract missing: {repair_contract}")
+    require(
+        "issues/${pr_number}/comments" not in automerge,
+        "autonomous repair still posts noisy pull-request comments",
+    )
+    require(
+        'pulls/${pr_number}"' in automerge and '-f body="${updated_body}"' in automerge,
+        "silent exhausted-head marker missing",
+    )
     require("merge_method=squash" in automerge, "Dependabot squash merge missing")
 
     release = workflow_text["release.yml"]
     require("pull_request:" not in release, "legacy release PR trigger remains")
     require("push:" not in release, "per-push release trigger remains")
     require(
-        "schedule:" in release and 'cron: "47 */6 * * *"' in release,
-        "scheduled release trigger missing",
+        "schedule:" in release and 'cron: "47 4 * * *"' in release,
+        "daily stable recovery trigger missing",
     )
     require(
         "scripts/prepare_automatic_release.py" in release,
@@ -250,8 +258,18 @@ def main() -> None:
     )
     require("cancel-in-progress: false" in release, "stable release may be cancelled")
     require(
-        "Pin candidate release commit" in release and "git push origin HEAD:main" in release,
-        "validated release commit publication differs",
+        "Pin candidate release commit through protected pull request" in release
+        and "git push --force-with-lease origin" in release,
+        "protected release candidate publication differs",
+    )
+    require(
+        "git push origin HEAD:main" not in release,
+        "direct protected-main push remains",
+    )
+    require(
+        "Allow GitHub Actions to create and approve pull requests" in release
+        and "Resource not accessible by integration" in release,
+        "release pull-request permission handling missing",
     )
     require(
         "git tag -a" in release and "make_latest: true" in release,
