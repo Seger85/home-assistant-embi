@@ -12,11 +12,15 @@ EMBi is maintained without routine manual approval:
 - All update levels, including major updates, are eligible for automatic integration.
 - Each ecosystem remains grouped, rebases automatically, and may keep up to ten pull requests open.
 - A Dependabot pull request is squash-merged only after every required validation succeeds.
-- A six-hourly recovery sweep picks up validated or newly updated Dependabot pull requests.
+- An immediate event or explicit internal dispatch processes new autonomous pull requests; one daily recovery sweep catches interrupted or newly updated work.
 - Failed workflows are retried once. The automation then applies deterministic Ruff formatting and safe lint fixes, dispatches all required validation workflows again, and merges only after complete success.
-- A semantically incompatible update that cannot be repaired mechanically remains safely unmerged. The exact failed head is marked as exhausted and is reconsidered automatically when Dependabot updates or rebases it.
+- A semantically incompatible update that cannot be repaired mechanically remains safely unmerged. The exact failed head is recorded silently in the pull-request description and is reconsidered automatically when Dependabot updates or rebases it.
 
 No routine review, confirmation, comment, push, release branch, release pull request, or manual merge is required.
+
+## One-time repository prerequisite
+
+The repository setting **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** must be enabled. Without it, the repository `GITHUB_TOKEN` cannot create the protected release pull request. The publisher detects this condition, removes the temporary branch, records a warning in the workflow summary, and exits safely without publishing or repeatedly producing a failed run.
 
 ## Dependency-safe validation order
 
@@ -60,7 +64,7 @@ No failing or incomplete pull request is merged.
 
 ## Protected autonomous stable publication
 
-The stable publisher runs every six hours and also supports an internal workflow dispatch. It never pushes a generated version commit directly to protected `main`.
+The stable publisher runs once daily as a recovery mechanism and also supports an internal workflow dispatch after relevant merges. It never pushes a generated version commit directly to protected `main`.
 
 The publisher supports two phases:
 
@@ -87,6 +91,10 @@ The publisher must:
 14. verify the tag target and Latest release
 
 A failed validation stops before merge, tag, or release publication. Transient failures are retried automatically. A persistent semantic failure remains safely isolated in its pull request and cannot reach `main`.
+
+## Notification discipline
+
+The workflows do not post routine repair comments. An exhausted exact head is stored as a hidden marker in the existing pull-request description, and scheduled recovery is limited to once daily. Repository-specific notification delivery remains a personal GitHub subscription setting and is not controlled by workflow YAML.
 
 ## HACS delivery
 

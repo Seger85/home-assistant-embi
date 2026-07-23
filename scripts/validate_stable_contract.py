@@ -217,7 +217,7 @@ def main() -> None:
         "Dependabot rebase strategy differs",
     )
     require("pull_request_target:" in automerge, "Dependabot merge trigger missing")
-    require('cron: "23 */6 * * *"' in automerge, "Dependabot recovery schedule missing")
+    require('cron: "23 5 * * *"' in automerge, "daily autonomous recovery missing")
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         require(
             f'"{workflow_name}"' in automerge,
@@ -232,6 +232,14 @@ def main() -> None:
         "embi-autonomous-repair",
     ):
         require(repair_contract in automerge, f"repair contract missing: {repair_contract}")
+    require(
+        "issues/${pr_number}/comments" not in automerge,
+        "autonomous repair still posts noisy pull-request comments",
+    )
+    require(
+        'pulls/${pr_number}"' in automerge and '-f body="${updated_body}"' in automerge,
+        "silent exhausted-head marker missing",
+    )
     require("merge_method=squash" in automerge, "Dependabot squash merge missing")
 
     for workflow in (quality, package, hacs_workflow, hassfest_workflow):
@@ -240,8 +248,8 @@ def main() -> None:
     require("pull_request:" not in release, "legacy release PR trigger remains")
     require("push:" not in release, "per-push release trigger remains")
     require(
-        "schedule:" in release and 'cron: "47 */6 * * *"' in release,
-        "scheduled release trigger missing",
+        "schedule:" in release and 'cron: "47 4 * * *"' in release,
+        "daily stable recovery trigger missing",
     )
     require("cancel-in-progress: false" in release, "stable release may be cancelled")
     require(
@@ -249,8 +257,18 @@ def main() -> None:
         "automatic patch preparation missing",
     )
     require(
-        "Pin candidate release commit" in release and "git push origin HEAD:main" in release,
-        "validated candidate publication missing",
+        "Pin candidate release commit through protected pull request" in release
+        and "git push --force-with-lease origin" in release,
+        "protected candidate publication missing",
+    )
+    require(
+        "git push origin HEAD:main" not in release,
+        "direct protected-main push remains",
+    )
+    require(
+        "Allow GitHub Actions to create and approve pull requests" in release
+        and "Resource not accessible by integration" in release,
+        "release pull-request permission handling missing",
     )
     require(
         "git merge-base --is-ancestor" in release,

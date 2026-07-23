@@ -2,7 +2,7 @@ name: Publish autonomous stable release
 
 on:
   schedule:
-    - cron: "47 */6 * * *"
+    - cron: "47 4 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -41,8 +41,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Compatibility marker for the existing repository contracts only.
-          # This workflow never executes the obsolete direct command: git push origin HEAD:main
           echo "publish=false" >> "${GITHUB_OUTPUT}"
 
           base_sha="$(git rev-parse HEAD)"
@@ -102,7 +100,7 @@ jobs:
             git commit \
               -m "EMBi ${release_version}: automated stable release" \
               -m $'Publish all validated changes accumulated on main through the protected release pull-request path.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
-            git push --force origin "HEAD:refs/heads/${release_branch}"
+            git push --force-with-lease origin "HEAD:refs/heads/${release_branch}"
 
             existing_pr_json="$(
               gh api --method GET "repos/${GITHUB_REPOSITORY}/pulls" \
@@ -122,13 +120,35 @@ jobs:
                 -f state=open >/dev/null
               pr_number="${existing_pr}"
             else
-              pr_json="$(
+              pr_error="$(mktemp)"
+              if ! pr_json="$(
                 gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls" \
                   -f title="EMBi ${release_version}: automated stable release" \
                   -f head="${release_branch}" \
                   -f base=main \
-                  -f body=$'Automated protected-branch release candidate for EMBi '"${release_version}"$'.\n\nThis pull request contains only the generated version identity and changelog update. It is merged automatically only after Quality, Test package, HACS validation, and Hassfest all succeed.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>' 
-              )"
+                  -f body=$'Automated protected-branch release candidate for EMBi '"${release_version}"$'.\n\nThis pull request contains only the generated version identity and changelog update. It is merged automatically only after Quality, Test package, HACS validation, and Hassfest all succeed.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>' \
+                  2>"${pr_error}"
+              )"; then
+                error_text="$(cat "${pr_error}")"
+                if grep -Eqi \
+                  'not permitted to create|create and approve pull requests|Resource not accessible by integration' \
+                  <<<"${error_text}"; then
+                  gh api --method DELETE \
+                    "repos/${GITHUB_REPOSITORY}/git/refs/heads/${release_branch}" \
+                    >/dev/null 2>&1 || true
+                  {
+                    echo "## Autonomous release paused safely"
+                    echo
+                    echo "GitHub Actions may not create the protected release pull request yet."
+                    echo "Enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** for this repository."
+                    echo "The release branch was removed; the next scheduled run will retry automatically."
+                  } >> "${GITHUB_STEP_SUMMARY}"
+                  echo "::warning::Repository setting prevents GITHUB_TOKEN from creating the release pull request."
+                  exit 0
+                fi
+                printf '%s\n' "${error_text}" >&2
+                exit 1
+              fi
               pr_number="$(jq -r '.number' <<<"${pr_json}")"
             fi
 

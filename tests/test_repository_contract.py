@@ -125,7 +125,7 @@ def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None
     assert dependabot.count("open-pull-requests-limit: 10") == 2
     assert dependabot.count("rebase-strategy: auto") == 2
     assert "pull_request_target:" in automerge
-    assert 'cron: "23 */6 * * *"' in automerge
+    assert 'cron: "23 5 * * *"' in automerge
     assert "dependabot[bot]" in automerge
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         assert f'"{workflow_name}"' in automerge
@@ -135,6 +135,8 @@ def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None
     assert "ruff check --fix ." in automerge
     assert "gh workflow run" in automerge
     assert "embi-autonomous-repair" in automerge
+    assert "issues/${pr_number}/comments" not in automerge
+    assert 'pulls/${pr_number}" \\\n              -f body=' in automerge
     assert "merge_method=squash" in automerge
     assert "pulls/${pr_number}/merge" in automerge
 
@@ -161,10 +163,11 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     assert "github.event.pull_request.head.sha || github.sha" in package
     for workflow in (quality, package, hacs, hassfest):
         assert "workflow_dispatch:" in workflow
-    assert "schedule:" in release and 'cron: "47 */6 * * *"' in release
+    assert "schedule:" in release and 'cron: "47 4 * * *"' in release
     assert "pull_request:" not in release
     assert "push:" not in release
     assert "prepare_automatic_release.py" in release
+    assert "Allow GitHub Actions to create and approve pull requests" in release
     assert "make_latest: true" in release
     assert "gh release download" in release
     assert "cmp dist/embi.zip" in release
