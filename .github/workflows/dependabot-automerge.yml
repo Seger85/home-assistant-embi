@@ -14,7 +14,7 @@ on:
         required: false
         type: string
   schedule:
-    - cron: "23 */6 * * *"
+    - cron: "23 5 * * *"
 
 concurrency:
   group: autonomous-pr-merge
@@ -48,15 +48,24 @@ jobs:
             local pr_number="$1"
             local head_sha="$2"
             local marker="<!-- embi-autonomous-repair:${head_sha} -->"
-            local comments
+            local pr current_body updated_body
 
-            comments="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments?per_page=100")"
-            if jq -e --arg marker "${marker}" '.[] | select(.body | contains($marker))' <<<"${comments}" >/dev/null; then
+            pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
+            current_body="$(jq -r '.body // ""' <<<"${pr}")"
+            if grep -Fq "${marker}" <<<"${current_body}"; then
               return 0
             fi
 
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments" \
-              -f body="${marker}"$'\nAutonomous maintenance exhausted transient retries and deterministic Ruff repair for this exact commit. The pull request remains safely unmerged and will be reconsidered automatically when its head commit changes. No user action is required.' 
+            updated_body="${current_body}"$'\n\n'"${marker}"
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}" \
+              -f body="${updated_body}" >/dev/null
+            {
+              echo "## Autonomous update paused safely"
+              echo
+              echo "Transient retries and deterministic Ruff repair were exhausted for PR #${pr_number} at ${head_sha}."
+              echo "The pull request remains unmerged and will be reconsidered automatically when its head changes."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            echo "::warning::Autonomous repair exhausted for PR #${pr_number}; no merge was attempted."
           }
 
           dispatch_validation() {
@@ -107,7 +116,7 @@ jobs:
           process_pr() {
             local pr_number="$1"
             local pr kind head_ref head_sha title response run status conclusion run_id run_attempt
-            local wait_seconds deadline waiting failed missing result marker comments repaired_sha
+            local wait_seconds deadline waiting failed missing result marker repaired_sha
             local validation_dispatched=0
             local retried=0
             local repaired=0
@@ -142,8 +151,8 @@ jobs:
             head_sha="$(jq -r '.head.sha' <<<"${pr}")"
             title="$(jq -r '.title' <<<"${pr}")"
             marker="<!-- embi-autonomous-repair:${head_sha} -->"
-            comments="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${pr_number}/comments?per_page=100")"
-            if jq -e --arg marker "${marker}" '.[] | select(.body | contains($marker))' <<<"${comments}" >/dev/null; then
+            if jq -e --arg marker "${marker}" '(.body // "") | contains($marker)' \
+              <<<"${pr}" >/dev/null; then
               return 0
             fi
 
