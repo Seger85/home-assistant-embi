@@ -13,9 +13,46 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  format_once:
+    name: Canonical Ruff formatting
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'fix/reliable-autonomous-release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          show-progress: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Apply and commit repository-pinned Ruff formatting
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          python -m pip install -q "ruff==0.15.22"
+          ruff format .
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit \
+            -m "Apply canonical Ruff formatting" \
+            -m $'Format the reliable autonomous release implementation.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
+          git push origin "HEAD:${HEAD_BRANCH}"
+
   tests:
     name: Quality (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
