@@ -228,7 +228,7 @@ def main() -> None:
         )
     for repair_contract in (
         "rerun-failed-jobs",
-        'ruff==${RUFF_VERSION}',
+        "ruff==${RUFF_VERSION}",
         "ruff format .",
         "ruff check --fix .",
         "gh workflow run",
