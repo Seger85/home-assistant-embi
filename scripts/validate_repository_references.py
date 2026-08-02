@@ -336,8 +336,8 @@ def main() -> None:
 
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    require(manifest["version"] == "1.0.3", "cleanup changed manifest version")
-    require('VERSION = "1.0.3"' in constants, "cleanup changed runtime version")
+    require(manifest["version"] == "1.0.4", "cleanup changed manifest version")
+    require('VERSION = "1.0.4"' in constants, "cleanup changed runtime version")
     print("Repository baseline and translation parity passed")
 
 

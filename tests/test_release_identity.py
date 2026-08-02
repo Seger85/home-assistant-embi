@@ -12,8 +12,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 def test_dependency_free_version_reader_matches_repository() -> None:
-    assert MODULE.manifest_version() == "1.0.3"
-    assert MODULE.constant_version() == "1.0.3"
+    assert MODULE.manifest_version() == "1.0.4"
+    assert MODULE.constant_version() == "1.0.4"
 
 
 def test_every_build_workflow_resolves_version_before_dependencies() -> None:

@@ -11,8 +11,8 @@ COMPONENT = ROOT / "custom_components" / "emby"
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    assert manifest["version"] == "1.0.3"
-    assert 'VERSION = "1.0.3"' in constants
+    assert manifest["version"] == "1.0.4"
+    assert 'VERSION = "1.0.4"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["requirements"] == ["pyEmby==1.10"]
 

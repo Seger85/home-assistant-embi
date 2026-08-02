@@ -4,6 +4,10 @@
 
 No unreleased product changes.
 
+## [1.0.4] - 2026-07-24
+
+- Publish all validated repository changes since v1.0.3 through the autonomous dependency and stable-release pipeline.
+
 ## [1.0.3] - 2026-07-20
 
 - Publish the complete post-cleanup maintenance baseline after the immutable `v1.0.2` tag was created before the final toolchain merge.
