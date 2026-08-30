@@ -129,7 +129,8 @@ def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None
     assert "dependabot[bot]" in automerge
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         assert f'"{workflow_name}"' in automerge
-    assert "rerun-failed-jobs" in automerge
+    assert "rerun-failed-jobs" not in automerge
+    assert '--repo "${GITHUB_REPOSITORY}"' in automerge
     assert "ruff==${RUFF_VERSION}" in automerge
     assert "ruff format ." in automerge
     assert "ruff check --fix ." in automerge
