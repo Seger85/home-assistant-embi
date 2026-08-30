@@ -81,7 +81,10 @@ def should_expose_player(
     technical_access: bool,
     users: Iterable[str] = (),
 ) -> bool:
-    """Apply exact hidden rules and canonical global visibility settings."""
+    """Keep active playback visible, otherwise apply saved visibility rules."""
+    if str(state or "").casefold() in ACTIVE_STATES:
+        return True
+
     hidden_exact = {str(value) for value in options.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
     hidden_devices = {str(value) for value in options.get(CONF_HIDDEN_WHOLE_DEVICES, [])}
     if player_key in hidden_exact:

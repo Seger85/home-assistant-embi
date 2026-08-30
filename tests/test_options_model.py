@@ -39,10 +39,17 @@ def test_visibility_uses_exact_rules_and_playback_mode() -> None:
     )
 
     options[CONF_HIDDEN_EXACT_PLAYERS] = [key]
-    assert not should_expose_player(
+    assert should_expose_player(
         player_key=key,
         reported_device_id="device-1",
         state="playing",
+        options=options,
+        technical_access=False,
+    )
+    assert not should_expose_player(
+        player_key=key,
+        reported_device_id="device-1",
+        state="idle",
         options=options,
         technical_access=False,
     )
