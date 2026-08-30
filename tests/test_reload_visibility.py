@@ -15,9 +15,11 @@ from custom_components.emby import (
 from custom_components.emby.api import EmbyDeviceRecord
 from custom_components.emby.const import (
     CONF_HIDDEN_EXACT_PLAYERS,
+    CONF_HIDDEN_WHOLE_DEVICES,
     CONF_REGISTRY_RECONCILIATION_FAILURES,
     CONF_REGISTRY_RECONCILIATION_VERSION,
     CONF_TECHNICAL_ACCESS_VISIBILITY,
+    CONF_USER_MASTER_VISIBILITY,
     REGISTRY_RECONCILIATION_VERSION,
 )
 from custom_components.emby.options_model import default_options, should_expose_player
@@ -114,6 +116,34 @@ def test_technical_master_and_exact_exception_contract() -> None:
         state="idle",
         options=options,
         technical_access=True,
+    )
+
+
+def test_active_playback_temporarily_overrides_saved_visibility_rules() -> None:
+    key = "5506ba01c080c682.Emby for Android"
+    options = default_options()
+    options[CONF_HIDDEN_EXACT_PLAYERS] = [key]
+    options[CONF_HIDDEN_WHOLE_DEVICES] = ["5506ba01c080c682"]
+    options[CONF_USER_MASTER_VISIBILITY] = {"Michael": False}
+    options[CONF_TECHNICAL_ACCESS_VISIBILITY] = False
+
+    for state in ("playing", "paused", "Playing", "Paused"):
+        assert should_expose_player(
+            player_key=key,
+            reported_device_id="5506ba01c080c682",
+            state=state,
+            options=options,
+            technical_access=True,
+            users=("Michael",),
+        )
+
+    assert not should_expose_player(
+        player_key=key,
+        reported_device_id="5506ba01c080c682",
+        state="idle",
+        options=options,
+        technical_access=True,
+        users=("Michael",),
     )
 
 
