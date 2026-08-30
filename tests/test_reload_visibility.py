@@ -120,30 +120,30 @@ def test_technical_master_and_exact_exception_contract() -> None:
 
 
 def test_active_playback_temporarily_overrides_saved_visibility_rules() -> None:
-    key = "5506ba01c080c682.Emby for Android"
+    key = "device-active.Emby App"
     options = default_options()
     options[CONF_HIDDEN_EXACT_PLAYERS] = [key]
-    options[CONF_HIDDEN_WHOLE_DEVICES] = ["5506ba01c080c682"]
-    options[CONF_USER_MASTER_VISIBILITY] = {"Michael": False}
+    options[CONF_HIDDEN_WHOLE_DEVICES] = ["device-active"]
+    options[CONF_USER_MASTER_VISIBILITY] = {"Viewer": False}
     options[CONF_TECHNICAL_ACCESS_VISIBILITY] = False
 
     for state in ("playing", "paused", "Playing", "Paused"):
         assert should_expose_player(
             player_key=key,
-            reported_device_id="5506ba01c080c682",
+            reported_device_id="device-active",
             state=state,
             options=options,
             technical_access=True,
-            users=("Michael",),
+            users=("Viewer",),
         )
 
     assert not should_expose_player(
         player_key=key,
-        reported_device_id="5506ba01c080c682",
+        reported_device_id="device-active",
         state="idle",
         options=options,
         technical_access=True,
-        users=("Michael",),
+        users=("Viewer",),
     )
 
 
