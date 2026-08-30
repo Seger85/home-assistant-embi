@@ -227,7 +227,7 @@ def main() -> None:
             f"required check missing: {workflow_name}",
         )
     for repair_contract in (
-        "rerun-failed-jobs",
+        '--repo "${GITHUB_REPOSITORY}"',
         "ruff==${RUFF_VERSION}",
         "ruff format .",
         "ruff check --fix .",
