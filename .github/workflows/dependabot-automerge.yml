@@ -124,7 +124,7 @@ jobs:
 
             pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
             kind="$(
-              jq -r '
+              jq -r --arg owner "${GITHUB_REPOSITORY_OWNER}" '
                 if (
                   .state == "open" and
                   .draft == false and
@@ -138,7 +138,7 @@ jobs:
                   .draft == false and
                   .base.ref == "main" and
                   .head.repo.full_name == .base.repo.full_name and
-                  .user.login == "github-actions[bot]" and
+                  .user.login == $owner and
                   (.head.ref | startswith("release/automatic-v"))
                 ) then "release"
                 else ""
@@ -267,14 +267,14 @@ jobs:
               [[ -n "${pr_number}" ]] || continue
               process_pr "${pr_number}"
             done < <(
-              gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
-                --jq '.[] |
+              gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" |
+                jq -r --arg owner "${GITHUB_REPOSITORY_OWNER}" '.[] |
                   select(
                     (
                       .user.login == "dependabot[bot]" and
                       (.head.ref | startswith("dependabot/"))
                     ) or (
-                      .user.login == "github-actions[bot]" and
+                      .user.login == $owner and
                       (.head.ref | startswith("release/automatic-v"))
                     )
                   ) |
