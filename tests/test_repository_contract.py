@@ -142,8 +142,8 @@ def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None
     assert "gh workflow run" in automerge
     assert "embi-autonomous-repair" in automerge
     assert "issues/${pr_number}/comments" not in automerge
-    assert 'pulls/${pr_number}" \\
-              -f body=' in automerge
+    assert 'pulls/${pr_number}"' in automerge
+    assert '-f body="${updated_body}"' in automerge
     assert "merge_method=squash" in automerge
     assert "pulls/${pr_number}/merge" in automerge
 
