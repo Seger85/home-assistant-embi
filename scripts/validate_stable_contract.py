@@ -71,21 +71,14 @@ def main() -> None:
         "HACS ZIP contract differs",
     )
 
+    require((COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing")
+    require("def migrate_options(" in legacy_migration, "published upgrade path missing")
     require(
-        (COMPONENT / "legacy_migration.py").exists(), "legacy upgrade isolation missing"
-    )
-    require(
-        "def migrate_options(" in legacy_migration, "published upgrade path missing"
-    )
-    require(
-        "from .legacy_migration import legacy_cleanup_completed, migrate_options"
-        in entry_setup,
+        "from .legacy_migration import legacy_cleanup_completed, migrate_options" in entry_setup,
         "entry setup does not use isolated legacy migration",
     )
 
-    require(
-        "def owned_exact(" in player_action_common, "exact ownership helper missing"
-    )
+    require("def owned_exact(" in player_action_common, "exact ownership helper missing")
     for symbol in (
         "class PlayerActionItem",
         "class PlayerActionResult",
@@ -94,9 +87,7 @@ def main() -> None:
         "def update_options_and_reload(",
         "def record_action(",
     ):
-        require(
-            symbol not in player_action_common, f"dead common helper remains: {symbol}"
-        )
+        require(symbol not in player_action_common, f"dead common helper remains: {symbol}")
     for symbol, content in (
         ("def async_enable_ha_entities(", player_actions),
         ("def async_reconcile_invisible_player_entities(", player_actions),
@@ -111,8 +102,7 @@ def main() -> None:
     require("SensorsOptionsMixin" in flow, "sensor flow not consolidated")
     require("menu_options = [" in flow and '"sensors",' in flow, "sensor menu missing")
     require(
-        "selector.SelectSelectorConfig" in sensor_options
-        and "multiple=True" in sensor_options,
+        "selector.SelectSelectorConfig" in sensor_options and "multiple=True" in sensor_options,
         "stable sensor multi-select missing",
     )
     require(
@@ -151,8 +141,7 @@ def main() -> None:
         "fresh-platform visibility fallback missing",
     )
     require(
-        "await _async_enforce_player_visibility(hass, entry, migrated_options)"
-        in entry_setup,
+        "await _async_enforce_player_visibility(hass, entry, migrated_options)" in entry_setup,
         "visibility invariant is not enforced on every setup",
     )
     require(
@@ -170,14 +159,11 @@ def main() -> None:
         "no-op reconciliation diagnostics refresh missing",
     )
     require("state_is_restored" in reconciliation, "stale-restored handling missing")
-    require(
-        '"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing"
-    )
+    require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
     require(
         'and getattr(entity, "domain", None) == "media_player"' in player_actions
         and 'and getattr(entity, "platform", None) == DOMAIN' in player_actions
-        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id'
-        in player_actions,
+        and 'and getattr(entity, "config_entry_id", None) == entry.entry_id' in player_actions,
         "exact registry ownership contract missing",
     )
     require(
@@ -250,9 +236,7 @@ def main() -> None:
         "gh workflow run",
         "embi-autonomous-repair",
     ):
-        require(
-            repair_contract in automerge, f"repair contract missing: {repair_contract}"
-        )
+        require(repair_contract in automerge, f"repair contract missing: {repair_contract}")
     require(
         "issues/${pr_number}/comments" not in automerge,
         "autonomous repair still posts noisy pull-request comments",
