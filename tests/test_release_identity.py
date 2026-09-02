@@ -38,7 +38,14 @@ def test_stable_publisher_is_protected_sha_bound_regular_latest_release() -> Non
     assert "Pin candidate release commit" in workflow
     assert "git push origin HEAD:main" not in workflow
     assert "git push --force-with-lease origin" in workflow
-    assert "Allow GitHub Actions to create and approve pull requests" in workflow
+    assert "secrets.EMBI_AUTOMATION_PAT" in workflow
+    assert 'gh api user --jq .login' in workflow
+    assert 'GITHUB_REPOSITORY_OWNER' in workflow
+    assert 'select(.user.login == $owner)' in workflow
+    assert 'select(.merged_at == null and .user.login == $owner)' in workflow
+    assert 'git config user.name "${GITHUB_REPOSITORY_OWNER}"' in workflow
+    assert 'git config user.email "${GITHUB_REPOSITORY_OWNER}@users.noreply.github.com"' in workflow
+    assert "Allow GitHub Actions to create and approve pull requests" not in workflow
     assert "git tag -a" in workflow
     assert "prerelease: false" in workflow
     assert "draft: false" in workflow
