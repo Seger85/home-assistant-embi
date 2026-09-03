@@ -4,6 +4,14 @@
 
 No unreleased product changes.
 
+## [1.0.6] - 2026-09-02
+
+- Publish all validated repository changes since v1.0.5 through the autonomous dependency and stable-release pipeline.
+
+## [1.0.5] - 2026-08-30
+
+- Publish all validated repository changes since v1.0.4 through the autonomous dependency and stable-release pipeline.
+
 ## [1.0.4] - 2026-07-24
 
 - Publish all validated repository changes since v1.0.3 through the autonomous dependency and stable-release pipeline.

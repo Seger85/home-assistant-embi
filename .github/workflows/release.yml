@@ -20,14 +20,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.EMBI_AUTOMATION_PAT }}
     steps:
+      - name: Verify trusted automation identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN}"
+          test "$(gh api user --jq .login)" = "${GITHUB_REPOSITORY_OWNER}"
+
       - name: Check out current main
         uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
           show-progress: false
+          token: ${{ secrets.EMBI_AUTOMATION_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -68,18 +76,37 @@ jobs:
             release_branch="release/automatic-v${release_version}"
             owner="${GITHUB_REPOSITORY_OWNER}"
 
-            open_pr="$(
+            open_pr_json="$(
               gh api --method GET "repos/${GITHUB_REPOSITORY}/pulls" \
                 -f state=open \
                 -f base=main \
                 -f head="${owner}:${release_branch}" \
-                -f per_page=100 \
-                --jq '.[0].number // empty'
+                -f per_page=100
+            )"
+            open_pr="$(
+              jq -r --arg owner "${owner}" \
+                '[.[] | select(.user.login == $owner)] | first | .number // empty' \
+                <<<"${open_pr_json}"
             )"
             if [[ -n "${open_pr}" ]]; then
-              echo "Release pull request #${open_pr} is already open."
+              echo "Trusted release pull request #${open_pr} is already open."
               gh workflow run dependabot-automerge.yml --ref main -f pr_number="${open_pr}"
               exit 0
+            fi
+
+            untrusted_open_pr="$(
+              jq -r --arg owner "${owner}" \
+                '[.[] | select(.user.login != $owner)] | first | .number // empty' \
+                <<<"${open_pr_json}"
+            )"
+            if [[ -n "${untrusted_open_pr}" ]]; then
+              echo "Closing stale release pull request #${untrusted_open_pr} created by an untrusted automation identity."
+              gh api --method PATCH \
+                "repos/${GITHUB_REPOSITORY}/pulls/${untrusted_open_pr}" \
+                -f state=closed >/dev/null
+              gh api --method DELETE \
+                "repos/${GITHUB_REPOSITORY}/git/refs/heads/${release_branch}" \
+                >/dev/null 2>&1 || true
             fi
 
             prepared_version="$(
@@ -89,8 +116,8 @@ jobs:
             test "${prepared_version}" = "${release_version}"
             test "$(python -I scripts/read_version.py)" = "${release_version}"
 
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config user.name "${GITHUB_REPOSITORY_OWNER}"
+            git config user.email "${GITHUB_REPOSITORY_OWNER}@users.noreply.github.com"
             git checkout -B "${release_branch}"
             git add --all
             git diff --cached --quiet && {
@@ -110,7 +137,8 @@ jobs:
                 -f per_page=100
             )"
             existing_pr="$(
-              jq -r '[.[] | select(.merged_at == null)] | first | .number // empty' \
+              jq -r --arg owner "${owner}" \
+                '[.[] | select(.merged_at == null and .user.login == $owner)] | first | .number // empty' \
                 <<<"${existing_pr_json}"
             )"
 
@@ -119,6 +147,7 @@ jobs:
                 "repos/${GITHUB_REPOSITORY}/pulls/${existing_pr}" \
                 -f state=open >/dev/null
               pr_number="${existing_pr}"
+              gh workflow run dependabot-automerge.yml --ref main -f pr_number="${pr_number}"
             else
               pr_error="$(mktemp)"
               if ! pr_json="$(
@@ -130,22 +159,16 @@ jobs:
                   2>"${pr_error}"
               )"; then
                 error_text="$(cat "${pr_error}")"
-                if grep -Eqi \
-                  'not permitted to create|create and approve pull requests|Resource not accessible by integration' \
-                  <<<"${error_text}"; then
-                  gh api --method DELETE \
-                    "repos/${GITHUB_REPOSITORY}/git/refs/heads/${release_branch}" \
-                    >/dev/null 2>&1 || true
-                  {
-                    echo "## Autonomous release paused safely"
-                    echo
-                    echo "GitHub Actions may not create the protected release pull request yet."
-                    echo "Enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** for this repository."
-                    echo "The release branch was removed; the next scheduled run will retry automatically."
-                  } >> "${GITHUB_STEP_SUMMARY}"
-                  echo "::warning::Repository setting prevents GITHUB_TOKEN from creating the release pull request."
-                  exit 0
-                fi
+                gh api --method DELETE \
+                  "repos/${GITHUB_REPOSITORY}/git/refs/heads/${release_branch}" \
+                  >/dev/null 2>&1 || true
+                {
+                  echo "## Autonomous release stopped safely"
+                  echo
+                  echo "The trusted owner identity could not create the protected release pull request."
+                  echo "Verify the repository secret **EMBI_AUTOMATION_PAT** and its repository permissions."
+                  echo "The release branch was removed; the next scheduled run can retry cleanly after the credential is corrected."
+                } >> "${GITHUB_STEP_SUMMARY}"
                 printf '%s\n' "${error_text}" >&2
                 exit 1
               fi
@@ -153,7 +176,6 @@ jobs:
             fi
 
             echo "Prepared protected release pull request #${pr_number}."
-            gh workflow run dependabot-automerge.yml --ref main -f pr_number="${pr_number}"
             exit 0
           fi
 
@@ -246,8 +268,8 @@ jobs:
           RELEASE_VERSION: ${{ steps.plan.outputs.version }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "${GITHUB_REPOSITORY_OWNER}"
+          git config user.email "${GITHUB_REPOSITORY_OWNER}@users.noreply.github.com"
           git tag -a "${RELEASE_TAG}" "${RELEASE_SHA}" -m "EMBi ${RELEASE_VERSION}"
           git push origin "refs/tags/${RELEASE_TAG}"
 

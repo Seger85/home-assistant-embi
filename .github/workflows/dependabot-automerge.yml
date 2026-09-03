@@ -73,7 +73,7 @@ jobs:
             local workflow_file
 
             for workflow_file in "${workflow_files[@]}"; do
-              gh workflow run "${workflow_file}" --ref "${head_ref}"
+              gh workflow run "${workflow_file}" --repo "${GITHUB_REPOSITORY}" --ref "${head_ref}"
             done
           }
 
@@ -124,7 +124,7 @@ jobs:
 
             pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
             kind="$(
-              jq -r '
+              jq -r --arg owner "${GITHUB_REPOSITORY_OWNER}" '
                 if (
                   .state == "open" and
                   .draft == false and
@@ -138,7 +138,7 @@ jobs:
                   .draft == false and
                   .base.ref == "main" and
                   .head.repo.full_name == .base.repo.full_name and
-                  .user.login == "github-actions[bot]" and
+                  .user.login == $owner and
                   (.head.ref | startswith("release/automatic-v"))
                 ) then "release"
                 else ""
@@ -218,7 +218,7 @@ jobs:
                   gh api --method DELETE \
                     "repos/${GITHUB_REPOSITORY}/git/refs/heads/${head_ref}" >/dev/null 2>&1 || true
                   sleep 5
-                  gh workflow run release.yml --ref main
+                  gh workflow run release.yml --repo "${GITHUB_REPOSITORY}" --ref main
                 fi
                 return 0
               fi
@@ -230,10 +230,8 @@ jobs:
                 if (( wait_seconds == 0 )); then
                   return 0
                 fi
-              elif (( failed == 1 && retried == 0 && ${#failed_run_ids[@]} > 0 )); then
-                for run_id in "${failed_run_ids[@]}"; do
-                  gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/rerun-failed-jobs"
-                done
+              elif (( failed == 1 && retried == 0 )); then
+                dispatch_validation "${head_ref}"
                 retried=1
                 waiting=1
               elif (( failed == 1 && repaired == 0 )); then
@@ -269,14 +267,14 @@ jobs:
               [[ -n "${pr_number}" ]] || continue
               process_pr "${pr_number}"
             done < <(
-              gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
-                --jq '.[] |
+              gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" |
+                jq -r --arg owner "${GITHUB_REPOSITORY_OWNER}" '.[] |
                   select(
                     (
                       .user.login == "dependabot[bot]" and
                       (.head.ref | startswith("dependabot/"))
                     ) or (
-                      .user.login == "github-actions[bot]" and
+                      .user.login == $owner and
                       (.head.ref | startswith("release/automatic-v"))
                     )
                   ) |

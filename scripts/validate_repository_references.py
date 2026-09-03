@@ -221,13 +221,18 @@ def main() -> None:
     require("pull_request_target:" in automerge, "Dependabot event trigger missing")
     require('cron: "23 5 * * *"' in automerge, "daily autonomous recovery missing")
     require("dependabot[bot]" in automerge, "Dependabot actor gate missing")
+    require(
+        '--arg owner "${GITHUB_REPOSITORY_OWNER}"' in automerge
+        and ".user.login == $owner" in automerge,
+        "trusted release actor gate missing",
+    )
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         require(
             f'"{workflow_name}"' in automerge,
             f"required check missing: {workflow_name}",
         )
     for repair_contract in (
-        "rerun-failed-jobs",
+        '--repo "${GITHUB_REPOSITORY}"',
         "ruff==${RUFF_VERSION}",
         "ruff format .",
         "ruff check --fix .",
@@ -267,9 +272,21 @@ def main() -> None:
         "direct protected-main push remains",
     )
     require(
-        "Allow GitHub Actions to create and approve pull requests" in release
-        and "Resource not accessible by integration" in release,
-        "release pull-request permission handling missing",
+        "secrets.EMBI_AUTOMATION_PAT" in release
+        and "gh api user --jq .login" in release
+        and "GITHUB_REPOSITORY_OWNER" in release,
+        "trusted release automation identity missing",
+    )
+    require(
+        "select(.user.login == $owner)" in release
+        and "select(.merged_at == null and .user.login == $owner)" in release,
+        "trusted release pull-request reuse gate missing",
+    )
+    require(
+        'git config user.name "${GITHUB_REPOSITORY_OWNER}"' in release
+        and 'git config user.email "${GITHUB_REPOSITORY_OWNER}@users.noreply.github.com"'
+        in release,
+        "trusted release git identity missing",
     )
     require(
         "git tag -a" in release and "make_latest: true" in release,
@@ -336,8 +353,8 @@ def main() -> None:
 
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    require(manifest["version"] == "1.0.4", "cleanup changed manifest version")
-    require('VERSION = "1.0.4"' in constants, "cleanup changed runtime version")
+    require(manifest["version"] == "1.0.6", "cleanup changed manifest version")
+    require('VERSION = "1.0.6"' in constants, "cleanup changed runtime version")
     print("Repository baseline and translation parity passed")
 
 

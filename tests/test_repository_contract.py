@@ -11,8 +11,8 @@ COMPONENT = ROOT / "custom_components" / "emby"
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    assert manifest["version"] == "1.0.4"
-    assert 'VERSION = "1.0.4"' in constants
+    assert manifest["version"] == "1.0.6"
+    assert 'VERSION = "1.0.6"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["requirements"] == ["pyEmby==1.10"]
 
@@ -103,6 +103,9 @@ def test_documentation_is_current_and_has_one_release_source() -> None:
     assert "embi.zip" in releasing and "embi.zip.sha256" in releasing
     assert "HACS can install an earlier tagged EMBi version" in releasing
     assert "No routine review, confirmation, comment, push" in releasing
+    assert "EMBI_AUTOMATION_PAT" in releasing
+    assert "first_time_contributors" in releasing
+    assert "default `GITHUB_TOKEN` permission is read-only" in releasing
     for removed in (
         "docs/PROJECT_STATE.md",
         "docs/development.md",
@@ -127,16 +130,20 @@ def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None
     assert "pull_request_target:" in automerge
     assert 'cron: "23 5 * * *"' in automerge
     assert "dependabot[bot]" in automerge
+    assert '--arg owner "${GITHUB_REPOSITORY_OWNER}"' in automerge
+    assert ".user.login == $owner" in automerge
     for workflow_name in ("Quality", "Test package", "HACS validation", "Hassfest"):
         assert f'"{workflow_name}"' in automerge
-    assert "rerun-failed-jobs" in automerge
+    assert "rerun-failed-jobs" not in automerge
+    assert '--repo "${GITHUB_REPOSITORY}"' in automerge
     assert "ruff==${RUFF_VERSION}" in automerge
     assert "ruff format ." in automerge
     assert "ruff check --fix ." in automerge
     assert "gh workflow run" in automerge
     assert "embi-autonomous-repair" in automerge
     assert "issues/${pr_number}/comments" not in automerge
-    assert 'pulls/${pr_number}" \\\n              -f body=' in automerge
+    assert 'pulls/${pr_number}"' in automerge
+    assert '-f body="${updated_body}"' in automerge
     assert "merge_method=squash" in automerge
     assert "pulls/${pr_number}/merge" in automerge
 
@@ -167,7 +174,10 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     assert "pull_request:" not in release
     assert "push:" not in release
     assert "prepare_automatic_release.py" in release
-    assert "Allow GitHub Actions to create and approve pull requests" in release
+    assert "secrets.EMBI_AUTOMATION_PAT" in release
+    assert "gh api user --jq .login" in release
+    assert "select(.user.login == $owner)" in release
+    assert "Allow GitHub Actions to create and approve pull requests" not in release
     assert "make_latest: true" in release
     assert "gh release download" in release
     assert "cmp dist/embi.zip" in release

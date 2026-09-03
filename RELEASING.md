@@ -18,9 +18,11 @@ EMBi is maintained without routine manual approval:
 
 No routine review, confirmation, comment, push, release branch, release pull request, or manual merge is required.
 
-## One-time repository prerequisite
+## Repository security and automation identity
 
-The repository setting **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** must be enabled. Without it, the repository `GITHUB_TOKEN` cannot create the protected release pull request. The publisher detects this condition, removes the temporary branch, records a warning in the workflow summary, and exits safely without publishing or repeatedly producing a failed run.
+The stable publisher uses the repository Actions secret `EMBI_AUTOMATION_PAT`. It must authenticate as the repository owner and provide the repository permissions required to create the release branch, pull request, tag, and stable release. The workflow verifies that identity before it checks out or changes the repository and stops immediately if the credential is missing or belongs to another account. The secret is used only by the scheduled or explicitly dispatched publisher on trusted `main`; pull-request validation and autonomous merge continue to use the short-lived repository `GITHUB_TOKEN`.
+
+Repository Actions defaults remain deliberately restrictive: the default `GITHUB_TOKEN` permission is read-only and GitHub Actions is not allowed to submit approving pull-request reviews. Workflows that need write access declare it explicitly. The fork pull-request workflow approval policy is `first_time_contributors`: first-time external contributors still require maintainer approval before their code can execute in `pull_request` workflows, while established Dependabot updates do not require recurring manual approval.
 
 ## Dependency-safe validation order
 
@@ -68,7 +70,7 @@ The stable publisher runs once daily as a recovery mechanism and also supports a
 
 The publisher supports two phases:
 
-1. If the current version is already tagged and `main` contains newer validated changes, it prepares the next patch version with `scripts/prepare_automatic_release.py` on `release/automatic-vX.Y.Z`, creates or reopens a release pull request, and dispatches the autonomous merge workflow.
+1. If the current version is already tagged and `main` contains newer validated changes, it prepares the next patch version with `scripts/prepare_automatic_release.py` on `release/automatic-vX.Y.Z` and creates the protected release pull request with the trusted repository-owner identity. An already-open or closed release pull request is reused only when it was created by that same trusted owner; stale candidates from another automation identity are closed and replaced.
 2. The autonomous merge workflow dispatches all four required validations for that exact release branch, retries transient failures, applies deterministic Ruff repair when possible, and squash-merges only after complete success.
 3. After the protected release pull request is merged, the merge workflow dispatches the publisher again.
 4. If the version on `main` has no tag, the publisher validates that exact protected merge commit, builds the assets, creates the tag, and publishes the stable release.
@@ -79,7 +81,7 @@ The publisher must:
 2. resolve the current version dependency-free
 3. verify that the current release tag is an ancestor of the new candidate
 4. prepare the next patch identity and dated changelog section on an automation-owned branch
-5. create or reopen a protected release pull request instead of bypassing repository rules
+5. create or safely reuse a protected release pull request authored by the trusted repository owner instead of bypassing repository rules
 6. require Quality, Test package, HACS validation, and Hassfest on the exact release candidate
 7. merge the release candidate through the normal protected-branch pull-request path
 8. revalidate the resulting `main` commit before publication
