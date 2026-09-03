@@ -34,7 +34,6 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       EVENT_NAME: ${{ github.event_name }}
       REQUESTED_PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number || '' }}
-      RUFF_VERSION: "0.15.22"
     steps:
       - name: Repair, validate and squash-merge
         shell: bash
@@ -57,8 +56,7 @@ jobs:
             fi
 
             updated_body="${current_body}"$'\n\n'"${marker}"
-            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}" \
-              -f body="${updated_body}" >/dev/null
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}"               -f body="${updated_body}" >/dev/null
             {
               echo "## Autonomous update paused safely"
               echo
@@ -89,6 +87,8 @@ jobs:
             git -C "${workdir}" checkout -B "repair-${pr_number}" FETCH_HEAD
             test "$(git -C "${workdir}" rev-parse HEAD)" = "${head_sha}"
 
+            RUFF_VERSION="$(sed -n 's/^ruff==//p' "${workdir}/requirements_test.txt")"
+            test -n "${RUFF_VERSION}"
             python -m pip install -q "ruff==${RUFF_VERSION}"
             (
               cd "${workdir}"
@@ -104,9 +104,7 @@ jobs:
             git -C "${workdir}" config user.name "github-actions[bot]"
             git -C "${workdir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git -C "${workdir}" add --all
-            git -C "${workdir}" commit \
-              -m "Apply deterministic maintenance repair" \
-              -m $'Run the repository-pinned Ruff formatter and safe lint fixes.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
+            git -C "${workdir}" commit               -m "Apply deterministic maintenance repair"               -m $'Run the repository-pinned Ruff formatter and safe lint fixes.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
             git -C "${workdir}" push origin "HEAD:${head_ref}"
             new_sha="$(git -C "${workdir}" rev-parse HEAD)"
             rm -rf "${workdir}"
@@ -151,8 +149,7 @@ jobs:
             head_sha="$(jq -r '.head.sha' <<<"${pr}")"
             title="$(jq -r '.title' <<<"${pr}")"
             marker="<!-- embi-autonomous-repair:${head_sha} -->"
-            if jq -e --arg marker "${marker}" '(.body // "") | contains($marker)' \
-              <<<"${pr}" >/dev/null; then
+            if jq -e --arg marker "${marker}" '(.body // "") | contains($marker)'               <<<"${pr}" >/dev/null; then
               return 0
             fi
 
@@ -206,17 +203,12 @@ jobs:
                 ' <<<"${pr}" >/dev/null || return 0
 
                 result="$(
-                  gh api --method PUT "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/merge" \
-                    -f sha="${head_sha}" \
-                    -f merge_method=squash \
-                    -f commit_title="${title} (#${pr_number})" \
-                    -f commit_message=$'Automatically merged after all required checks passed.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
+                  gh api --method PUT "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/merge"                     -f sha="${head_sha}"                     -f merge_method=squash                     -f commit_title="${title} (#${pr_number})"                     -f commit_message=$'Automatically merged after all required checks passed.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
                 )"
                 jq -e '.merged == true' <<<"${result}" >/dev/null
 
                 if [[ "${kind}" == "release" ]]; then
-                  gh api --method DELETE \
-                    "repos/${GITHUB_REPOSITORY}/git/refs/heads/${head_ref}" >/dev/null 2>&1 || true
+                  gh api --method DELETE                     "repos/${GITHUB_REPOSITORY}/git/refs/heads/${head_ref}" >/dev/null 2>&1 || true
                   sleep 5
                   gh workflow run release.yml --repo "${GITHUB_REPOSITORY}" --ref main
                 fi
