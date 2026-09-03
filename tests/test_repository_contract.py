@@ -8,6 +8,21 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
 
 
+def _parse_requirement_constraints(text: str) -> dict[str, str]:
+    requirements: dict[str, str] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = re.fullmatch(r"([A-Za-z0-9_.-]+)(.*)", line)
+        assert match is not None, f"Unsupported requirement format: {line}"
+        name = match.group(1).lower().replace("_", "-")
+        constraints = match.group(2)
+        assert name not in requirements, f"Duplicate requirement: {name}"
+        requirements[name] = constraints
+    return requirements
+
+
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
@@ -38,13 +53,24 @@ def test_legal_hacs_and_tooling_baseline() -> None:
     }
     assert 'target-version = "py313"' in pyproject
     assert 'select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]' in pyproject
-    assert "aiohttp>=3.14.2" in requirements
-    assert "mypy>=2.3.0,<3" in requirements
-    assert "pytest>=9.1.1" in requirements
-    assert "pytest-asyncio>=1.4.0" in requirements
-    assert "PyYAML>=6.0.3" in requirements
-    assert "ruff==0.15.22" in requirements
-    assert "voluptuous>=0.16.0" in requirements
+    requirement_constraints = _parse_requirement_constraints(requirements)
+    assert set(requirement_constraints) == {
+        "aiohttp",
+        "mypy",
+        "pytest",
+        "pytest-asyncio",
+        "pyyaml",
+        "ruff",
+        "voluptuous",
+    }
+    assert requirement_constraints["aiohttp"].startswith(">=")
+    assert requirement_constraints["mypy"].startswith(">=")
+    assert ",<3" in requirement_constraints["mypy"]
+    assert requirement_constraints["pytest"].startswith(">=")
+    assert requirement_constraints["pytest-asyncio"].startswith(">=")
+    assert requirement_constraints["pyyaml"].startswith(">=")
+    assert requirement_constraints["ruff"].startswith("==")
+    assert requirement_constraints["voluptuous"].startswith(">=")
 
 
 def test_runtime_and_normal_tests_are_version_neutral() -> None:
@@ -137,6 +163,9 @@ def test_dependabot_runs_on_day_six_and_repairs_before_validated_merge() -> None
     assert "rerun-failed-jobs" not in automerge
     assert '--repo "${GITHUB_REPOSITORY}"' in automerge
     assert "ruff==${RUFF_VERSION}" in automerge
+    assert "sed -n 's/^ruff==//p'" in automerge
+    assert "${workdir}/requirements_test.txt" in automerge
+    assert 'RUFF_VERSION: "0.15.22"' not in automerge
     assert "ruff format ." in automerge
     assert "ruff check --fix ." in automerge
     assert "gh workflow run" in automerge
