@@ -26,8 +26,8 @@ def _parse_requirement_constraints(text: str) -> dict[str, str]:
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    assert manifest["version"] == "1.0.6"
-    assert 'VERSION = "1.0.6"' in constants
+    assert manifest["version"] == "1.0.7"
+    assert 'VERSION = "1.0.7"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["requirements"] == ["pyEmby==1.10"]
 
