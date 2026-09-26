@@ -4,6 +4,12 @@
 
 No unreleased product changes.
 
+## [1.2.1] - 2026-09-26
+
+- Wartungsupdate auf Basis aller geprüften Änderungen seit v1.2.0.
+- Aktualisierte Abhängigkeiten und Prüfwerkzeuge. Details stehen in den verknüpften Änderungen auf GitHub.
+- Bestehende Player, Sensoren und Einstellungen werden beim Update beibehalten.
+
 ## [1.2.0] - 2026-09-26
 
 ### English
