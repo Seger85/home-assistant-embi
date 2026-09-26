@@ -5,13 +5,11 @@ hold_action:
   action: none
 icon: mdi:cast-connected
 multiline_secondary: true
-primary: '{% set count = states(''sensor.emby_active_players'') %}
-
-  {% if count in [''unknown'', ''unavailable''] %}Aktive Emby-Player derzeit nicht verfügbar
-
+primary: |-
+  {% set count = states('sensor.emby_active_players') %}
+  {% if count in ['unknown', 'unavailable'] %}Aktive Emby-Player derzeit nicht verfügbar
   {% elif count | int == 1 %}1 Emby-Player ist aktiv
-
-  {% else %}{{ count | int }} Emby-Player sind aktiv{% endif %}'
+  {% else %}{{ count | int }} Emby-Player sind aktiv{% endif %}
 secondary: Was läuft gerade? Wiedergabe und Pause im Überblick.
 tap_action:
   action: more-info
