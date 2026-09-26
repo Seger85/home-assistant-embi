@@ -25,7 +25,7 @@ _SENSOR_LABELS = {
     SENSOR_TV_SERIES_COUNT: ("Serien", "TV series"),
     SENSOR_TV_EPISODE_COUNT: ("Episoden", "TV episodes"),
     SENSOR_ALBUM_COUNT: ("Alben", "Albums"),
-    SENSOR_SONG_COUNT: ("Songs", "Songs"),
+    SENSOR_SONG_COUNT: ("Musiktitel", "Songs"),
     SENSOR_USERS_WATCHING: ("Aktuell schauende Benutzer", "Users currently watching"),
 }
 

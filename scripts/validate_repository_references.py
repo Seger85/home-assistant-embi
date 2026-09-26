@@ -109,6 +109,8 @@ def main() -> None:
 
     expected_scripts = {
         "build_package.py",
+        "extract_release_notes.py",
+        "verify_published_release.py",
         "prepare_automatic_release.py",
         "read_version.py",
         "secret_scan.py",
@@ -353,8 +355,8 @@ def main() -> None:
 
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    require(manifest["version"] == "1.0.8", "cleanup changed manifest version")
-    require('VERSION = "1.0.8"' in constants, "cleanup changed runtime version")
+    require(manifest["version"] == "1.1.0", "cleanup changed manifest version")
+    require('VERSION = "1.1.0"' in constants, "cleanup changed runtime version")
     print("Repository baseline and translation parity passed")
 
 

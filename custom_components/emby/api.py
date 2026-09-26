@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from aiohttp import ClientError, ClientSession, ClientTimeout
+from aiohttp import ClientError, ClientResponseError, ClientSession, ClientTimeout
 
 from .const import (
     SENSOR_ALBUM_COUNT,
@@ -16,10 +15,15 @@ from .const import (
     SENSOR_TV_SERIES_COUNT,
     SENSOR_USERS_WATCHING,
 )
+from .session_state import UNKNOWN, session_activity, validate_sessions
 
 
 class EmbyApiError(Exception):
     """Base exception for Emby API errors."""
+
+
+class EmbyDeleteUncertain(EmbyApiError):
+    """The request may have reached the server; never replay it automatically."""
 
 
 class EmbyAuthError(EmbyApiError):
@@ -28,7 +32,7 @@ class EmbyAuthError(EmbyApiError):
 
 def _non_negative_int(value: Any, field: str) -> int:
     """Validate one Emby counter without manufacturing false zero values."""
-    if isinstance(value, bool):
+    if isinstance(value, bool) or (isinstance(value, float) and not value.is_integer()):
         raise EmbyApiError(f"Invalid {field} value from /Items/Counts")
     try:
         parsed = int(value)
@@ -144,6 +148,7 @@ class EmbyDeviceRecord:
     supports_playback: bool | None = None
     api_only: bool | None = None
     playback_observed: bool = False
+    reported_identity_known: bool = True
 
     @classmethod
     def from_api(cls, data: dict[str, Any]) -> EmbyDeviceRecord:
@@ -151,7 +156,7 @@ class EmbyDeviceRecord:
 
         Emby exposes two different identifiers:
         - Id: the server-side device-history record used by DELETE /Devices
-        - ReportedDeviceId: the client identity used by pyemby and HA unique IDs
+        - ReportedDeviceId: the client identity used by Emby sessions and published HA identities
         """
         record_id = str(data.get("Id") or "")
         reported_device_id = str(data.get("ReportedDeviceId") or record_id)
@@ -195,11 +200,13 @@ class EmbyDeviceRecord:
             supports_playback=supports_playback,
             api_only=api_only,
             playback_observed=playback_observed,
+            reported_identity_known=isinstance(data.get("ReportedDeviceId"), str)
+            and bool(data["ReportedDeviceId"]),
         )
 
     @property
     def player_key(self) -> str:
-        """Return the key used by pyemby and existing HA entity unique IDs."""
+        """Return the stable session key used by existing EMBi players."""
         if self.app_name:
             return f"{self.reported_device_id}.{self.app_name}"
         return self.reported_device_id
@@ -288,8 +295,26 @@ class EmbyApiClient:
                 return text or None
         except EmbyAuthError:
             raise
-        except (ClientError, TimeoutError) as err:
-            raise EmbyApiError(str(err)) from err
+        except (ClientError, TimeoutError, ValueError, TypeError) as err:
+            # Do not include URLs, tokens or server response bodies in public errors.
+            raise EmbyApiError("The Emby request failed or returned invalid data") from err
+
+    async def async_get_image(self, url: str) -> tuple[bytes | None, str | None]:
+        """Fetch only our own artwork URL without exposing authentication in state."""
+        if not url.startswith(f"{self.base_url}/Items/"):
+            return None, None
+        try:
+            async with self._session.get(
+                url, headers=self._headers, timeout=ClientTimeout(total=15), allow_redirects=False
+            ) as response:
+                if response.status != 200:
+                    return None, None
+                content_type = response.headers.get("Content-Type", "").split(";", 1)[0]
+                if not content_type.startswith("image/"):
+                    return None, None
+                return await response.read(), content_type
+        except (ClientError, TimeoutError):
+            return None, None
 
     async def async_validate(self) -> dict[str, Any]:
         """Validate connectivity and credentials."""
@@ -302,31 +327,32 @@ class EmbyApiClient:
         """Return normalized device-history records."""
         data = await self._request("GET", "/Devices")
         if isinstance(data, dict):
-            raw_items = data.get("Items", [])
-            items = raw_items if isinstance(raw_items, list) else []
+            items = data.get("Items")
         elif isinstance(data, list):
             items = data
         else:
-            items = []
+            raise EmbyApiError("Unexpected response from /Devices")
 
-        records = [
-            EmbyDeviceRecord.from_api(item)
+        if not isinstance(items, list) or any(
+            not isinstance(item, dict) or not isinstance(item.get("Id"), str) or not item["Id"]
             for item in items
-            if isinstance(item, dict) and item.get("Id")
-        ]
+        ):
+            raise EmbyApiError("Incomplete response from /Devices")
+
+        records = [EmbyDeviceRecord.from_api(item) for item in items]
+        if len({record.record_id for record in records}) != len(records):
+            raise EmbyApiError("Ambiguous response from /Devices")
         return sorted(records, key=lambda item: item.label.casefold())
 
-    async def async_get_sensor_data(self) -> dict[str, int]:
-        """Return library counters and unique users with active playback."""
-        counts_raw, sessions_raw = await asyncio.gather(
-            self._request("GET", "/Items/Counts"),
-            self._request("GET", "/Sessions"),
-        )
-        if not isinstance(counts_raw, dict):
-            raise EmbyApiError("Unexpected response from /Items/Counts")
-        if not isinstance(sessions_raw, list):
-            raise EmbyApiError("Unexpected response from /Sessions")
+    async def async_get_sessions(self) -> list[dict[str, Any]]:
+        """Return a validated current session inventory, without caching for deletion."""
+        try:
+            return validate_sessions(await self._request("GET", "/Sessions"))
+        except ValueError as err:
+            raise EmbyApiError("Incomplete response from /Sessions") from err
 
+    async def async_get_library_counts(self, keys: set[str]) -> dict[str, int]:
+        """Query library counters only when at least one library sensor is enabled."""
         mapping = {
             SENSOR_MOVIE_COUNT: "MovieCount",
             SENSOR_TV_SERIES_COUNT: "SeriesCount",
@@ -334,27 +360,52 @@ class EmbyApiClient:
             SENSOR_ALBUM_COUNT: "AlbumCount",
             SENSOR_SONG_COUNT: "SongCount",
         }
-        values = {
-            key: _non_negative_int(counts_raw.get(api_key), api_key)
-            for key, api_key in mapping.items()
-        }
+        selected = keys & mapping.keys()
+        if not selected:
+            return {}
+        raw = await self._request("GET", "/Items/Counts")
+        if not isinstance(raw, dict):
+            raise EmbyApiError("Unexpected response from /Items/Counts")
+        return {key: _non_negative_int(raw.get(mapping[key]), mapping[key]) for key in selected}
 
-        watching_users: set[str] = set()
-        for session in sessions_raw:
-            if not isinstance(session, dict):
-                continue
-            if not isinstance(session.get("NowPlayingItem"), dict):
-                continue
-            play_state = session.get("PlayState")
-            if not isinstance(play_state, dict) or play_state.get("IsPaused") is not False:
+    async def async_get_watching_users(self) -> dict[str, int]:
+        """Count unique watching users; paused sessions do not count as watching."""
+        sessions = await self.async_get_sessions()
+        watching: set[str] = set()
+        for session in sessions:
+            activity = session_activity(session)
+            if activity == UNKNOWN:
+                raise EmbyApiError("Incomplete playback information")
+            if activity != "playing":
                 continue
             identity = session.get("UserId") or session.get("UserName")
-            if identity and str(identity).strip():
-                watching_users.add(str(identity).strip().casefold())
+            if not isinstance(identity, str) or not identity.strip():
+                raise EmbyApiError("Incomplete viewer information")
+            watching.add(identity.strip().casefold())
+        return {SENSOR_USERS_WATCHING: len(watching)}
 
-        values[SENSOR_USERS_WATCHING] = len(watching_users)
+    async def async_get_sensor_data(self) -> dict[str, int]:
+        """Compatibility helper for callers requesting all counters explicitly."""
+        values = await self.async_get_library_counts(
+            {
+                SENSOR_MOVIE_COUNT,
+                SENSOR_TV_SERIES_COUNT,
+                SENSOR_TV_EPISODE_COUNT,
+                SENSOR_ALBUM_COUNT,
+                SENSOR_SONG_COUNT,
+            }
+        )
+        values.update(await self.async_get_watching_users())
         return values
 
     async def async_delete_device(self, record_id: str) -> None:
         """Delete one explicitly selected device-history record."""
-        await self._request("DELETE", "/Devices", params={"Id": record_id})
+        try:
+            await self._request("DELETE", "/Devices", params={"Id": record_id})
+        except EmbyAuthError:
+            raise
+        except EmbyApiError as err:
+            cause = err.__cause__
+            if isinstance(cause, ClientResponseError) and 400 <= cause.status < 500:
+                raise
+            raise EmbyDeleteUncertain("The deletion result could not be confirmed") from err

@@ -35,6 +35,7 @@ def _registration_enabled(entry: ConfigEntry, runtime: EmbiRuntimeData) -> bool:
         and not runtime.unloading
         and runtime.maintenance_store is not None
         and runtime.maintenance_storage_available
+        and not runtime.maintenance_recovery_required
         and entry.options.get(CONF_SERVER_CLEANUP_ENABLED, False)
         and entry.options.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False)
     )
@@ -58,6 +59,7 @@ async def _async_refresh_persistent_state(
         loaded = await runtime.maintenance_store.async_load()
     except Exception:
         runtime.maintenance_storage_available = False
+        runtime.maintenance_recovery_required = True
         _LOGGER.exception("EMBi failed to refresh persistent maintenance state")
         persistent_notification.async_create(
             hass,
@@ -69,6 +71,7 @@ async def _async_refresh_persistent_state(
         return False
     if loaded is None and entry.options.get(CONF_MAINTENANCE_STORE_INITIALIZED, False):
         runtime.maintenance_storage_available = False
+        runtime.maintenance_recovery_required = True
         _LOGGER.error("EMBi expected persistent maintenance state but refresh returned no data")
         persistent_notification.async_create(
             hass,
@@ -101,7 +104,10 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
     else:
         decision = resolve_scheduled_run(
             now=now,
-            persisted_next_run=_parse_utc(runtime.maintenance_state.report.next_run_at),
+            persisted_next_run=_parse_utc(
+                runtime.maintenance_state.automatic_next_run_at
+                or runtime.maintenance_state.report.next_run_at
+            ),
             grace_seconds=AUTO_CLEANUP_INITIAL_DELAY_SECONDS,
         )
         next_run = decision.run_at
@@ -109,6 +115,7 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
 
     if catch_up:
         runtime.maintenance_state.report.next_run_at = _utc_iso(next_run)
+        runtime.maintenance_state.automatic_next_run_at = _utc_iso(next_run)
         if not await _async_save_state(hass, entry):
             return
 
@@ -129,7 +136,10 @@ async def async_schedule_automatic_cleanup(hass: HomeAssistant, entry: ConfigEnt
         if not _execution_enabled(entry, runtime):
             return
 
-        persisted = _parse_utc(runtime.maintenance_state.report.next_run_at)
+        persisted = _parse_utc(
+            runtime.maintenance_state.automatic_next_run_at
+            or runtime.maintenance_state.report.next_run_at
+        )
         current = normalize_utc(dt_util.utcnow())
         if persisted is not None and persisted > current:
             await async_schedule_automatic_cleanup(hass, entry)

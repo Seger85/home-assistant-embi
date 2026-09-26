@@ -292,7 +292,7 @@ def test_active_technical_app_is_always_playback_protected() -> None:
     assert reason == "observed_active_playback"
 
 
-def test_technical_catalog_resolves_non_playing_but_ambiguous_remains_protected() -> None:
+def test_technical_classification_does_not_prove_current_inactivity() -> None:
     technical = record(
         record_id="technical",
         reported_id="technical",
@@ -315,6 +315,6 @@ def test_technical_catalog_resolves_non_playing_but_ambiguous_remains_protected(
     )
     by_id = {player.entity_id: player for player in players}
     assert by_id["media_player.technical"].client_class == CLIENT_CLASS_TECHNICAL
-    assert by_id["media_player.technical"].playback == "non_playing"
-    assert by_id["media_player.technical"].protected_reason is None
+    assert by_id["media_player.technical"].playback == "unknown"
+    assert by_id["media_player.technical"].protected_reason == "unknown_playback"
     assert by_id["media_player.ambiguous"].protected_reason == "unknown_playback"

@@ -25,3 +25,17 @@ def test_discard_and_close_without_apply_leave_stored_options_unchanged() -> Non
     assert draft.current == stored
     assert draft.dirty is False
     assert stored["server_auto_cleanup_age_days"] == 364
+
+
+def test_nested_edits_and_applied_values_do_not_alias_original():
+    source = {"rules": {"Alex": True}, "players": ["first"]}
+    draft = OptionsDraft.from_options(source)
+    draft.current["rules"]["Alex"] = False
+    draft.current["players"].append("second")
+    assert source == {"rules": {"Alex": True}, "players": ["first"]}
+    assert draft.original == source
+    applied = draft.applied()
+    applied["players"].clear()
+    assert draft.current["players"] == ["first", "second"]
+    draft.discard()
+    assert draft.current == source

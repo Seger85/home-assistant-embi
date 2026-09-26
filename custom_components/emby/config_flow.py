@@ -144,8 +144,7 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_mismatch()
                 data[CONF_PORT] = int(data[CONF_PORT])
                 title = data.pop(CONF_NAME)
-                self.hass.config_entries.async_update_entry(entry, title=title)
-                return self.async_update_reload_and_abort(entry, data_updates=data)
+                return self._finish_connection_update(entry, data, title=title)
 
         return self.async_show_form(
             step_id="reconfigure",
@@ -158,6 +157,48 @@ class EmbyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 require_api_key=False,
             ),
             errors=errors,
+        )
+
+    def _finish_connection_update(
+        self, entry: config_entries.ConfigEntry, data: dict[str, Any], *, title: str | None = None
+    ):
+        # HA 2026 uses the entry listener as reload owner when one is registered.
+        finish = (
+            self.async_update_and_abort
+            if entry.update_listeners
+            else self.async_update_reload_and_abort
+        )
+        updates = {"data_updates": data}
+        if title is not None:
+            updates["title"] = title
+        return finish(entry, **updates)
+
+    async def async_step_reauth(self, entry_data: dict[str, Any]):
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None):
+        entry = self._get_reauth_entry()
+        errors = {}
+        if user_input is not None:
+            data = {**entry.data, CONF_API_KEY: str(user_input.get(CONF_API_KEY, "")).strip()}
+            try:
+                if not data[CONF_API_KEY]:
+                    raise EmbyAuthError("Missing API key")
+                info = await _validate(self.hass, data)
+            except EmbyAuthError:
+                errors["base"] = "invalid_auth"
+            except EmbyApiError:
+                errors["base"] = "cannot_connect"
+            else:
+                await self.async_set_unique_id(
+                    str(info.get("Id") or f"{data[CONF_HOST]}:{int(data[CONF_PORT])}")
+                )
+                self._abort_if_unique_id_mismatch()
+                return self._finish_connection_update(entry, data)
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            errors=errors,
+            data_schema=vol.Schema({vol.Required(CONF_API_KEY): _text_selector(password=True)}),
         )
 
     @staticmethod

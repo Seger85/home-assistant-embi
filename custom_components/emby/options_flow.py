@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import persistent_notification
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import selector
 
 from .api import EmbyApiError, EmbyDeviceRecord
 from .const import (
@@ -25,6 +26,7 @@ from .const import (
     SENSOR_KEYS,
 )
 from .maintenance import async_run_automatic_cleanup
+from .maintenance_recovery import async_recover_maintenance
 from .models import EmbiRuntimeData
 from .options_cleanup import CleanupOptionsMixin
 from .options_devices import DevicesOptionsMixin
@@ -46,7 +48,7 @@ _SENSOR_LABELS = {
     "tv_series_count": ("Serien", "TV series"),
     "tv_episode_count": ("Episoden", "TV episodes"),
     "album_count": ("Alben", "Albums"),
-    "song_count": ("Songs", "Songs"),
+    "song_count": ("Musiktitel", "Songs"),
     "users_watching": ("Aktuell schauende Benutzer", "Users currently watching"),
 }
 
@@ -90,6 +92,7 @@ class EmbyOptionsFlow(
         self._automatic_age_preset: str | None = None
         self._apply_notice = ""
         self._group_submitted: dict[str, bool] = {}
+        self._group_form_keys: dict[str, str] = {}
 
     @property
     def _dirty(self) -> bool:
@@ -171,6 +174,8 @@ class EmbyOptionsFlow(
             "automatic_cleanup",
             "server_history_check",
         ]
+        if self._runtime.maintenance_recovery_required:
+            menu_options.append("maintenance_recovery")
         _lines, count = await self._review_lines()
         if count:
             menu_options.append("review_changes")
@@ -185,10 +190,10 @@ class EmbyOptionsFlow(
             step_id="init",
             menu_options=menu_options,
             description_placeholders={
-                "server_history": str(stats.server_history_records if stats else 0),
-                "ha_players": str(stats.ha_players if stats else 0),
-                "protected": str(stats.protected_playback if stats else 0),
-                "server_missing": str(stats.server_missing if stats else 0),
+                "server_history": str(stats.server_history_records if stats else "?"),
+                "ha_players": str(stats.ha_players if stats else "?"),
+                "protected": str(stats.protected_playback if stats else "?"),
+                "server_missing": str(stats.server_missing if stats else "?"),
                 "sensor_enabled": str(len(enabled)),
                 "sensor_total": str(len(SENSOR_KEYS)),
                 "automatic_cleanup": self._on_off(auto_status),
@@ -197,6 +202,48 @@ class EmbyOptionsFlow(
                 "review_count": str(count),
                 "apply_notice": self._apply_notice,
             },
+        )
+
+    async def async_step_maintenance_recovery(self, user_input: dict[str, Any] | None = None):
+        errors = {}
+        if user_input is not None:
+            reset = user_input.get("recovery_action") == "reset"
+            if reset and user_input.get("confirm_reset") is not True:
+                errors["base"] = "confirmation_required"
+            elif await async_recover_maintenance(self.hass, self._entry, reset=reset):
+                self._apply_notice = (
+                    "Der Wartungsspeicher ist wieder bereit."
+                    if self._is_de()
+                    else "Maintenance storage is ready again."
+                )
+                return await self.async_step_init()
+            else:
+                errors["base"] = "storage_failed"
+        return self.async_show_form(
+            step_id="maintenance_recovery",
+            errors=errors,
+            data_schema=vol.Schema(
+                {
+                    vol.Required("recovery_action", default="retry"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                {
+                                    "value": "retry",
+                                    "label": "Erneut laden" if self._is_de() else "Retry loading",
+                                },
+                                {
+                                    "value": "reset",
+                                    "label": "Wartungsspeicher neu anlegen"
+                                    if self._is_de()
+                                    else "Create new maintenance storage",
+                                },
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Required("confirm_reset", default=False): selector.BooleanSelector(),
+                }
+            ),
         )
 
     async def async_step_back_to_init(self, user_input: dict[str, Any] | None = None):
@@ -374,7 +421,7 @@ class EmbyOptionsFlow(
                 states=self.hass.states,
                 entry_id=self._entry.entry_id,
                 options=options,
-                pyemby_devices=getattr(self._runtime.pyemby, "devices", None),
+                session_devices=getattr(self._runtime.session_client, "devices", None),
             )
 
         original_players = _catalog(original)
@@ -404,14 +451,20 @@ class EmbyOptionsFlow(
         )
         cleanup_changed = any(original.get(key) != updated.get(key) for key in cleanup_keys)
         updated_auto = bool(updated.get(CONF_SERVER_AUTO_CLEANUP_ENABLED, False))
-        if cleanup_changed:
+        if cleanup_changed and updated_auto and self._runtime.maintenance_recovery_required:
+            self._review_error = "storage_failed"
+            return await self.async_step_review_changes()
+        if cleanup_changed and not self._runtime.maintenance_recovery_required:
             state = deepcopy(self._runtime.maintenance_state)
             state.report.next_run_at = None
+            state.automatic_next_run_at = None
             if updated_auto:
                 state.initial_run_completed = False
             try:
                 await self._runtime.maintenance_store.async_save(state)
             except Exception:
+                self._runtime.maintenance_storage_available = False
+                self._runtime.maintenance_recovery_required = True
                 self._review_error = "storage_failed"
                 return await self.async_step_review_changes()
             self._runtime.maintenance_state = state

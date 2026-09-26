@@ -1,0 +1,17 @@
+# Ohne zusätzliche Frontend-Karten. Die Player-ID bitte durch deine tatsächliche ID ersetzen.
+type: vertical-stack
+cards:
+- type: entities
+  title: Meine Emby-Mediathek
+  entities:
+  - entity: sensor.emby_movie_count
+    name: Filme
+    icon: mdi:movie
+  - entity: sensor.emby_tv_series_count
+    name: Serien
+    icon: mdi:television-classic
+  - entity: sensor.emby_tv_episode_count
+    name: Episoden
+    icon: mdi:television-play
+- type: media-control
+  entity: media_player.dein_emby_player

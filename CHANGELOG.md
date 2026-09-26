@@ -4,6 +4,36 @@
 
 No unreleased product changes.
 
+## [1.1.0] - 2026-09-26
+
+### Zuverlässiger im Alltag
+
+- Player reagieren auch dann auf einen Wiedergabestart, wenn der Client bereits vorher bekannt war. Mehrere Sitzungen desselben Clients werden zusammengefasst; eine aktive Sitzung hat Vorrang.
+- Die Verbindung verwendet Home Assistants gemeinsame HTTP-Verbindung mit Zeitlimits, geprüften HTTPS-Zertifikaten und einem geregelten WebSocket-/REST-Wiederanlauf. Reload und Unload räumen eigene Aufgaben und Listener auf.
+- Cover werden ohne API-Schlüssel in der Bild-URL über Home Assistant geladen. Fehlgeschlagene Steuerbefehle zeigen eine verständliche Meldung. Ein ungültiger Schlüssel lässt sich über die erneute Anmeldung ersetzen.
+- Bibliothekszahlen und schauende Benutzer werden unabhängig aktualisiert. Fehlende oder ungültige Daten werden nicht als null ausgegeben.
+
+### Vorsichtiger beim Aufräumen
+
+- Vor jeder einzelnen Serverlöschung werden Geräteidentität und Sitzungsaktivität erneut geprüft. Aktive, pausierte oder nicht eindeutig beurteilbare Clients bleiben geschützt.
+- Ein ungewisses Löschergebnis, ein Schreibfehler oder das Entladen der Integration stoppt die laufende Serie. Unterbrochene Löschlisten werden nach einem Neustart nicht ungeprüft fortgesetzt.
+- Fehlender oder beschädigter Wartungsspeicher hält die Bereinigung an. Eine eigene Wiederherstellungsseite ermöglicht erneutes Laden oder ausdrücklich bestätigtes Zurücksetzen.
+- Manuelle Bereinigung verschiebt den gespeicherten automatischen Termin nicht mehr. Die HA-Nachbereitung prüft aktuelle Sitzungen nochmals.
+
+### Verständlicher einrichten
+
+- Geöffnete Playerformulare behalten ihre Zuordnung auch bei geänderten Namen oder Aktivitätsanzeigen. Die Änderungsübersicht erfasst alle relevanten Einstellungen, und Entwürfe verändern keine gespeicherten Listen vorzeitig.
+- Ungültige gespeicherte Optionen werden sicher behandelt; die automatische Bereinigung bleibt dabei aus, bis die Einstellungen geprüft wurden.
+- Deutsche Beschreibungen, Hilfe und Dashboard-Beispiele richten sich an alle Nutzer. Die Playerkachel unterscheidet Einzahl und Mehrzahl und berücksichtigt auch umbenannte Player.
+- Diagnosen enthalten Aktualisierungszeitpunkte und verständlichere Zustandsangaben; private und unbekannte Zusatzfelder werden begrenzt beziehungsweise redigiert.
+
+### Bestehende Einrichtung und Update
+
+- Vorhandene Player- und Sensoridentitäten bleiben erhalten. Neue Player erhalten eine zusätzliche Zuordnung zur Integration, damit gleiche Client-IDs verschiedener Server nicht kollidieren.
+- Bitte vor dem Update ein Home-Assistant-Backup erstellen. Ein reiner Paket-Downgrade stellt neu angelegte Registry-Identitäten nicht vollständig auf den alten Stand zurück.
+- Die automatische Serverbereinigung bleibt bei einer neuen Einrichtung ausgeschaltet. Bereits gespeicherte gültige Einstellungen werden übernommen. Zwischen letzter Prüfung und Serverlöschung bleibt das durch Embys getrennte API-Aufrufe bedingte kurze Zeitfenster bestehen.
+- Voraussetzung: Home Assistant ab 2026.7.2. Die CI prüft zusätzlich echte HA-Lebenszyklen auf Mindest- und aktueller Testversion. Bestehende Release-Automatik bleibt erhalten; Teilreleases werden überprüfbar fortgesetzt und Actions sind auf Commit-IDs festgelegt.
+
 ## [1.0.8] - 2026-09-06
 
 - Publish all validated repository changes since v1.0.7 through the autonomous dependency and stable-release pipeline.

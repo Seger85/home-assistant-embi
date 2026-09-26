@@ -7,6 +7,7 @@ from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -14,6 +15,7 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
+from .api import EmbyApiError, EmbyAuthError
 from .const import (
     CONF_ENABLED_SENSORS,
     DOMAIN,
@@ -100,27 +102,58 @@ async def async_setup_entry(
         (description.key for description in descriptions),
     )
 
-    async def _async_update_data() -> dict[str, int]:
+    async def library_data() -> dict[str, int]:
         try:
-            return await runtime.api_client.async_get_sensor_data()
-        except Exception as err:
-            raise UpdateFailed("Unable to update EMBi sensors") from err
+            return await runtime.api_client.async_get_library_counts(enabled)
+        except EmbyAuthError as err:
+            raise ConfigEntryAuthFailed from err
+        except EmbyApiError as err:
+            raise UpdateFailed("Unable to update Emby library counts") from err
 
-    coordinator: DataUpdateCoordinator[dict[str, int]] = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name=f"{DOMAIN}_sensors_{entry.entry_id}",
-        update_method=_async_update_data,
-        update_interval=timedelta(seconds=SENSOR_UPDATE_INTERVAL_SECONDS),
+    async def watching_data() -> dict[str, int]:
+        try:
+            return await runtime.api_client.async_get_watching_users()
+        except EmbyAuthError as err:
+            raise ConfigEntryAuthFailed from err
+        except EmbyApiError as err:
+            raise UpdateFailed("Unable to update Emby viewers") from err
+
+    # Independent endpoints have independent availability and retry behavior.
+    groups = (
+        (
+            "library",
+            [item for item in descriptions if item.key != SENSOR_USERS_WATCHING],
+            library_data,
+        ),
+        (
+            "viewers",
+            [item for item in descriptions if item.key == SENSOR_USERS_WATCHING],
+            watching_data,
+        ),
     )
-    await coordinator.async_refresh()
-    async_add_entities(EmbiSensor(coordinator, entry, description) for description in descriptions)
+    entities = []
+    for name, selected, update in groups:
+        if not selected:
+            continue
+        coordinator: DataUpdateCoordinator[dict[str, int]] = DataUpdateCoordinator(
+            hass,
+            _LOGGER,
+            config_entry=entry,
+            name=f"{DOMAIN}_{name}_{entry.entry_id}",
+            update_method=update,
+            update_interval=timedelta(seconds=SENSOR_UPDATE_INTERVAL_SECONDS),
+            always_update=False,
+        )
+        runtime.sensor_coordinators[name] = coordinator
+        await coordinator.async_refresh()
+        entities.extend(EmbiSensor(coordinator, entry, description) for description in selected)
+    async_add_entities(entities)
 
 
 class EmbiSensor(CoordinatorEntity[DataUpdateCoordinator[dict[str, int]]], SensorEntity):
     """A numeric statistic supplied by the local Emby server."""
 
-    _attr_has_entity_name = False
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -131,7 +164,7 @@ class EmbiSensor(CoordinatorEntity[DataUpdateCoordinator[dict[str, int]]], Senso
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = sensor_unique_id(entry.entry_id, description.key)
-        self._attr_name = description.name
+        self._attr_translation_key = description.key
         self._attr_suggested_object_id = description.object_id
 
     @property

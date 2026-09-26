@@ -210,10 +210,10 @@ class DevicesOptionsMixin:
             data_schema=vol.Schema(fields),
             errors=errors,
             description_placeholders={
-                "ha_players": str(stats.ha_players if stats else 0),
-                "playing": str(stats.protected_playback if stats else 0),
-                "known_users": str(stats.known_users if stats else 0),
-                "server_missing": str(stats.server_missing if stats else 0),
+                "ha_players": str(stats.ha_players if stats else "?"),
+                "playing": str(stats.protected_playback if stats else "?"),
+                "known_users": str(stats.known_users if stats else "?"),
+                "server_missing": str(stats.server_missing if stats else "?"),
             },
         )
 
@@ -249,9 +249,19 @@ class DevicesOptionsMixin:
             for _label, player in toggle_fields
         }
         if user_input is not None:
+            # Bind submitted labels to the exact identities shown on the previous
+            # form. Activity/name changes while the form is open cannot lose a switch.
+            form_keys = getattr(self, "_group_form_keys", None) or {
+                label: player.player_key for label, player in toggle_fields
+            }
+            submitted_keys = {
+                key: bool(user_input[label])
+                for label, key in form_keys.items()
+                if label in user_input
+            }
             requested = {
-                player.player_key: bool(user_input.get(label, player.visible_in_embi))
-                for label, player in toggle_fields
+                player.player_key: submitted_keys.get(player.player_key, player.visible_in_embi)
+                for _label, player in toggle_fields
             }
             self._group_submitted = dict(requested)
 
@@ -322,6 +332,7 @@ class DevicesOptionsMixin:
             self._selected_group,
         )
         blocked_players = ", ".join(player.selector_label for player in blockers) or "-"
+        self._group_form_keys = {label: player.player_key for label, player in toggle_fields}
         return self.async_show_form(
             step_id="player_group",
             data_schema=vol.Schema(fields),
@@ -363,7 +374,10 @@ class DevicesOptionsMixin:
             str(value) for value in self._draft_options.get(CONF_UNRESOLVED_LEGACY_RULES, [])
         ]
         options = [
-            {"value": value, "label": f"Legacy rule {index}"}
+            {
+                "value": value,
+                "label": (f"Ältere Regel {index}" if self._is_de() else f"Older rule {index}"),
+            }
             for index, value in enumerate(unresolved, start=1)
         ]
         fields: dict[Any, Any] = {}

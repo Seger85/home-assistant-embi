@@ -15,11 +15,12 @@ from .maintenance_common import _async_save_state
 from .models import EmbiRuntimeData, MaintenanceActionSummary
 from .player_context import (
     ACTIVE_PLAYBACK_STATES,
-    PLAYBACK_UNKNOWN,
     PlayerContext,
     build_player_catalog,
 )
+from .player_identity import unique_id_matches
 from .registry_state import state_can_be_removed_after_visibility_commit
+from .session_state import INACTIVE, player_activity, validate_sessions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,7 +70,10 @@ def _find_context(
 async def _fresh_catalog(hass: HomeAssistant, entry: ConfigEntry) -> list[PlayerContext]:
     runtime: EmbiRuntimeData = entry.runtime_data
     records = await runtime.api_client.async_get_devices()
+    if not runtime.is_current(entry):
+        raise RuntimeError("Entry was unloaded during refresh")
     runtime.devices = records
+    runtime.last_devices_refresh_at = dt_util.utcnow().isoformat()
     registry = er.async_get(hass)
     return build_player_catalog(
         records,
@@ -77,7 +81,7 @@ async def _fresh_catalog(hass: HomeAssistant, entry: ConfigEntry) -> list[Player
         states=hass.states,
         entry_id=entry.entry_id,
         options=entry.options,
-        pyemby_devices=getattr(runtime.pyemby, "devices", None),
+        session_devices=getattr(runtime.session_client, "devices", None),
     )
 
 
@@ -88,44 +92,22 @@ async def _fresh_sessions(entry: ConfigEntry) -> tuple[list[dict[str, Any]], boo
         raw = await runtime.api_client._request("GET", "/Sessions")
     except Exception:
         return [], False
-    if not isinstance(raw, list) or any(not isinstance(item, dict) for item in raw):
+    try:
+        return validate_sessions(raw), True
+    except ValueError:
         return [], False
-    return raw, True
-
-
-def _session_matches(context: PlayerContext, session: dict[str, Any]) -> bool:
-    device_id = str(session.get("DeviceId") or session.get("Device", {}).get("Id") or "")
-    client = str(session.get("Client") or session.get("AppName") or "")
-    if context.reported_device_id and device_id:
-        if context.reported_device_id.casefold() != device_id.casefold():
-            return False
-    elif device_id and device_id.casefold() not in context.player_key.casefold():
-        return False
-    if client and context.app_name and client.casefold() != context.app_name.casefold():
-        return False
-    return bool(device_id or client)
-
-
-def _session_is_playing_or_paused(session: dict[str, Any]) -> bool:
-    if not isinstance(session.get("NowPlayingItem"), dict):
-        return False
-    play_state = session.get("PlayState")
-    return isinstance(play_state, dict) and isinstance(play_state.get("IsPaused"), bool)
 
 
 async def _unknown_is_safe(
     entry: ConfigEntry,
     context: PlayerContext,
-    sessions_cache: tuple[list[dict[str, Any]], bool] | None,
 ) -> tuple[bool, tuple[list[dict[str, Any]], bool]]:
-    sessions, reliable = sessions_cache or await _fresh_sessions(entry)
-    if not reliable:
-        return False, (sessions, reliable)
-    blocked = any(
-        _session_matches(context, session) and _session_is_playing_or_paused(session)
-        for session in sessions
+    # This is intentionally fresh for every destructive effect, even for HA idle.
+    sessions, reliable = await _fresh_sessions(entry)
+    return reliable and player_activity(sessions, context.player_key) == INACTIVE, (
+        sessions,
+        reliable,
     )
-    return not blocked, (sessions, reliable)
 
 
 def _owned_exact(entity: object | None, entry: ConfigEntry, player_key: str) -> bool:
@@ -134,7 +116,7 @@ def _owned_exact(entity: object | None, entry: ConfigEntry, player_key: str) -> 
         and getattr(entity, "domain", None) == "media_player"
         and getattr(entity, "platform", None) == DOMAIN
         and getattr(entity, "config_entry_id", None) == entry.entry_id
-        and str(getattr(entity, "unique_id", "")) == player_key
+        and unique_id_matches(str(getattr(entity, "unique_id", "")), entry.entry_id, player_key)
     )
 
 
@@ -145,8 +127,11 @@ async def _record_action(
     action: str,
     started_at: str,
     result: PlayerActionResult,
+    runtime: EmbiRuntimeData | None = None,
 ) -> None:
-    runtime: EmbiRuntimeData = entry.runtime_data
+    runtime = runtime or getattr(entry, "runtime_data", None)
+    if runtime is None or not runtime.is_current(entry):
+        return
     summary = MaintenanceActionSummary(
         action=action,
         status=result.status,
@@ -164,7 +149,7 @@ async def _record_action(
         runtime.maintenance_state.last_restore = summary
     else:
         runtime.maintenance_state.last_player_action = summary
-    await _async_save_state(hass, entry)
+    await _async_save_state(hass, entry, runtime=runtime)
 
 
 async def _update_options_and_reload(
@@ -186,12 +171,10 @@ async def async_remove_hidden_player_entities(
     entry: ConfigEntry,
     player_keys: Iterable[str],
     *,
-    prevalidated_non_playing_keys: Iterable[str] = (),
     action: str = "remove",
 ) -> PlayerActionResult:
     """Remove exact hidden EMBi entities after fresh playback and ownership checks."""
     keys = tuple(dict.fromkeys(str(value) for value in player_keys if value))
-    prevalidated = {str(value) for value in prevalidated_non_playing_keys}
     started_at = dt_util.utcnow().isoformat()
     runtime: EmbiRuntimeData = entry.runtime_data
     succeeded: list[PlayerActionItem] = []
@@ -212,11 +195,12 @@ async def async_remove_hidden_player_entities(
                     for key in keys
                 ),
             )
-            await _record_action(hass, entry, action=action, started_at=started_at, result=result)
+            await _record_action(
+                hass, entry, action=action, started_at=started_at, result=result, runtime=runtime
+            )
             return result
 
         registry = er.async_get(hass)
-        sessions_cache: tuple[list[dict[str, Any]], bool] | None = None
         for key in keys:
             context = _find_context(catalog, player_key=key)
             if context is None or not context.registry_present:
@@ -248,20 +232,26 @@ async def async_remove_hidden_player_entities(
                     )
                 )
                 continue
-            if context.playback == PLAYBACK_UNKNOWN and key not in prevalidated:
-                safe, sessions_cache = await _unknown_is_safe(entry, context, sessions_cache)
-                if not safe:
-                    protected.append(
-                        PlayerActionItem(
-                            item.entity_id,
-                            item.player_key,
-                            item.friendly_name,
-                            "protected",
-                            "playback_revalidation_failed",
-                        )
+            safe, _sessions = await _unknown_is_safe(entry, context)
+            if not safe:
+                protected.append(
+                    PlayerActionItem(
+                        item.entity_id,
+                        item.player_key,
+                        item.friendly_name,
+                        "protected",
+                        "playback_revalidation_failed",
                     )
-                    continue
+                )
+                continue
 
+            if not runtime.is_current(entry):
+                protected.append(
+                    PlayerActionItem(
+                        item.entity_id, key, item.friendly_name, "protected", "entry_unloaded"
+                    )
+                )
+                continue
             entity = registry.async_get(context.entity_id) if context.entity_id else None
             if entity is None:
                 matches = [
@@ -324,7 +314,9 @@ async def async_remove_hidden_player_entities(
         tuple(protected),
         tuple(failed),
     )
-    await _record_action(hass, entry, action=action, started_at=started_at, result=result)
+    await _record_action(
+        hass, entry, action=action, started_at=started_at, result=result, runtime=runtime
+    )
     _LOGGER.log(
         logging.INFO if result.status == "completed" else logging.WARNING,
         "EMBi player lifecycle: %s requested, %s removed, %s protected, %s failed",

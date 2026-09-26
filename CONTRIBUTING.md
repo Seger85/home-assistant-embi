@@ -1,33 +1,31 @@
-# Contributing to EMBi
+# An EMBi mitarbeiten
 
-## Development principles
+## Grundsätze
 
-- Preserve existing entity IDs and unique IDs unless an explicit, tested migration requires a change.
-- Destructive operations require an exact selection, fresh validation, and partial-result handling.
-- Never edit Home Assistant `.storage` files directly.
-- Never commit credentials, private diagnostics, production identifiers, patch-transfer files, chat briefings, or temporary workflows.
-- Keep `strings.json`, English, and German translations schema-identical.
-- Keep historical upgrade logic inside `custom_components/emby/legacy_migration.py` and historical tests inside `tests/migration/`.
+- Bestehende Entity-IDs und eindeutige IDs erhalten. Änderungen daran benötigen einen konkreten Nutzen und geprüfte Migrationen.
+- Löschaktionen einzeln auswählen beziehungsweise regelbasiert freigeben, frisch validieren und Teilergebnisse speichern. Unklare Aktivität schützt den Client.
+- Home Assistants offizielle APIs verwenden; keine direkten `.storage`-Änderungen.
+- Keine Schlüssel, privaten Diagnosen, Produktionskennungen oder temporären Patchworkflows ins Repository aufnehmen.
+- `strings.json`, Englisch und Deutsch strukturell gleich halten. Nutzerausgaben verständlich formulieren.
+- Historische Optionsmigrationen in `legacy_migration.py` und entsprechende Tests in `tests/migration/` belassen.
 
-## Supported development environments
+## Prüfungen
 
-CI runs on Python 3.13 and Python 3.14. Changes must pass on both versions.
+Die schnellen Tests laufen in CI unter Python 3.13 und 3.14. Zusätzlich wird `tests_ha/` mit echtem Home Assistant unter Python 3.14 geprüft: mindestens die Version aus `hacs.json` (derzeit 2026.7.2) und die festgelegte aktuelle Testversion aus `requirements_test_ha.txt` (derzeit 2026.9.3).
 
-## Local setup and validation
-
-Run the commands from the repository root in this order:
+Schnelle Prüfungen vom Repository-Hauptverzeichnis aus:
 
 ```bash
 python -I scripts/read_version.py
 python -m pip install --upgrade pip -r requirements_test.txt
-
-python -m json.tool custom_components/emby/manifest.json >/dev/null
-python -m json.tool custom_components/emby/strings.json >/dev/null
-python -m json.tool custom_components/emby/translations/de.json >/dev/null
-python -m json.tool custom_components/emby/translations/en.json >/dev/null
-python -m json.tool hacs.json >/dev/null
-
-python -m compileall -q custom_components/emby scripts tests
+ruff check .
+ruff format --check .
+pytest -q
+python -m compileall -q custom_components/emby scripts tests tests_ha
+python scripts/validate_legacy_migration_contract.py
+python scripts/validate_stable_contract.py
+python scripts/validate_repository_references.py
+python scripts/secret_scan.py
 mypy --ignore-missing-imports --follow-imports=skip \
   custom_components/emby/options_model.py \
   custom_components/emby/player_context.py \
@@ -35,16 +33,24 @@ mypy --ignore-missing-imports --follow-imports=skip \
   custom_components/emby/registry_state.py \
   custom_components/emby/player_actions.py \
   custom_components/emby/player_reconciliation.py \
-  custom_components/emby/sensor_registry.py
-ruff check .
-ruff format --check .
-pytest -q
-python scripts/validate_legacy_migration_contract.py
-python scripts/validate_stable_contract.py
-python scripts/validate_repository_references.py
-python scripts/secret_scan.py
+  custom_components/emby/sensor_registry.py \
+  custom_components/emby/session_state.py \
+  custom_components/emby/player_identity.py \
+  custom_components/emby/session_stream.py
+```
 
-rm -rf dist
+Tests mit echtem HA in einer Python-3.14-Umgebung:
+
+```bash
+python -m pip install -r requirements_test_ha.txt
+pytest tests_ha -q
+```
+
+**Die beiden Testsuiten in getrennten Prozessen starten.** `tests/conftest.py` verwendet gezielte HA-Ersatzobjekte; diese dürfen die echten HA-Tests nicht beeinflussen. Die Laufzeittests verwenden einen lokalen HTTP-/WebSocket-Testserver und greifen nicht auf einen produktiven Emby-Server zu.
+
+Paket bauen und Prüfsumme kontrollieren:
+
+```bash
 python scripts/build_package.py \
   --output-dir dist \
   --expected-version "$(python -I scripts/read_version.py)" \
@@ -52,15 +58,12 @@ python scripts/build_package.py \
 (cd dist && sha256sum --check embi.zip.sha256)
 ```
 
-Before dependency installation, do not import EMBi, Home Assistant, or `pyemby`. The version must first be read only through `python -I scripts/read_version.py`.
+Vor der Installation der Abhängigkeiten nur die Version mit `python -I scripts/read_version.py` auslesen; dabei keine Integrationsmodule importieren. CI prüft zusätzlich JSON, YAML, HACS und Hassfest.
 
-## Pull requests
+## Pull Requests
 
-- Use a focused branch and exactly one pull request against `main`.
-- Describe behavior, migration impact, safety impact, tests, and repository cleanup.
-- Keep the final PR head immutable while required checks run.
-- Merge by squash only after all required checks pass.
-- Release commits use `Signed-off-by: Seger <Seger85@users.noreply.github.com>`.
-- Product UI changes require desktop, iPhone, and iPad verification or a clearly documented post-installation check.
+Beschreibe das konkrete Problem, das veränderte Verhalten, Tests, Migration und Rückweg. Verwende einen eigenen Branch und einen Pull Request gegen `main`. Während der abschließenden Checks bleibt der geprüfte Commit unverändert. Erst nach erfolgreichen Prüfungen wird per Squash gemergt.
 
-The only supported stable release process is documented in [RELEASING.md](RELEASING.md).
+Release-Commits verwenden `Signed-off-by: Seger <Seger85@users.noreply.github.com>`. Änderungen an der Oberfläche brauchen eine Prüfung auf Desktop, iPhone und iPad oder einen ausdrücklich dokumentierten noch offenen Gerätetest. Siehe [UI-Prüfung](docs/ui-qa.md).
+
+Der verbindliche Veröffentlichungsablauf steht in [RELEASING.md](RELEASING.md).

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -21,8 +23,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         runtime.cancel_auto_cleanup()
         runtime.cancel_auto_cleanup = None
     runtime.auto_cleanup_scheduled = False
-    if runtime.pyemby is not None:
-        await runtime.pyemby.stop()
+    if runtime.session_client is not None:
+        await runtime.session_client.stop()
+    tasks = runtime.maintenance_tasks - {asyncio.current_task()}
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
     return True
 
 
@@ -43,3 +50,14 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None
     if runtime is not None and runtime.suppress_update_listener:
         return
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Discard our local journal when HA explicitly removes this integration entry."""
+    from .maintenance_common import _CLEANUP_LOCKS
+    from .maintenance_registry_queue import _PENDING_REGISTRY_CLEANUP
+    from .maintenance_store import EmbiMaintenanceStore
+
+    await EmbiMaintenanceStore.create(hass, entry.entry_id).async_remove()
+    for key in (_CLEANUP_LOCKS, _PENDING_REGISTRY_CLEANUP):
+        hass.data.get(key, {}).pop(entry.entry_id, None)

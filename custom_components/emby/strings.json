@@ -24,16 +24,24 @@
           "ssl": "Use HTTPS",
           "api_key": "API key"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to Emby",
+        "description": "Emby no longer accepts the stored API key. Create a key for EMBi in your Emby server and enter it here. Your players and settings are preserved.",
+        "data": {
+          "api_key": "New API key"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to the Emby server.",
+      "cannot_connect": "Emby is unreachable. Check the server address, port, and certificate if using HTTPS.",
       "invalid_auth": "The API key was rejected."
     },
     "abort": {
       "already_configured": "This Emby server is already configured.",
       "reconfigure_successful": "The connection was updated.",
-      "unique_id_mismatch": "The new connection belongs to another Emby server."
+      "unique_id_mismatch": "The new connection belongs to another Emby server.",
+      "reauth_successful": "Emby authentication was updated."
     }
   },
   "options": {
@@ -46,7 +54,8 @@
           "sensors": "Emby sensors",
           "automatic_cleanup": "Automatic server cleanup",
           "server_history_check": "Delete individual Emby server records",
-          "review_changes": "Review changes"
+          "review_changes": "Review changes",
+          "maintenance_recovery": "Recover maintenance storage"
         }
       },
       "ha_players": {
@@ -160,6 +169,14 @@
         "data": {
           "enabled_sensors": "Enabled sensors"
         }
+      },
+      "maintenance_recovery": {
+        "title": "Recover maintenance storage",
+        "description": "Automatic cleanup is paused because EMBi could not safely read or write its maintenance state. Players and sensors can still be used.\n\nTry loading it again first. If the storage was lost, you can explicitly create a new journal. This replaces the previous run report without deleting players, Emby device records or media. A new automatic run is scheduled no earlier than 24 hours later.",
+        "data": {
+          "recovery_action": "Recovery action",
+          "confirm_reset": "Replace the previous maintenance report when creating new storage"
+        }
       }
     },
     "error": {
@@ -172,7 +189,8 @@
       "unsaved_changes": "Apply or discard the current draft before starting a destructive action.",
       "no_changes": "There are no unsaved changes.",
       "storage_failed": "The maintenance state could not be saved. No options were applied.",
-      "save_failed": "The changes could not be saved safely. No reload was performed."
+      "save_failed": "The changes could not be saved safely. No reload was performed.",
+      "confirmation_required": "Please confirm that the previous maintenance report may be replaced."
     },
     "abort": {
       "apply_complete": "Changes saved. EMBi is completing one planned reload and exact lifecycle follow-up.",
@@ -203,6 +221,33 @@
         "manage_exceptions": "Manage exceptions",
         "player_details": "Player details"
       }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "movie_count": {
+        "name": "Emby Movie Count"
+      },
+      "tv_series_count": {
+        "name": "Emby TV Series Count"
+      },
+      "tv_episode_count": {
+        "name": "Emby TV Episode Count"
+      },
+      "album_count": {
+        "name": "Emby Album Count"
+      },
+      "song_count": {
+        "name": "Emby Song Count"
+      },
+      "users_watching": {
+        "name": "Emby Users Watching"
+      }
+    }
+  },
+  "exceptions": {
+    "command_failed": {
+      "message": "The player did not accept the command. Check that it is connected to Emby and supports remote control."
     }
   }
 }

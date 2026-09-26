@@ -81,33 +81,36 @@ jobs:
             local head_sha="$3"
             local workdir new_sha
 
-            workdir="$(mktemp -d)"
-            gh repo clone "${GITHUB_REPOSITORY}" "${workdir}" -- --filter=blob:none --no-checkout
-            git -C "${workdir}" fetch origin "${head_ref}"
-            git -C "${workdir}" checkout -B "repair-${pr_number}" FETCH_HEAD
-            test "$(git -C "${workdir}" rev-parse HEAD)" = "${head_sha}"
+            workdir="$(mktemp -d)" || return 1
+            # This function is called in an if condition: Bash disables errexit
+            # inside it. Every fallible step therefore needs an explicit guard.
+            gh repo clone "${GITHUB_REPOSITORY}" "${workdir}" -- --filter=blob:none --no-checkout >&2 || { rm -rf "${workdir}"; return 1; }
+            git -C "${workdir}" fetch origin "${head_ref}" >&2 || { rm -rf "${workdir}"; return 1; }
+            git -C "${workdir}" checkout -B "repair-${pr_number}" FETCH_HEAD >&2 || { rm -rf "${workdir}"; return 1; }
+            test "$(git -C "${workdir}" rev-parse HEAD)" = "${head_sha}" || { rm -rf "${workdir}"; return 1; }
 
             RUFF_VERSION="$(sed -n 's/^ruff==//p' "${workdir}/requirements_test.txt")"
-            test -n "${RUFF_VERSION}"
-            python -m pip install -q "ruff==${RUFF_VERSION}"
+            [[ "${RUFF_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { rm -rf "${workdir}"; return 1; }
+            python -m pip install -q "ruff==${RUFF_VERSION}" >&2 || { rm -rf "${workdir}"; return 1; }
             (
-              cd "${workdir}"
-              ruff format .
-              ruff check --fix .
-            )
+              cd "${workdir}" &&
+              ruff format . >&2 &&
+              ruff check --fix . >&2
+            ) || { rm -rf "${workdir}"; return 1; }
 
             if git -C "${workdir}" diff --quiet; then
               rm -rf "${workdir}"
               return 1
             fi
 
-            git -C "${workdir}" config user.name "github-actions[bot]"
-            git -C "${workdir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git -C "${workdir}" add --all
-            git -C "${workdir}" commit               -m "Apply deterministic maintenance repair"               -m $'Run the repository-pinned Ruff formatter and safe lint fixes.\n\nSigned-off-by: Seger <Seger85@users.noreply.github.com>'
-            git -C "${workdir}" push origin "HEAD:${head_ref}"
-            new_sha="$(git -C "${workdir}" rev-parse HEAD)"
+            git -C "${workdir}" config user.name "github-actions[bot]" >&2 || { rm -rf "${workdir}"; return 1; }
+            git -C "${workdir}" config user.email "41898282+github-actions[bot]@users.noreply.github.com" >&2 || { rm -rf "${workdir}"; return 1; }
+            git -C "${workdir}" add --all >&2 || { rm -rf "${workdir}"; return 1; }
+            git -C "${workdir}" commit -m "Apply deterministic maintenance repair" -m 'Apply the pinned Ruff formatter and safe lint fixes.' >&2 || { rm -rf "${workdir}"; return 1; }
+            git -C "${workdir}" push origin "HEAD:${head_ref}" >&2 || { rm -rf "${workdir}"; return 1; }
+            new_sha="$(git -C "${workdir}" rev-parse HEAD)" || { rm -rf "${workdir}"; return 1; }
             rm -rf "${workdir}"
+            [[ "${new_sha}" =~ ^[0-9a-f]{40}$ ]] || return 1
             printf '%s\n' "${new_sha}"
           }
 

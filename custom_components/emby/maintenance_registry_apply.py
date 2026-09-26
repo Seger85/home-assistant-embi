@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .api import EmbyDeviceRecord
+from .api import EmbyApiError, EmbyDeviceRecord
 from .const import (
     FOLLOW_UP_COMPLETED,
     FOLLOW_UP_INTERRUPTED,
@@ -30,6 +30,7 @@ from .maintenance_registry_commit import apply_exact_registry_removals
 from .maintenance_registry_evaluate import evaluate_registry_targets
 from .maintenance_registry_queue import _PENDING_REGISTRY_CLEANUP
 from .models import EmbiRuntimeData, PendingRegistryTarget, RegistryCleanupResult
+from .session_state import INACTIVE, player_activity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ async def async_apply_pending_registry_cleanup(
             report.completed_at = _utc_iso()
             if report.mode == RUN_MODE_AUTOMATIC:
                 report.next_run_at = _next_regular_run()
+                runtime.maintenance_state.automatic_next_run_at = report.next_run_at
             await _async_save_state(hass, entry)
             _log_report(report)
             _notify_failure(
@@ -85,6 +87,20 @@ async def async_apply_pending_registry_cleanup(
     if not pending_by_entry:
         hass.data.pop(_PENDING_REGISTRY_CLEANUP, None)
 
+    try:
+        sessions = await runtime.api_client.async_get_sessions()
+    except EmbyApiError:
+        sessions = None
+    if not runtime.is_current(entry) or sessions is None:
+        report.status = RUN_STATUS_INTERRUPTED
+        report.follow_up_status = FOLLOW_UP_INTERRUPTED
+        report.last_error = "registry_session_revalidation_failed"
+        report.completed_at = _utc_iso()
+        await _async_save_state(hass, entry, runtime=runtime)
+        return RegistryCleanupResult(queued=len(targets), revalidation_ambiguous=len(targets))
+    # One snapshot followed only by synchronous checks and registry changes:
+    # no event-loop yield can make the ownership/activity check stale mid-commit.
+    protected_keys = {key for key in targets if player_activity(sessions, key) != INACTIVE}
     registry = er.async_get(hass)
     evaluation = evaluate_registry_targets(
         registry=registry,
@@ -92,6 +108,7 @@ async def async_apply_pending_registry_cleanup(
         entry=entry,
         current_devices=current_devices,
         targets=targets,
+        protected_player_keys=protected_keys,
     )
     removed = apply_exact_registry_removals(registry, evaluation.entity_ids_to_remove)
     result = evaluation.result
@@ -102,6 +119,7 @@ async def async_apply_pending_registry_cleanup(
             removed=removed,
             missing=result.missing,
             protected_remaining_history=result.protected_remaining_history,
+            protected_active=result.protected_active,
             wrong_entry=result.wrong_entry,
             wrong_platform=result.wrong_platform,
             wrong_unique_id=result.wrong_unique_id,
@@ -114,6 +132,7 @@ async def async_apply_pending_registry_cleanup(
     report.registry_entities_removed = result.removed
     report.registry_entities_missing = result.missing
     report.registry_entities_protected_remaining_history += result.protected_remaining_history
+    report.registry_entities_protected_active += result.protected_active
     report.registry_entities_wrong_entry = result.wrong_entry
     report.registry_entities_wrong_platform = result.wrong_platform
     report.registry_entities_wrong_unique_id = result.wrong_unique_id
@@ -125,6 +144,7 @@ async def async_apply_pending_registry_cleanup(
     if report.mode == RUN_MODE_AUTOMATIC:
         runtime.maintenance_state.initial_run_completed = True
         report.next_run_at = _next_regular_run()
+        runtime.maintenance_state.automatic_next_run_at = report.next_run_at
 
     if not await _async_save_state(hass, entry):
         report.status = RUN_STATUS_INTERRUPTED

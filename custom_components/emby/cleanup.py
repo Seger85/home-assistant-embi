@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
-from .api import EmbyApiError, EmbyDeviceRecord
+from .api import EmbyApiError, EmbyAuthError, EmbyDeleteUncertain, EmbyDeviceRecord
 
 
 class DeviceDeleteClient(Protocol):
@@ -31,6 +31,7 @@ class DeviceCleanupResult:
 
     succeeded: tuple[EmbyDeviceRecord, ...]
     failed: tuple[EmbyDeviceRecord, ...]
+    skipped: tuple[EmbyDeviceRecord, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,18 +101,34 @@ def plan_registry_followup(
 
 
 async def async_delete_device_records(
-    client: DeviceDeleteClient, records: Iterable[EmbyDeviceRecord]
+    client: DeviceDeleteClient,
+    records: Iterable[EmbyDeviceRecord],
+    *,
+    before_delete: Callable[[EmbyDeviceRecord], Awaitable[bool]] | None = None,
+    after_delete: Callable[[bool], Awaitable[None]] | None = None,
 ) -> DeviceCleanupResult:
     """Delete every supplied record independently; there is deliberately no run cap."""
     succeeded: list[EmbyDeviceRecord] = []
     failed: list[EmbyDeviceRecord] = []
+    skipped: list[EmbyDeviceRecord] = []
 
     for record in records:
+        if before_delete is not None and not await before_delete(record):
+            skipped.append(record)
+            continue
         try:
             await client.async_delete_device(record.record_id)
+        except (EmbyAuthError, EmbyDeleteUncertain):
+            if after_delete is not None:
+                await after_delete(False)
+            raise
         except EmbyApiError:
             failed.append(record)
+            if after_delete is not None:
+                await after_delete(False)
         else:
             succeeded.append(record)
+            if after_delete is not None:
+                await after_delete(True)
 
-    return DeviceCleanupResult(tuple(succeeded), tuple(failed))
+    return DeviceCleanupResult(tuple(succeeded), tuple(failed), tuple(skipped))

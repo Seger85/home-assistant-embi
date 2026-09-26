@@ -22,6 +22,7 @@ from .const import (
 )
 from .helpers import ACTIVE_STATES
 from .models import CleanupRunReport, EmbiRuntimeData
+from .player_identity import player_key_from_unique_id
 from .registry_state import state_is_restored
 from .reporting import log_level_for_report, notification_required
 from .scheduling import next_regular_run, parse_utc, utc_iso
@@ -41,7 +42,7 @@ def active_player_keys(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
     protected: set[str] = set()
     runtime: EmbiRuntimeData = entry.runtime_data
 
-    for player_key, device in getattr(runtime.pyemby, "devices", {}).items():
+    for player_key, device in getattr(runtime.session_client, "devices", {}).items():
         state = str(getattr(device, "state", "")).casefold()
         if state in ACTIVE_STATES or state in {"", "unknown", "unavailable"}:
             protected.add(str(player_key))
@@ -63,7 +64,7 @@ def active_player_keys(hass: HomeAssistant, entry: ConfigEntry) -> set[str]:
             or state_value in ACTIVE_STATES
             or state_value in {"", "unknown", "unavailable"}
         ):
-            protected.add(str(entity.unique_id))
+            protected.add(player_key_from_unique_id(entity.unique_id, entry.entry_id))
 
     return protected
 
@@ -85,9 +86,18 @@ def _dismiss_failure(hass: HomeAssistant, entry: ConfigEntry) -> None:
     persistent_notification.async_dismiss(hass, _notification_id(entry))
 
 
-async def _async_save_state(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def _async_save_state(
+    hass: HomeAssistant, entry: ConfigEntry, *, runtime: EmbiRuntimeData | None = None
+) -> bool:
     """Persist runtime maintenance state and fail closed on storage errors."""
-    runtime: EmbiRuntimeData = entry.runtime_data
+    runtime = runtime or getattr(entry, "runtime_data", None)
+    if (
+        runtime is None
+        or getattr(entry, "runtime_data", None) is not runtime
+        or runtime.maintenance_recovery_required
+    ):
+        # A successful ordinary write cannot rebuild lost trusted history.
+        return False
     if runtime.maintenance_store is None:
         runtime.maintenance_storage_available = False
         _LOGGER.error("EMBi maintenance storage is unavailable")
@@ -102,6 +112,7 @@ async def _async_save_state(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await runtime.maintenance_store.async_save(runtime.maintenance_state)
     except Exception:
         runtime.maintenance_storage_available = False
+        runtime.maintenance_recovery_required = True
         _LOGGER.exception("EMBi failed to persist maintenance state")
         _notify_failure(
             hass,
@@ -161,8 +172,9 @@ async def _async_finish_without_registry(
     entry: ConfigEntry,
     *,
     automatic: bool,
+    runtime: EmbiRuntimeData | None = None,
 ) -> bool:
-    runtime: EmbiRuntimeData = entry.runtime_data
+    runtime = runtime or entry.runtime_data
     report = runtime.maintenance_state.report
     if report.follow_up_status != FOLLOW_UP_INTERRUPTED:
         report.follow_up_status = FOLLOW_UP_SKIPPED
@@ -171,7 +183,8 @@ async def _async_finish_without_registry(
     if automatic:
         runtime.maintenance_state.initial_run_completed = True
         report.next_run_at = _next_regular_run()
-    if not await _async_save_state(hass, entry):
+        runtime.maintenance_state.automatic_next_run_at = report.next_run_at
+    if not await _async_save_state(hass, entry, runtime=runtime):
         report.status = RUN_STATUS_INTERRUPTED
         report.last_error = "storage_failed_after_cleanup"
         return False

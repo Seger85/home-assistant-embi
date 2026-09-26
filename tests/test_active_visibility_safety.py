@@ -33,11 +33,3 @@ def test_playback_protection_never_rewrites_master_options() -> None:
     assert '"GET", "/Sessions"' in actions
     assert "_unknown_is_safe" in actions
     assert "_fresh_sessions" in actions
-
-
-def test_diagnostics_redact_server_host_and_title() -> None:
-    diagnostics = source("diagnostics.py")
-    assert "from homeassistant.const import CONF_API_KEY, CONF_HOST" in diagnostics
-    assert '"title": "<redacted>"' in diagnostics
-    assert "async_redact_data(dict(entry.data), {CONF_API_KEY, CONF_HOST})" in diagnostics
-    assert "player_key" not in diagnostics

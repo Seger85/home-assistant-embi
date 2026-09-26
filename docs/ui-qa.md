@@ -1,14 +1,16 @@
-# UI quality assurance
+# Oberfläche prüfen
 
-For Options Flow changes verify both German and English on iPhone, iPad, and desktop layouts:
+Automatisierte Flow-Tests prüfen Navigation, Entwurf, Bestätigung und Speichern. Sie ersetzen keine Sichtprüfung mit unterschiedlichen Bildschirmgrößen.
 
-- every root menu item opens and submits
-- the six-item sensor selector serializes normally
-- group labels remain one line: Device · App · last access
-- known access times sort oldest first; unknown times appear last
-- named playback blockers do not erase other submitted switches
-- explicit group Back navigation preserves the draft
-- Review changes is absent at zero semantic changes
-- no empty bullet or placeholder-only review form appears
+## Prüfablauf für Desktop, iPhone und iPad
 
-Visual checks complement, but do not replace, flow serialization, registry, state-machine, reload, and restoration tests.
+1. Integration hinzufügen, ungültigen Schlüssel korrigieren und eine erneute Anmeldung durchführen.
+2. Optionen öffnen: Player, technische Zugriffe, Benutzergruppen und Sensoren müssen verständlich beschriftet sein.
+3. Eine Auswahl ändern, zurückgehen, die Zusammenfassung lesen und verwerfen. Es darf nichts gespeichert werden.
+4. Dieselbe Auswahl übernehmen: Dialog schließt, Integration lädt einmal planmäßig neu, Auswahl bleibt erhalten.
+5. Eine Gruppe geöffnet lassen, während sich der Wiedergabestatus ändert. Die bestätigte Auswahl muss weiter dieselben Player betreffen.
+6. Bereinigungsseiten bis zur Bestätigung prüfen. Löschungen nur mit eigens dafür angelegten Testeinträgen ausführen.
+7. Lange Gerätenamen, viele Einträge, leere Gruppen und Verbindungsfehler prüfen. Schaltflächen und Rücknavigation müssen erreichbar bleiben.
+8. Dashboard mit null, einem und mehreren aktiven Playern sowie Pause und Nichterreichbarkeit prüfen. Pausierte Player verwenden dieselbe Kartenform wie laufende.
+
+Ein Releasebericht muss unterscheiden zwischen durchgeführten Browserprüfungen, automatisierten Tests und noch ausstehender Prüfung auf einem echten Mobilgerät. Desktop-Viewport-Simulation allein ist kein Nachweis für jede iOS-App-Version.

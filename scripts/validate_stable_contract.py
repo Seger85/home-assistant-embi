@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-VERSION = "1.0.8"
+VERSION = "1.1.0"
 
 
 def require(condition: bool, message: str) -> None:
@@ -158,7 +158,10 @@ def main() -> None:
         and "await _async_record_reconciliation" in reconciliation,
         "no-op reconciliation diagnostics refresh missing",
     )
-    require("state_is_restored" in reconciliation, "stale-restored handling missing")
+    require(
+        "prevalidated_non_playing_keys" not in reconciliation,
+        "reconciliation must not bypass fresh session checks for restored entities",
+    )
     require('"GET", "/Sessions"' in player_actions, "unknown playback revalidation missing")
     require(
         'and getattr(entity, "domain", None) == "media_player"' in player_actions

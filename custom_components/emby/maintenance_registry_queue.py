@@ -9,6 +9,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .models import PendingRegistryTarget
+from .player_identity import unique_id_matches
 
 _PENDING_REGISTRY_CLEANUP = f"{DOMAIN}_pending_registry_cleanup"
 
@@ -28,7 +29,7 @@ def queue_registry_cleanup(
             if entity.domain == "media_player"
             and entity.platform == DOMAIN
             and entity.config_entry_id == entry.entry_id
-            and str(entity.unique_id) == key
+            and unique_id_matches(entity.unique_id, entry.entry_id, key)
         ]
         targets[key] = PendingRegistryTarget(
             player_key=key,
@@ -48,7 +49,9 @@ def _classify_unbound_exact_matches(
     player_key: str,
 ) -> tuple[Any | None, str | None]:
     exact_unique = [
-        entity for entity in registry.entities.values() if str(entity.unique_id) == player_key
+        entity
+        for entity in registry.entities.values()
+        if unique_id_matches(entity.unique_id, entry.entry_id, player_key)
     ]
     if not exact_unique:
         return None, "missing"

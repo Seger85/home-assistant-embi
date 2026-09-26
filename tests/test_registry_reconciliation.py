@@ -106,4 +106,4 @@ async def test_startup_reconciliation_targets_only_invisible_registered_players(
     assert result.requested == 1
     args, kwargs = remove.await_args
     assert list(args[2]) == ["hidden"]
-    assert kwargs["prevalidated_non_playing_keys"] == {"hidden"}
+    assert "prevalidated_non_playing_keys" not in kwargs

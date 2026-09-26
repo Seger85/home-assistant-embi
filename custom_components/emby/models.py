@@ -33,6 +33,7 @@ class CleanupRunReport:
     skipped_active: int = 0
     skipped_recent: int = 0
     skipped_without_activity: int = 0
+    skipped_revalidation: int = 0
     registry_keys_queued: int = 0
     registry_entities_matched: int = 0
     registry_entities_removed: int = 0
@@ -94,6 +95,7 @@ class CleanupRunReport:
             "skipped_active",
             "skipped_recent",
             "skipped_without_activity",
+            "skipped_revalidation",
             "registry_keys_queued",
             "registry_entities_matched",
             "registry_entities_removed",
@@ -211,6 +213,7 @@ class MaintenanceState:
     last_player_action: MaintenanceActionSummary = field(default_factory=MaintenanceActionSummary)
     last_restore: MaintenanceActionSummary = field(default_factory=MaintenanceActionSummary)
     migration: MigrationSummary = field(default_factory=MigrationSummary)
+    automatic_next_run_at: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -220,6 +223,7 @@ class MaintenanceState:
             "last_player_action": self.last_player_action.as_dict(),
             "last_restore": self.last_restore.as_dict(),
             "migration": self.migration.as_dict(),
+            "automatic_next_run_at": self.automatic_next_run_at,
         }
 
     @classmethod
@@ -232,12 +236,17 @@ class MaintenanceState:
         initial = data.get("initial_run_completed", False)
         if not isinstance(initial, bool):
             raise ValueError("initial_run_completed must be boolean")
+        report = CleanupRunReport.from_dict(data.get("report", {}))
+        deadline = data.get("automatic_next_run_at", report.next_run_at)
+        if deadline is not None and not isinstance(deadline, str):
+            raise ValueError("automatic_next_run_at must be text or null")
         return cls(
-            report=CleanupRunReport.from_dict(data.get("report", {})),
+            report=report,
             initial_run_completed=initial,
             last_player_action=MaintenanceActionSummary.from_dict(data.get("last_player_action")),
             last_restore=MaintenanceActionSummary.from_dict(data.get("last_restore")),
             migration=MigrationSummary.from_dict(data.get("migration")),
+            automatic_next_run_at=deadline,
         )
 
 
@@ -255,6 +264,7 @@ class RegistryCleanupResult:
     removed: int = 0
     missing: int = 0
     protected_remaining_history: int = 0
+    protected_active: int = 0
     wrong_entry: int = 0
     wrong_platform: int = 0
     wrong_unique_id: int = 0
@@ -266,12 +276,20 @@ class RegistryCleanupResult:
 class EmbiRuntimeData:
     api_client: EmbyApiClient
     devices: list[EmbyDeviceRecord] = field(default_factory=list)
-    pyemby: Any | None = None
+    session_client: Any | None = None
     cleanup_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     maintenance_store: Any | None = None
     maintenance_state: MaintenanceState = field(default_factory=MaintenanceState)
     maintenance_storage_available: bool = True
+    maintenance_recovery_required: bool = False
     auto_cleanup_scheduled: bool = False
     cancel_auto_cleanup: Callable[[], None] | None = None
     unloading: bool = False
     suppress_update_listener: bool = False
+    maintenance_tasks: set[asyncio.Task] = field(default_factory=set)
+    last_devices_refresh_at: str | None = None
+    sensor_coordinators: dict[str, Any] = field(default_factory=dict)
+
+    def is_current(self, entry: Any) -> bool:
+        """A retired runtime must never start another external side effect."""
+        return getattr(entry, "runtime_data", None) is self and not self.unloading
