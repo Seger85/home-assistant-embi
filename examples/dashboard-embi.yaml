@@ -1,0 +1,56 @@
+# Als einzelne manuelle Karte einfügen. Benötigt Mushroom, auto-entities und mini-media-player.
+type: vertical-stack
+cards:
+- type: custom:mushroom-template-card
+  primary: |-
+    {% set players = expand(integration_entities('emby')) | selectattr('domain', 'eq', 'media_player') | list %}
+    {% set active = players | selectattr('state', 'in', ['playing', 'paused']) | list | count %}
+    {% set reachable = players | rejectattr('state', 'in', ['unavailable', 'unknown']) | list | count %}
+    {% if active == 1 %}Ein Emby-Player ist aktiv
+    {% elif active > 1 %}{{ active }} Emby-Player sind aktiv
+    {% elif players and reachable == 0 %}Emby-Player derzeit nicht erreichbar
+    {% else %}Keine aktiven Emby-Player{% endif %}
+  secondary: Was läuft gerade? Wiedergabe und Pause im Überblick.
+  icon: mdi:account-multiple
+  multiline_secondary: true
+  tap_action:
+    action: none
+  hold_action:
+    action: none
+  double_tap_action:
+    action: none
+- type: entities
+  title: Meine Emby-Mediathek
+  entities:
+  - entity: sensor.emby_movie_count
+    name: Filme
+    icon: mdi:movie
+  - entity: sensor.emby_tv_series_count
+    name: Serien
+    icon: mdi:television-classic
+  - entity: sensor.emby_tv_episode_count
+    name: Episoden
+    icon: mdi:television-play
+- type: custom:auto-entities
+  card:
+    type: entities
+    show_header_toggle: false
+    state_color: true
+  filter:
+    template: |-
+      {% set ns = namespace(rows=[]) %}
+      {% for player in expand(integration_entities('emby')) | selectattr('domain', 'eq', 'media_player') | list %}
+        {% if player.state in ['playing', 'paused'] %}
+          {% set ns.rows = ns.rows + [{
+            'entity': player.entity_id,
+            'type': 'custom:mini-media-player',
+            'artwork': 'material',
+            'hide': {'volume': true, 'next': true, 'prev': true},
+            'tap_action': {'action': 'more-info'}
+          }] %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.rows }}
+  sort:
+    method: friendly_name
+  show_empty: false

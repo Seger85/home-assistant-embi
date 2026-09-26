@@ -36,7 +36,7 @@ def test_semantic_review_renders_meaningful_before_after_values() -> None:
     )
     rendered = "\n".join(change.render() for change in changes)
 
-    assert "Always available → Only during playback" in rendered
+    assert "Keep players → Only during playback" in rendered
     assert "On → Off" in rendered
     assert "364 days → 365 days" in rendered
     assert "Emby TV · Living room" in rendered
@@ -53,3 +53,10 @@ def test_unchanged_values_do_not_create_review_noise() -> None:
     }
 
     assert semantic_changes(options, dict(options)) == []
+
+
+def test_review_includes_allowlist_and_unresolved_rule_changes_even_with_same_count():
+    original = {"allowed_device_ids": ["a"], "unresolved_legacy_rules": ["old"]}
+    draft = {"allowed_device_ids": ["b"], "unresolved_legacy_rules": []}
+    changes = semantic_changes(original, draft, german=True)
+    assert {change.key for change in changes} == {"allowed_device_ids", "unresolved_legacy_rules"}

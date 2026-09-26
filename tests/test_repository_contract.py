@@ -26,10 +26,10 @@ def _parse_requirement_constraints(text: str) -> dict[str, str]:
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    assert manifest["version"] == "1.0.8"
-    assert 'VERSION = "1.0.8"' in constants
+    assert manifest["version"] == "1.1.0"
+    assert 'VERSION = "1.1.0"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
-    assert manifest["requirements"] == ["pyEmby==1.10"]
+    assert manifest["requirements"] == []  # Networking uses Home Assistant's aiohttp session.
 
 
 def test_legal_hacs_and_tooling_baseline() -> None:
@@ -120,18 +120,18 @@ def test_confirmed_dead_runtime_surfaces_remain_removed() -> None:
 def test_documentation_is_current_and_has_one_release_source() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     releasing = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
-    assert "Home Assistant custom integration" in readme
+    assert "EMBi verbindet deinen Emby-Server mit Home Assistant" in readme
     assert "sensor.emby_movie_count" in readme
     assert "sensor.emby_users_watching" in readme
-    assert "entity registry" in readme
+    assert "Registry-Zustand" in readme
     assert "python -I scripts/read_version.py" in releasing
     assert "scripts/prepare_automatic_release.py" in releasing
     assert "embi.zip" in releasing and "embi.zip.sha256" in releasing
-    assert "HACS can install an earlier tagged EMBi version" in releasing
-    assert "No routine review, confirmation, comment, push" in releasing
+    assert "HACS kann frühere Versionen installieren" in releasing
+    assert "keine laufenden Reparaturkommentare" in releasing
     assert "EMBI_AUTOMATION_PAT" in releasing
     assert "first_time_contributors" in releasing
-    assert "default `GITHUB_TOKEN` permission is read-only" in releasing
+    assert "Die Standardrechte bleiben lesend" in releasing
     for removed in (
         "docs/PROJECT_STATE.md",
         "docs/development.md",
@@ -211,9 +211,9 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
     assert "gh release download" in release
     assert "cmp dist/embi.zip" in release
     for workflow in (quality, package, release):
-        assert "actions/setup-python@v7" in workflow
+        assert re.search(r"actions/setup-python@[0-9a-f]{40}\s", workflow)
         assert "actions/setup-python@v6" not in workflow
-    assert "actions/upload-artifact@v7" in package
+    assert re.search(r"actions/upload-artifact@[0-9a-f]{40}\s", package)
     assert "actions/upload-artifact@v4" not in package
 
 

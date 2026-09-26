@@ -22,6 +22,7 @@ from custom_components.emby.const import (
     CONF_USER_MASTER_VISIBILITY,
     REGISTRY_RECONCILIATION_VERSION,
 )
+from custom_components.emby.models import EmbiRuntimeData
 from custom_components.emby.options_model import default_options, should_expose_player
 from custom_components.emby.player_actions import PlayerActionResult
 
@@ -210,7 +211,7 @@ def _technical_record() -> EmbyDeviceRecord:
 async def test_fresh_platform_reload_reconciles_disallowed_client_without_local_entity(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(media_player, "EmbyServer", FakeEmby)
+    monkeypatch.setattr(media_player, "EmbySessionStream", FakeEmby)
     reconcile = AsyncMock(return_value=PlayerActionResult("reconcile", 1, (), (), ()))
     monkeypatch.setattr(media_player, "async_reconcile_player_visibility", reconcile)
     tasks = []
@@ -218,15 +219,29 @@ async def test_fresh_platform_reload_reconciles_disallowed_client_without_local_
         loop=object(),
         async_create_task=lambda coro, _name: tasks.append(coro),
     )
-    runtime = SimpleNamespace(
-        pyemby=None,
+    runtime = EmbiRuntimeData(
+        session_client=None,
         devices=[_technical_record()],
-        api_client=SimpleNamespace(_request=AsyncMock(return_value=[])),
+        api_client=SimpleNamespace(async_get_sessions=AsyncMock(return_value=[])),
     )
     entry = SimpleNamespace(
         data={"host": "host", "api_key": "key", "port": 8096, "ssl": False},
         options={CONF_TECHNICAL_ACCESS_VISIBILITY: False},
         runtime_data=runtime,
+        async_create_background_task=lambda target_hass, coro, name: target_hass.async_create_task(
+            coro, name
+        ),
+    )
+    entry.entry_id = "entry"
+    hass.registry = SimpleNamespace(
+        entities={
+            "media_player.technical": SimpleNamespace(
+                domain="media_player",
+                platform="emby",
+                config_entry_id="entry",
+                unique_id="technical.Home Assistant",
+            )
+        }
     )
     added = []
     await media_player.async_setup_entry(hass, entry, lambda entities: added.extend(entities))
@@ -242,13 +257,27 @@ async def test_fresh_platform_reload_reconciles_disallowed_client_without_local_
 
 @pytest.mark.asyncio
 async def test_master_on_restores_same_unique_id(monkeypatch) -> None:
-    monkeypatch.setattr(media_player, "EmbyServer", FakeEmby)
+    monkeypatch.setattr(media_player, "EmbySessionStream", FakeEmby)
     hass = SimpleNamespace(loop=object(), async_create_task=Mock())
-    runtime = SimpleNamespace(pyemby=None, devices=[_technical_record()])
+    runtime = EmbiRuntimeData(api_client=None, devices=[_technical_record()])
     entry = SimpleNamespace(
         data={"host": "host", "api_key": "key", "port": 8096, "ssl": False},
         options={CONF_TECHNICAL_ACCESS_VISIBILITY: True},
         runtime_data=runtime,
+        async_create_background_task=lambda target_hass, coro, name: target_hass.async_create_task(
+            coro, name
+        ),
+    )
+    entry.entry_id = "entry"
+    hass.registry = SimpleNamespace(
+        entities={
+            "media_player.technical": SimpleNamespace(
+                domain="media_player",
+                platform="emby",
+                config_entry_id="entry",
+                unique_id="technical.Home Assistant",
+            )
+        }
     )
     added = []
     await media_player.async_setup_entry(hass, entry, lambda entities: added.extend(entities))
@@ -258,15 +287,15 @@ async def test_master_on_restores_same_unique_id(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_master_on_exact_exception_stays_removed(monkeypatch) -> None:
-    monkeypatch.setattr(media_player, "EmbyServer", FakeEmby)
+    monkeypatch.setattr(media_player, "EmbySessionStream", FakeEmby)
     reconcile = AsyncMock(return_value=PlayerActionResult("reconcile", 1, (), (), ()))
     monkeypatch.setattr(media_player, "async_reconcile_player_visibility", reconcile)
     tasks = []
     hass = SimpleNamespace(loop=object(), async_create_task=lambda coro, _name: tasks.append(coro))
-    runtime = SimpleNamespace(
-        pyemby=None,
+    runtime = EmbiRuntimeData(
+        session_client=None,
         devices=[_technical_record()],
-        api_client=SimpleNamespace(_request=AsyncMock(return_value=[])),
+        api_client=SimpleNamespace(async_get_sessions=AsyncMock(return_value=[])),
     )
     entry = SimpleNamespace(
         data={"host": "host", "api_key": "key", "port": 8096, "ssl": False},
@@ -275,6 +304,20 @@ async def test_master_on_exact_exception_stays_removed(monkeypatch) -> None:
             CONF_HIDDEN_EXACT_PLAYERS: ["technical.Home Assistant"],
         },
         runtime_data=runtime,
+        async_create_background_task=lambda target_hass, coro, name: target_hass.async_create_task(
+            coro, name
+        ),
+    )
+    entry.entry_id = "entry"
+    hass.registry = SimpleNamespace(
+        entities={
+            "media_player.technical": SimpleNamespace(
+                domain="media_player",
+                platform="emby",
+                config_entry_id="entry",
+                unique_id="technical.Home Assistant",
+            )
+        }
     )
     added = []
     await media_player.async_setup_entry(hass, entry, lambda entities: added.extend(entities))
@@ -295,26 +338,40 @@ async def test_paused_technical_player_is_protected_then_reconciled_when_idle(mo
             super().__init__()
             self.devices["technical.Home Assistant"].state = "Paused"
 
-    monkeypatch.setattr(media_player, "EmbyServer", PausedFakeEmby)
+    monkeypatch.setattr(media_player, "EmbySessionStream", PausedFakeEmby)
     reconcile = AsyncMock(return_value=PlayerActionResult("reconcile", 1, (), (), ()))
     monkeypatch.setattr(media_player, "async_reconcile_player_visibility", reconcile)
     tasks = []
     hass = SimpleNamespace(loop=object(), async_create_task=lambda coro, _name: tasks.append(coro))
-    runtime = SimpleNamespace(
-        pyemby=None,
+    runtime = EmbiRuntimeData(
+        session_client=None,
         devices=[_technical_record()],
-        api_client=SimpleNamespace(_request=AsyncMock(return_value=[])),
+        api_client=SimpleNamespace(async_get_sessions=AsyncMock(return_value=[])),
     )
     entry = SimpleNamespace(
         data={"host": "host", "api_key": "key", "port": 8096, "ssl": False},
         options={CONF_TECHNICAL_ACCESS_VISIBILITY: False},
         runtime_data=runtime,
+        async_create_background_task=lambda target_hass, coro, name: target_hass.async_create_task(
+            coro, name
+        ),
+    )
+    entry.entry_id = "entry"
+    hass.registry = SimpleNamespace(
+        entities={
+            "media_player.technical": SimpleNamespace(
+                domain="media_player",
+                platform="emby",
+                config_entry_id="entry",
+                unique_id="technical.Home Assistant",
+            )
+        }
     )
     added = []
     await media_player.async_setup_entry(hass, entry, lambda entities: added.extend(entities))
     assert [entity.unique_id for entity in added] == ["technical.Home Assistant"]
     assert tasks == []
-    server = runtime.pyemby
+    server = runtime.session_client
     server.devices["technical.Home Assistant"].state = "Idle"
     server.new_callback(None)
     assert len(tasks) == 1

@@ -10,11 +10,6 @@ from . import player_actions
 from .maintenance_common import _async_save_state
 from .models import EmbiRuntimeData, MaintenanceActionSummary
 from .player_actions import PlayerActionItem, PlayerActionResult
-from .player_context import ACTIVE_PLAYBACK_STATES, PLAYBACK_UNKNOWN
-from .registry_state import (
-    state_can_be_removed_after_visibility_commit,
-    state_is_restored,
-)
 
 
 async def _async_record_reconciliation(
@@ -23,8 +18,11 @@ async def _async_record_reconciliation(
     result: PlayerActionResult,
     *,
     started_at: str,
+    runtime: EmbiRuntimeData | None = None,
 ) -> None:
-    runtime: EmbiRuntimeData = entry.runtime_data
+    runtime = runtime or getattr(entry, "runtime_data", None)
+    if runtime is None or not runtime.is_current(entry):
+        return
     runtime.maintenance_state.last_player_action = MaintenanceActionSummary(
         action="reconcile",
         status=result.status,
@@ -38,7 +36,7 @@ async def _async_record_reconciliation(
             sorted({item.reason for item in (*result.protected, *result.failed) if item.reason})
         ),
     )
-    await _async_save_state(hass, entry)
+    await _async_save_state(hass, entry, runtime=runtime)
 
 
 async def async_reconcile_player_visibility(
@@ -48,6 +46,7 @@ async def async_reconcile_player_visibility(
     requested_keys: Iterable[str] | None = None,
 ) -> PlayerActionResult:
     """Reconcile disallowed exact EMBi entities on every setup and visibility change."""
+    runtime = getattr(entry, "runtime_data", None)
     started_at = dt_util.utcnow().isoformat()
     try:
         catalog = await player_actions._fresh_catalog(hass, entry)
@@ -67,7 +66,9 @@ async def async_reconcile_player_visibility(
                 ),
             ),
         )
-        await _async_record_reconciliation(hass, entry, result, started_at=started_at)
+        await _async_record_reconciliation(
+            hass, entry, result, started_at=started_at, runtime=runtime
+        )
         return result
 
     requested = {str(value) for value in requested_keys or ()}
@@ -80,30 +81,14 @@ async def async_reconcile_player_visibility(
     ]
     if not invisible:
         result = PlayerActionResult("reconcile", 0, (), (), ())
-        await _async_record_reconciliation(hass, entry, result, started_at=started_at)
+        await _async_record_reconciliation(
+            hass, entry, result, started_at=started_at, runtime=runtime
+        )
         return result
 
-    prevalidated = {
-        player.player_key
-        for player in invisible
-        if player.playback not in ACTIVE_PLAYBACK_STATES
-        and (
-            player.playback != PLAYBACK_UNKNOWN
-            or (
-                bool(player.entity_id)
-                and (
-                    state_is_restored(hass.states.get(player.entity_id))
-                    or state_can_be_removed_after_visibility_commit(
-                        hass.states.get(player.entity_id)
-                    )
-                )
-            )
-        )
-    }
     return await player_actions.async_remove_hidden_player_entities(
         hass,
         entry,
         (player.player_key for player in invisible),
-        prevalidated_non_playing_keys=prevalidated,
         action="reconcile",
     )

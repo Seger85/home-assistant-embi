@@ -7,12 +7,11 @@ from typing import Any
 
 from .api import EmbyDeviceRecord
 from .const import (
-    CONF_HIDDEN_EXACT_PLAYERS,
-    CONF_HIDDEN_WHOLE_DEVICES,
-    CONF_TECHNICAL_ACCESS_VISIBILITY,
-    CONF_USER_MASTER_VISIBILITY,
     DOMAIN,
 )
+from .options_model import should_expose_player
+from .player_identity import player_key_from_unique_id
+from .session_state import aggregate_activity
 
 CLIENT_CLASS_PLAYBACK = "playback"
 CLIENT_CLASS_TECHNICAL = "technical"
@@ -179,10 +178,10 @@ def _state_value(states: Any, entity_id: str | None) -> str | None:
     return str(getattr(state, "state", state)).casefold()
 
 
-def _pyemby_state(pyemby_devices: Mapping[str, Any] | None, player_key: str) -> str | None:
-    if not pyemby_devices:
+def _session_state(session_devices: Mapping[str, Any] | None, player_key: str) -> str | None:
+    if not session_devices:
         return None
-    device = pyemby_devices.get(player_key)
+    device = session_devices.get(player_key)
     if device is None:
         return None
     value = getattr(device, "state", None)
@@ -300,26 +299,15 @@ def classify_client(
 def _playback_state(
     *,
     runtime_state: str | None,
-    pyemby_state: str | None,
+    session_state: str | None,
     registry_present: bool,
     registry_enabled: bool,
     emby_present: bool,
     client_class: str,
 ) -> str:
-    for value in (runtime_state, pyemby_state):
-        if value == PLAYBACK_PLAYING:
-            return PLAYBACK_PLAYING
-        if value == PLAYBACK_PAUSED:
-            return PLAYBACK_PAUSED
-        if value in {"idle", "off", "standby", "unavailable"}:
-            return PLAYBACK_NON_PLAYING
-    if client_class == CLIENT_CLASS_TECHNICAL:
-        return PLAYBACK_NON_PLAYING
-    if registry_present and not registry_enabled and emby_present:
-        return PLAYBACK_NON_PLAYING
-    if registry_present and not emby_present:
-        return PLAYBACK_NON_PLAYING
-    return PLAYBACK_UNKNOWN
+    return aggregate_activity(
+        value for value in (runtime_state, session_state) if value is not None
+    )
 
 
 def _is_visible(
@@ -328,21 +316,16 @@ def _is_visible(
     reported_device_id: str | None,
     users: tuple[str, ...],
     client_class: str,
+    playback: str,
     options: Mapping[str, Any],
 ) -> bool:
-    hidden_exact = {str(value) for value in options.get(CONF_HIDDEN_EXACT_PLAYERS, [])}
-    hidden_devices = {str(value) for value in options.get(CONF_HIDDEN_WHOLE_DEVICES, [])}
-    if player_key in hidden_exact:
-        return False
-    if reported_device_id and reported_device_id in hidden_devices:
-        return False
-    if len(users) == 1:
-        user_visibility = options.get(CONF_USER_MASTER_VISIBILITY, {})
-        if isinstance(user_visibility, Mapping) and user_visibility.get(users[0]) is False:
-            return False
-    return not (
-        client_class == CLIENT_CLASS_TECHNICAL
-        and not bool(options.get(CONF_TECHNICAL_ACCESS_VISIBILITY, False))
+    return should_expose_player(
+        player_key=player_key,
+        reported_device_id=reported_device_id,
+        state=playback,
+        options=options,
+        technical_access=client_class == CLIENT_CLASS_TECHNICAL,
+        users=users,
     )
 
 
@@ -353,7 +336,7 @@ def build_player_catalog(
     states: Any = None,
     entry_id: str,
     options: Mapping[str, Any],
-    pyemby_devices: Mapping[str, Any] | None = None,
+    session_devices: Mapping[str, Any] | None = None,
 ) -> list[PlayerContext]:
     """Build a current user-oriented catalog from fresh server and HA metadata."""
     grouped: dict[str, list[EmbyDeviceRecord]] = {}
@@ -368,7 +351,9 @@ def build_player_catalog(
             and _entry_value(entity, "platform") == DOMAIN
             and _entry_value(entity, "config_entry_id") == entry_id
         ):
-            registry_by_key[str(_entry_value(entity, "unique_id", ""))] = entity
+            registry_by_key[
+                player_key_from_unique_id(_entry_value(entity, "unique_id", ""), entry_id)
+            ] = entity
 
     keys = set(grouped) | set(registry_by_key)
     contexts: list[PlayerContext] = []
@@ -378,8 +363,10 @@ def build_player_catalog(
         entity = registry_by_key.get(key)
         entity_id = _entry_value(entity, "entity_id") if entity is not None else None
         runtime_state = _state_value(states, entity_id)
-        py_state = _pyemby_state(pyemby_devices, key)
-        effective_state = runtime_state or py_state
+        py_state = _session_state(session_devices, key)
+        effective_state = aggregate_activity(
+            value for value in (runtime_state, py_state) if value is not None
+        )
         users = _record_users(player_records)
         latest_user = latest.last_user_name if latest else None
         app_name = (latest.app_name if latest else None) or "Emby"
@@ -400,7 +387,7 @@ def build_player_catalog(
         emby_present = bool(player_records)
         playback = _playback_state(
             runtime_state=runtime_state,
-            pyemby_state=py_state,
+            session_state=py_state,
             registry_present=registry_present,
             registry_enabled=registry_enabled,
             emby_present=emby_present,
@@ -411,6 +398,7 @@ def build_player_catalog(
             reported_device_id=latest.reported_device_id if latest else None,
             users=users,
             client_class=client_class,
+            playback=playback,
             options=options,
         )
         owned = registry_present

@@ -160,6 +160,7 @@ config_entries.OptionsFlow = OptionsFlow
 config_entries.ConfigFlow = ConfigFlow
 core.HomeAssistant = object
 core.callback = callback
+exceptions.HomeAssistantError = RuntimeError
 exceptions.ConfigEntryAuthFailed = RuntimeError
 exceptions.ConfigEntryNotReady = RuntimeError
 entity_registry.EntityRegistry = object

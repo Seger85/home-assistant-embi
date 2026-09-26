@@ -61,7 +61,7 @@ def test_stale_restored_state_is_removable() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reconciliation_prevalidates_inactive_and_restored_but_not_playback(
+async def test_reconciliation_never_bypasses_fresh_session_validation(
     monkeypatch,
 ) -> None:
     players = [
@@ -121,7 +121,7 @@ async def test_reconciliation_prevalidates_inactive_and_restored_but_not_playbac
     hass = SimpleNamespace(states=SimpleNamespace(get=lambda entity_id: states.get(entity_id)))
     await player_reconciliation.async_reconcile_player_visibility(hass, object())
     _, kwargs = remove.await_args
-    assert kwargs["prevalidated_non_playing_keys"] == {"inactive", "restored"}
+    assert "prevalidated_non_playing_keys" not in kwargs
     assert REGISTRY_RECONCILIATION_VERSION == 3
 
 

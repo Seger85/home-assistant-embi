@@ -62,7 +62,7 @@ async def test_unload_marks_runtime_and_cancels_scheduler() -> None:
         cancelled += 1
 
     pyemby = FakePyEmby()
-    runtime = EmbiRuntimeData(api_client=object(), pyemby=pyemby)
+    runtime = EmbiRuntimeData(api_client=object(), session_client=pyemby)
     runtime.cancel_auto_cleanup = cancel
     runtime.auto_cleanup_scheduled = True
     entry = SimpleNamespace(runtime_data=runtime)
@@ -81,7 +81,7 @@ async def test_failed_platform_unload_restores_running_runtime() -> None:
     hass = FakeHass()
     hass.config_entries.unload_result = False
     pyemby = FakePyEmby()
-    runtime = EmbiRuntimeData(api_client=object(), pyemby=pyemby)
+    runtime = EmbiRuntimeData(api_client=object(), session_client=pyemby)
     runtime.cancel_auto_cleanup = lambda: None
     entry = SimpleNamespace(runtime_data=runtime)
 

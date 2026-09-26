@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .const import (
+    CONF_ALLOWED_DEVICE_IDS,
     CONF_AUTO_SHOW_NEW_PLAYERS,
     CONF_GLOBAL_PLAYER_MODE,
     CONF_HIDDEN_EXACT_PLAYERS,
@@ -13,7 +14,9 @@ from .const import (
     CONF_SERVER_AUTO_CLEANUP_ENABLED,
     CONF_SERVER_AUTO_CLEANUP_REMOVE_HA_ENTITIES,
     CONF_SERVER_CLEANUP_AGE_DAYS,
+    CONF_SERVER_CLEANUP_ENABLED,
     CONF_TECHNICAL_ACCESS_VISIBILITY,
+    CONF_UNRESOLVED_LEGACY_RULES,
     CONF_USER_MASTER_VISIBILITY,
 )
 
@@ -38,8 +41,8 @@ def _on_off(value: Any, *, german: bool) -> str:
 def _mode(value: Any, *, german: bool) -> str:
     active = str(value) == "active_only"
     if german:
-        return "Nur während der Wiedergabe" if active else "Immer verfügbar"
-    return "Only during playback" if active else "Always available"
+        return "Nur während der Wiedergabe" if active else "Player beibehalten"
+    return "Only during playback" if active else "Keep players"
 
 
 def _days(value: Any, *, german: bool) -> str:
@@ -160,4 +163,24 @@ def semantic_changes(
                         _on_off(after, german=german),
                     )
                 )
+    for key, label in (
+        (CONF_ALLOWED_DEVICE_IDS, "Freigegebene Player" if german else "Allowed players"),
+        (
+            CONF_UNRESOLVED_LEGACY_RULES,
+            "Ältere, nicht zugeordnete Regeln" if german else "Unresolved older rules",
+        ),
+    ):
+        before = set(original.get(key, []))
+        after = set(draft.get(key, []))
+        if before != after:
+            changes.append(SemanticChange(key, label, str(len(before)), str(len(after))))
+    if original.get(CONF_SERVER_CLEANUP_ENABLED) != draft.get(CONF_SERVER_CLEANUP_ENABLED):
+        changes.append(
+            SemanticChange(
+                CONF_SERVER_CLEANUP_ENABLED,
+                "Serverbereinigung erlauben" if german else "Allow server cleanup",
+                _on_off(original.get(CONF_SERVER_CLEANUP_ENABLED), german=german),
+                _on_off(draft.get(CONF_SERVER_CLEANUP_ENABLED), german=german),
+            )
+        )
     return changes

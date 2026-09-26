@@ -1,5 +1,5 @@
 name: Fehlerbericht
-about: Einen reproduzierbaren Fehler in EMBi melden
+description: Einen reproduzierbaren Fehler in EMBi melden
 title: "[Bug]: "
 labels:
   - bug
@@ -12,7 +12,7 @@ body:
     id: embi_version
     attributes:
       label: EMBi-Version
-      placeholder: 0.3.0
+      placeholder: "Version aus der EMBi-Integration oder HACS"
     validations:
       required: true
   - type: input

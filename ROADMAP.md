@@ -1,12 +1,12 @@
-# EMBi Roadmap
+# Mögliche nächste Schritte
 
-EMBi is maintained against a stable lifecycle, identity, cleanup, and release contract. Published release history is documented in [CHANGELOG.md](CHANGELOG.md).
+EMBi soll übersichtlich bleiben und vorhandene Player, Sensoren und Einstellungen zuverlässig weiterverwenden. Veröffentlichte Änderungen stehen im [Changelog](CHANGELOG.md).
 
-Potential future work must preserve that contract:
+Mögliche weitere Verbesserungen:
 
-- expand the tested Home Assistant and Emby compatibility matrix
-- add a report-only server-cleanup mode
-- add carefully scoped aggregate media statistics
-- improve accessibility, mobile-flow, and localization coverage
+- Mehr reale Emby-Server und Client-Apps in die Kompatibilitätsprüfung aufnehmen.
+- Eine reine Vorschau geplanter automatischer Bereinigungen anbieten.
+- Barrierefreiheit und Darstellung auf unterschiedlichen Mobilgeräten weiter prüfen.
+- Zusätzliche Mediathekswerte aufnehmen, wenn sie einen konkreten Nutzen haben.
 
-These items are candidates, not commitments.
+Diese Punkte sind Ideen, keine zugesagten Funktionen oder Termine.

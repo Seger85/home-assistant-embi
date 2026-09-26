@@ -4,7 +4,7 @@ from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_API_KEY, CONF_HOST
+from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT, CONF_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -25,6 +25,7 @@ from .const import (
     VERSION,
 )
 from .models import EmbiRuntimeData
+from .options_model import default_options
 from .options_sensors import sensor_unique_id
 from .player_context import build_player_catalog, catalog_stats
 from .registry_state import state_is_restored
@@ -51,7 +52,7 @@ async def async_get_config_entry_diagnostics(
         states=hass.states,
         entry_id=entry.entry_id,
         options=entry.options,
-        pyemby_devices=getattr(runtime.pyemby, "devices", None),
+        session_devices=getattr(runtime.session_client, "devices", None),
     )
     stats = catalog_stats(players, server_history_records=len(runtime.devices))
     class_counts: dict[str, int] = {}
@@ -76,7 +77,7 @@ async def async_get_config_entry_diagnostics(
         )
         for key in SENSOR_KEYS
     }
-    sensor_identity_mismatches = sum(
+    sensor_custom_entity_ids = sum(
         entity_id is not None and entity_id != f"sensor.{SENSOR_ENTITY_IDS[key]}"
         for key, entity_id in sensor_entity_ids.items()
     )
@@ -101,8 +102,18 @@ async def async_get_config_entry_diagnostics(
             "title": "<redacted>",
             "version": entry.version,
             "minor_version": entry.minor_version,
-            "data": async_redact_data(dict(entry.data), {CONF_API_KEY, CONF_HOST}),
-            "options": async_redact_data(dict(entry.options), _OPTION_IDENTITIES),
+            "data": async_redact_data(
+                {
+                    key: entry.data[key]
+                    for key in (CONF_API_KEY, CONF_HOST, CONF_PORT, CONF_SSL)
+                    if key in entry.data
+                },
+                {CONF_API_KEY, CONF_HOST},
+            ),
+            "options": async_redact_data(
+                {key: entry.options[key] for key in default_options() if key in entry.options},
+                _OPTION_IDENTITIES,
+            ),
         },
         "migration": runtime.maintenance_state.migration.as_dict(),
         "runtime": {
@@ -117,14 +128,22 @@ async def async_get_config_entry_diagnostics(
             "known_users": stats.known_users,
             "disabled_valid_entities": stats.disabled_valid,
             "server_missing_entities": stats.server_missing,
-            "home_assistant_orphans": stats.orphans,
-            "pyemby_initialized": runtime.pyemby is not None,
+            "session_stream_initialized": runtime.session_client is not None,
             "maintenance_storage_available": runtime.maintenance_storage_available,
+            "maintenance_recovery_required": runtime.maintenance_recovery_required,
+            "devices_last_refreshed": runtime.last_devices_refresh_at,
+            "sessions_last_refreshed": getattr(runtime.session_client, "last_success_at", None),
+            "session_transport": getattr(runtime.session_client, "transport", "not_started"),
+            "sessions_available": getattr(runtime.session_client, "available", False),
+            "sensor_groups": {
+                key: {"available": coordinator.last_update_success}
+                for key, coordinator in runtime.sensor_coordinators.items()
+            },
             "automatic_cleanup_scheduled": runtime.auto_cleanup_scheduled,
             "enabled_sensors": len(entry.options.get(CONF_ENABLED_SENSORS, list(SENSOR_KEYS))),
             "total_sensors": len(SENSOR_KEYS),
             "sensor_entities_present": sensor_entities_present,
-            "sensor_identity_mismatches": sensor_identity_mismatches,
+            "sensor_custom_entity_ids": sensor_custom_entity_ids,
             "sensor_identity_version": int(entry.options.get(CONF_SENSOR_IDENTITY_VERSION, 0) or 0),
             "duplicate_user_option_keys": duplicate_user_option_keys,
             "cleanup_report_version": runtime.maintenance_state.report.report_version,

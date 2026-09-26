@@ -65,6 +65,10 @@ class FakeApi:
         self.failing_deletes = set(failing_deletes)
         self.delete_calls: list[str] = []
         self.get_calls = 0
+        self.sessions = []
+
+    async def async_get_sessions(self):
+        return list(self.sessions)
 
     async def async_get_devices(self) -> list[EmbyDeviceRecord]:
         self.get_calls += 1
@@ -187,9 +191,9 @@ async def test_store_failure_after_server_delete_reports_counts_and_skips_regist
     assert reload_needed is False
     assert report.status == RUN_STATUS_INTERRUPTED
     assert report.last_error == "storage_failed_after_server_delete"
-    assert report.server_deleted == 2
+    assert report.server_deleted == 1
     assert report.result_counts_complete is False
-    assert len(api.delete_calls) == 2
+    assert len(api.delete_calls) == 1
     assert not hass.data.get("emby_pending_registry_cleanup")
 
 

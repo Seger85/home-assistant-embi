@@ -41,6 +41,7 @@ from .maintenance import (
 )
 from .maintenance_store import EmbiMaintenanceStore, resolve_store_load
 from .models import EmbiRuntimeData, MaintenanceState, MigrationSummary
+from .option_validation import normalize_stored_options
 from .player_actions import PlayerActionResult
 from .player_reconciliation import async_reconcile_player_visibility
 from .sensor_registry import async_prepare_sensor_registry_identities
@@ -111,6 +112,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         raise ConfigEntryNotReady(str(err)) from err
 
     original_options = dict(entry.options)
+    _normalized, options_repaired = normalize_stored_options(original_options)
+    if options_repaired:
+        persistent_notification.async_create(
+            hass,
+            "EMBi hat ungültige gespeicherte Einstellungen erkannt und die automatische Bereinigung ausgeschaltet. Bitte prüfe die Player- und Bereinigungseinstellungen, bevor du die Automatik wieder aktivierst.",
+            title="EMBi-Einstellungen prüfen",
+            notification_id=f"emby_options_repaired_{entry.entry_id}",
+        )
     legacy_cleanup_was_completed = legacy_cleanup_completed(original_options)
     migrated_options, options_changed = migrate_options(original_options, devices)
     store_expected = bool(migrated_options.get(CONF_MAINTENANCE_STORE_INITIALIZED, False))
@@ -169,11 +178,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if storage_available and options_changed:
         maintenance_state.migration = MigrationSummary(
             status="completed",
-            from_schema=original_options.get("options_schema_version"),
+            from_schema=(
+                original_options.get("options_schema_version")
+                if type(original_options.get("options_schema_version")) is int
+                else None
+            ),
             to_schema=int(migrated_options["options_schema_version"]),
             completed_at=dt_util.utcnow().isoformat(),
             changed=True,
             unresolved_rules=len(migrated_options.get("unresolved_legacy_rules", [])),
+            last_error="invalid_options_recovered" if options_repaired else None,
         )
         try:
             await store.async_save(maintenance_state)
@@ -200,6 +214,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         maintenance_store=store,
         maintenance_state=maintenance_state,
         maintenance_storage_available=storage_available,
+        maintenance_recovery_required=not storage_available,
+        last_devices_refresh_at=dt_util.utcnow().isoformat(),
     )
     entry.runtime_data = runtime
 
@@ -217,10 +233,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             report.next_run_at = (
                 dt_util.utcnow() + timedelta(hours=AUTO_CLEANUP_INTERVAL_HOURS)
             ).isoformat()
+            maintenance_state.automatic_next_run_at = report.next_run_at
         try:
             await store.async_save(maintenance_state)
         except Exception:
             runtime.maintenance_storage_available = False
+            runtime.maintenance_recovery_required = True
             _LOGGER.exception("EMBi failed to persist interrupted maintenance state")
 
     await async_apply_pending_registry_cleanup(hass, entry, devices)
@@ -232,7 +250,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry,
             (str(value) for value in enabled),
         )
-        migrated_options[CONF_SENSOR_IDENTITY_VERSION] = SENSOR_IDENTITY_VERSION
+        if not sensor_result.collisions:
+            migrated_options[CONF_SENSOR_IDENTITY_VERSION] = SENSOR_IDENTITY_VERSION
         hass.config_entries.async_update_entry(entry, options=migrated_options)
         _LOGGER.info(
             "EMBi sensor identity migration: %s prepared, %s migrated, "

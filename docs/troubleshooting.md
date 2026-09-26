@@ -1,23 +1,35 @@
-# Troubleshooting
+# Wenn etwas nicht wie erwartet funktioniert
 
-## Emby sensors page
+## Ein Player ist nicht verfügbar
 
-The 1.0 sensor page is a native multi-select. If it does not open, verify that `strings.json`, `translations/en.json`, and `translations/de.json` have identical key structures and inspect the Options Flow error log.
+Prüfe zuerst, ob der Emby-Client läuft und vom Server als Sitzung gemeldet wird. Im Modus **Player beibehalten** darf ein früher bekannter Client vorübergehend nicht verfügbar sein. Das ist allein kein HA-Systemfehler und kein Anlass zur Registry-Bereinigung. Bei einem neuen Geräte- oder App-Kennzeichen kann Emby einen neuen Player melden.
 
-If a documented sensor remains unavailable, verify the Emby API response and reload the integration. Remove conflicting YAML sensors before enabling the EMBi-owned entity and restart Home Assistant.
+Sind alle Player betroffen, prüfe Serveradresse, Port, Netzwerk und den API-Schlüssel. Bei Authentifizierungsproblemen nutze die von Home Assistant angebotene erneute Anmeldung. Für HTTPS muss das Zertifikat von Home Assistant als gültig akzeptiert werden.
 
-## A player is not removed
+## Eine Zahl ist 0, unbekannt oder nicht verfügbar
 
-Playing or paused clients remain protected. For an unknown state EMBi refreshes Emby sessions; a failed refresh protects only that client. Diagnostics report aggregate requested, removed, protected, and failed counts plus reason codes.
+`0` bedeutet ein gültiges leeres Ergebnis. `unavailable` bedeutet, dass für diese Sensorgruppe aktuell keine gültigen Daten vorliegen. `unknown` kann vor dem ersten verwertbaren Wert auftreten. EMBi ersetzt fehlende Zahlen nicht pauschal durch null. Bibliothekszahlen und Benutzer werden getrennt abgefragt; ein Teil kann funktionieren, während der andere nicht verfügbar ist.
 
-## Technical players remain visible
+## Playerzahl und Benutzerzahl unterscheiden sich
 
-Confirm the technical master is off, apply the draft, and allow the planned reload to finish. A currently playing client is retained until playback ends; the media-player callback then rechecks visibility.
+Die Playerkachel zählt Wiedergabe und Pause. `sensor.emby_users_watching` zählt unterschiedliche Benutzer mit laufender Wiedergabe, ohne pausierte Sitzungen. Ein Benutzer mit zwei Playern kann deshalb als ein Benutzer und zwei Player erscheinen.
 
-## Sensor identity collision
+## Ein Sensor hat eine andere Entitäts-ID
 
-EMBi never changes a foreign target entity. Remove or rename the unrelated entity manually, then reload EMBi. Do not edit `.storage`.
+Suche unter **Einstellungen → Geräte & Dienste → Entitäten** nach der Integration EMBi. Eigene Umbenennungen, mehrere Server oder eine schon belegte Standard-ID können andere IDs ergeben. Passe die Karte an die tatsächliche ID an. Lösche keine fremden YAML- oder Template-Sensoren auf Verdacht.
 
-## HACS still shows an older version
+## Eine Einstellung wurde nicht übernommen
 
-Reload the custom repository information in HACS and confirm that the latest stable GitHub release contains both `embi.zip` and `embi.zip.sha256`.
+Normale Optionsseiten bearbeiten einen Entwurf. Öffne **Änderungen prüfen** und anschließend **Änderungen übernehmen**. Aktive Player bleiben aus Sicherheitsgründen auch bei einer gespeicherten Ausblendung erhalten, bis sie sicher inaktiv sind. Bleibt eine Fehlermeldung nach dem Speichern, prüfe den HA-Hinweis und lade die Integration nach Behebung der Ursache neu.
+
+## Wartung ist angehalten oder ein Lauf unvollständig
+
+Nutze den Laufbericht und gegebenenfalls **Wartung wiederherstellen**. Nach einem Timeout bei einer Serverlöschung kann der Eintrag bereits gelöscht sein; wiederhole die Aktion nicht aufgrund einer Vermutung. Fehlender Speicher wird bewusst nicht still neu angelegt. Mehr dazu unter [Bereinigung](server-cleanup.md).
+
+## Ein Steuerbefehl schlägt fehl
+
+Nicht jede Emby-App unterstützt jede Fernsteuerungsfunktion. Prüfe, ob der Client noch verbunden ist und denselben Befehl über Emby akzeptiert. EMBi meldet fehlgeschlagene Befehle, statt Erfolg vorzutäuschen.
+
+## Einen Fehler melden
+
+Notiere EMBi-, Home-Assistant- und Emby-Version, Client-App, erwartetes und beobachtetes Verhalten sowie die Schritte zum Nachstellen. Lade bei Bedarf die Diagnose über die Integration herunter und prüfe sie vor dem Teilen. Keine API-Schlüssel, privaten Serveradressen oder unbereinigten Screenshots in öffentliche Issues oder Forenbeiträge kopieren.

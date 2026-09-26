@@ -11,22 +11,23 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONF_API_KEY,
-    CONF_HOST,
-    CONF_PORT,
-    CONF_SSL,
     DEVICE_DEFAULT_NAME,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
-from pyemby import EmbyServer
 
+from .api import EmbyApiError
 from .const import CONF_GLOBAL_PLAYER_MODE, PLAYER_MODE_PERSISTENT
 from .models import EmbiRuntimeData
 from .options_model import should_expose_player
 from .player_context import CLIENT_CLASS_TECHNICAL, classify_client
+from .player_identity import player_unique_id
 from .player_reconciliation import async_reconcile_player_visibility
+from .session_state import INACTIVE, player_activity
+from .session_stream import EmbySessionStream
 
 MEDIA_TYPE_TRAILER = "trailer"
 SUPPORT_EMBY = (
@@ -47,26 +48,25 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up EMBi media-player entities from a config entry."""
-    emby = EmbyServer(
-        entry.data[CONF_HOST],
-        entry.data[CONF_API_KEY],
-        entry.data[CONF_PORT],
-        entry.data[CONF_SSL],
-        hass.loop,
-    )
     runtime: EmbiRuntimeData = entry.runtime_data
-    runtime.pyemby = emby
+    emby = EmbySessionStream(runtime.api_client, hass, entry)
+    runtime.session_client = emby
 
     active_entities: dict[str, EmbyDevice] = {}
     inactive_entities: dict[str, EmbyDevice] = {}
     visibility_removals: set[str] = set()
+    hidden_reconciled: set[str] = set()
 
     def allowed(device_id: str) -> bool:
         device = emby.devices[device_id]
         records = [record for record in runtime.devices if record.player_key == device_id]
         latest = max(
             records,
-            key=lambda record: record.last_activity_datetime is not None,
+            key=lambda record: (
+                record.last_activity_datetime.timestamp()
+                if record.last_activity_datetime
+                else float("-inf")
+            ),
             default=None,
         )
         client_class, _ = classify_client(
@@ -94,27 +94,6 @@ async def async_setup_entry(
             users=users,
         )
 
-    async def _unknown_has_active_session(device_id: str) -> bool | None:
-        try:
-            sessions = await runtime.api_client._request("GET", "/Sessions")
-        except Exception:
-            return None
-        if not isinstance(sessions, list):
-            return None
-        for session in sessions:
-            if not isinstance(session, dict):
-                return None
-            reported = str(session.get("DeviceId") or "")
-            if reported and reported.casefold() not in device_id.casefold():
-                continue
-            if not isinstance(session.get("NowPlayingItem"), dict):
-                continue
-            play_state = session.get("PlayState")
-            if not isinstance(play_state, dict) or not isinstance(play_state.get("IsPaused"), bool):
-                return None
-            return True
-        return False
-
     async def _async_enforce_visibility(
         device_id: str,
         entity: EmbyDevice | None,
@@ -127,21 +106,29 @@ async def async_setup_entry(
                 state = str(getattr(device, "state", "")).casefold()
                 if state in _ACTIVE_STATES:
                     return
-                if state not in {"idle", "off", "standby", "unavailable"}:
-                    active_session = await _unknown_has_active_session(device_id)
-                    if active_session is not False:
-                        return
+                try:
+                    sessions = await runtime.api_client.async_get_sessions()
+                except EmbyApiError:
+                    return
+                if player_activity(sessions, device_id) != INACTIVE or not runtime.is_current(
+                    entry
+                ):
+                    return
+                if str(getattr(device, "state", "")).casefold() in _ACTIVE_STATES:
+                    return
                 if entity.hass is not None:
                     await entity.async_remove(force_remove=True)
                 removed_from_platform = True
                 active_entities.pop(device_id, None)
                 inactive_entities.pop(device_id, None)
 
-            await async_reconcile_player_visibility(
+            result = await async_reconcile_player_visibility(
                 hass,
                 entry,
                 requested_keys=(device_id,),
             )
+            if result.status == "completed":
+                hidden_reconciled.add(device_id)
         except Exception:
             _LOGGER.exception(
                 "EMBi failed to enforce hidden player %s after a runtime update",
@@ -152,25 +139,37 @@ async def async_setup_entry(
                 active_entities.pop(device_id, None)
                 inactive_entities.pop(device_id, None)
             visibility_removals.discard(device_id)
+            if runtime.is_current(entry) and allowed(device_id):
+                device_update_callback(None)
 
     @callback
     def device_update_callback(data: Any) -> None:
+        if not runtime.is_current(entry):
+            return
         new_entities: list[EmbyDevice] = []
         for device_id in list(emby.devices):
             if not allowed(device_id):
                 entity = active_entities.get(device_id) or inactive_entities.get(device_id)
-                if device_id not in visibility_removals:
+                if device_id not in visibility_removals and device_id not in hidden_reconciled:
                     visibility_removals.add(device_id)
-                    hass.async_create_task(
+                    entry.async_create_background_task(
+                        hass,
                         _async_enforce_visibility(device_id, entity),
                         "Enforce hidden EMBi player",
                     )
                 continue
 
-            if device_id in visibility_removals:
+            hidden_reconciled.discard(device_id)
+            if device_id in visibility_removals or not getattr(
+                emby.devices[device_id], "is_active", True
+            ):
                 continue
             if device_id not in active_entities and device_id not in inactive_entities:
-                entity = EmbyDevice(emby, device_id)
+                entity = EmbyDevice(
+                    emby,
+                    device_id,
+                    unique_id=player_unique_id(er.async_get(hass), entry.entry_id, device_id),
+                )
                 active_entities[device_id] = entity
                 new_entities.append(entity)
             elif device_id in inactive_entities:
@@ -198,33 +197,54 @@ class EmbyDevice(MediaPlayerEntity):
 
     _attr_should_poll = False
 
-    def __init__(self, emby: Any, device_id: str) -> None:
+    def __init__(self, emby: Any, device_id: str, *, unique_id: str | None = None) -> None:
         self.emby = emby
         self.device_id = device_id
         self.device = self.emby.devices[self.device_id]
         self.media_status_last_position: float | None = None
         self.media_status_received = None
-        self._attr_unique_id = device_id
+        self._attr_unique_id = unique_id or device_id
+        self._last_media_id: str | None = None
+        self._last_playback_state: str | None = None
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        self.emby.add_update_callback(self.async_update_callback, self.device_id)
+        unsubscribe = self.emby.add_update_callback(self.async_update_callback, self.device_id)
+        self.async_on_remove(unsubscribe)
+        self.async_update_callback(None)
 
     @callback
     def async_update_callback(self, msg: Any) -> None:
-        if self.device.media_position:
-            if self.device.media_position != self.media_status_last_position:
+        if self.device.is_nowplaying:
+            # Zero is a valid seek/start position; a new item starts a new clock.
+            if (
+                self.device.media_position != self.media_status_last_position
+                or self.device.media_id != self._last_media_id
+                or self.device.state != self._last_playback_state
+            ):
                 self.media_status_last_position = self.device.media_position
-                self.media_status_received = dt_util.utcnow()
-        elif not self.device.is_nowplaying:
+                self.media_status_received = (
+                    dt_util.utcnow() if self.device.media_position is not None else None
+                )
+        else:
             self.media_status_last_position = None
             self.media_status_received = None
+        self._last_media_id = self.device.media_id
+        self._last_playback_state = self.device.state
         self.async_write_ha_state()
 
     def set_available(self, value: bool) -> None:
         self._attr_available = value
         if self.hass is not None:
             self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        return bool(self.device.is_active)
+
+    async def _async_fetch_image(self, url: str) -> tuple[bytes | None, str | None]:
+        # Home Assistant caches and proxies this image; the token stays in headers.
+        return await self.device.api.async_get_image(url)
 
     @property
     def supports_remote_control(self) -> bool:
@@ -314,20 +334,28 @@ class EmbyDevice(MediaPlayerEntity):
     def supported_features(self) -> MediaPlayerEntityFeature:
         return SUPPORT_EMBY if self.supports_remote_control else MediaPlayerEntityFeature(0)
 
+    async def _command(self, method: str, *args: Any) -> None:
+        try:
+            await getattr(self.device, method)(*args)
+        except EmbyApiError as err:
+            raise HomeAssistantError(
+                translation_domain="emby", translation_key="command_failed"
+            ) from err
+
     async def async_media_play(self) -> None:
-        await self.device.media_play()
+        await self._command("media_play")
 
     async def async_media_pause(self) -> None:
-        await self.device.media_pause()
+        await self._command("media_pause")
 
     async def async_media_stop(self) -> None:
-        await self.device.media_stop()
+        await self._command("media_stop")
 
     async def async_media_next_track(self) -> None:
-        await self.device.media_next()
+        await self._command("media_next")
 
     async def async_media_previous_track(self) -> None:
-        await self.device.media_previous()
+        await self._command("media_previous")
 
     async def async_media_seek(self, position: float) -> None:
-        await self.device.media_seek(position)
+        await self._command("media_seek", position)

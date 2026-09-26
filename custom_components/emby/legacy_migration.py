@@ -31,6 +31,7 @@ from .const import (
     PLAYER_MODE_PERSISTENT,
     SENSOR_KEYS,
 )
+from .option_validation import normalize_stored_options
 from .options_model import default_options
 
 # Historical keys are intentionally isolated here so current runtime modules and
@@ -76,7 +77,7 @@ def migrate_options(
     new_install: bool = False,
 ) -> tuple[dict[str, Any], bool]:
     """Idempotently preserve published upgrades while normalizing current options."""
-    source = dict(options)
+    source, _repaired = normalize_stored_options(options)
     defaults = default_options()
     migrated = dict(defaults)
     migrated.update(source)
@@ -98,18 +99,18 @@ def migrate_options(
 
     hidden_players = {
         *source.get(CONF_HIDDEN_EXACT_PLAYERS, []),
-        *source.get(_LEGACY_IGNORED_PLAYER_KEYS, []),
+        *_strings(source.get(_LEGACY_IGNORED_PLAYER_KEYS, [])),
     }
     hidden_devices = {
         *source.get(CONF_HIDDEN_WHOLE_DEVICES, []),
-        *source.get(_LEGACY_IGNORED_REPORTED_DEVICE_IDS, []),
+        *_strings(source.get(_LEGACY_IGNORED_REPORTED_DEVICE_IDS, [])),
     }
     unresolved = {
         *source.get(CONF_UNRESOLVED_LEGACY_RULES, []),
-        *source.get(_LEGACY_UNRESOLVED_IGNORED_IDS, []),
+        *_strings(source.get(_LEGACY_UNRESOLVED_IGNORED_IDS, [])),
     }
 
-    for configured_id in source.get(_LEGACY_IGNORED_DEVICE_IDS, []):
+    for configured_id in _strings(source.get(_LEGACY_IGNORED_DEVICE_IDS, [])):
         value = str(configured_id)
         if value in known_player_keys:
             hidden_players.add(value)
@@ -202,4 +203,4 @@ def migrate_options(
     ):
         migrated.pop(legacy_key, None)
 
-    return migrated, migrated != source
+    return migrated, migrated != dict(options)

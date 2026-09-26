@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from homeassistant.helpers import entity_registry as er
+from homeassistant.util import dt as dt_util
 
 from .player_context import (
     GROUP_SHARED,
@@ -62,15 +63,19 @@ def registry_entries(hass: Any) -> list[object]:
 
 
 async def fresh_catalog(flow: Any) -> tuple[list[PlayerContext], PlayerCatalogStats]:
+    runtime = flow._runtime
     records = await flow._devices()
-    flow._runtime.devices = records
+    if not runtime.is_current(flow._entry):
+        raise RuntimeError("Entry was reloaded during refresh")
+    runtime.devices = records
+    runtime.last_devices_refresh_at = dt_util.utcnow().isoformat()
     players = build_player_catalog(
         records,
         registry_entries=registry_entries(flow.hass),
         states=flow.hass.states,
         entry_id=flow._entry.entry_id,
         options=flow._draft_options,
-        pyemby_devices=getattr(flow._runtime.pyemby, "devices", None),
+        session_devices=getattr(flow._runtime.session_client, "devices", None),
     )
     return players, catalog_stats(players, server_history_records=len(records))
 

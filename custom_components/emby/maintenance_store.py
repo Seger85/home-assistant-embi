@@ -16,6 +16,9 @@ class StoreBackend(Protocol):
     async def async_save(self, data: dict[str, Any]) -> None:
         """Persist data."""
 
+    async def async_remove(self) -> None:
+        """Remove this entry's storage."""
+
 
 @dataclass(frozen=True, slots=True)
 class StoreLoadDecision:
@@ -76,3 +79,7 @@ class EmbiMaintenanceStore:
     async def async_save(self, state: MaintenanceState) -> None:
         """Persist the complete state immediately."""
         await self._backend.async_save(state.as_dict())
+
+    async def async_remove(self) -> None:
+        """Remove only the journal belonging to an explicitly removed config entry."""
+        await self._backend.async_remove()

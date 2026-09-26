@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,19 +15,19 @@ class OptionsDraft:
 
     @classmethod
     def from_options(cls, options: Mapping[str, Any]) -> OptionsDraft:
-        original = dict(options)
-        return cls(original=original, current=dict(original))
+        original = deepcopy(dict(options))
+        return cls(original=original, current=deepcopy(original))
 
     @property
     def dirty(self) -> bool:
         return self.current != self.original
 
     def update(self, values: Mapping[str, Any]) -> None:
-        self.current.update(values)
+        self.current.update(deepcopy(dict(values)))
 
     def discard(self) -> None:
         self.current.clear()
-        self.current.update(self.original)
+        self.current.update(deepcopy(self.original))
 
     def applied(self) -> dict[str, Any]:
-        return dict(self.current)
+        return deepcopy(self.current)

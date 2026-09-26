@@ -11,6 +11,7 @@ from .api import EmbyDeviceRecord
 from .const import DOMAIN
 from .maintenance_registry_queue import _classify_unbound_exact_matches
 from .models import PendingRegistryTarget, RegistryCleanupResult
+from .player_identity import unique_id_matches
 from .registry_state import state_blocks_registry_removal
 
 
@@ -29,15 +30,20 @@ def evaluate_registry_targets(
     entry: ConfigEntry,
     current_devices: Iterable[EmbyDeviceRecord],
     targets: Mapping[str, PendingRegistryTarget],
+    protected_player_keys: Iterable[str] = (),
 ) -> RegistryEvaluation:
     """Revalidate exact queued targets without mutating the registry."""
     remaining_player_keys = {device.player_key for device in current_devices}
+    protected = set(protected_player_keys)
     matched = missing = 0
     protected_remaining = wrong_entry = wrong_platform = wrong_unique = 0
-    state_still_present = ambiguous = 0
+    state_still_present = ambiguous = protected_active = 0
     removable_entity_ids: list[str] = []
 
     for key, target in targets.items():
+        if key in protected:
+            protected_active += 1
+            continue
         if key in remaining_player_keys:
             protected_remaining += 1
             continue
@@ -74,7 +80,7 @@ def evaluate_registry_targets(
         if entity.config_entry_id != entry.entry_id:
             wrong_entry += 1
             continue
-        if str(entity.unique_id) != key:
+        if not unique_id_matches(entity.unique_id, entry.entry_id, key):
             wrong_unique += 1
             continue
 
@@ -91,6 +97,7 @@ def evaluate_registry_targets(
             removed=0,
             missing=missing,
             protected_remaining_history=protected_remaining,
+            protected_active=protected_active,
             wrong_entry=wrong_entry,
             wrong_platform=wrong_platform,
             wrong_unique_id=wrong_unique,

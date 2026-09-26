@@ -3,6 +3,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 
 from .const import DOMAIN
+from .player_identity import unique_id_matches
 
 
 def owned_exact(entity: object | None, entry: ConfigEntry, player_key: str) -> bool:
@@ -12,5 +13,5 @@ def owned_exact(entity: object | None, entry: ConfigEntry, player_key: str) -> b
         and getattr(entity, "domain", None) == "media_player"
         and getattr(entity, "platform", None) == DOMAIN
         and getattr(entity, "config_entry_id", None) == entry.entry_id
-        and str(getattr(entity, "unique_id", "")) == player_key
+        and unique_id_matches(str(getattr(entity, "unique_id", "")), entry.entry_id, player_key)
     )
