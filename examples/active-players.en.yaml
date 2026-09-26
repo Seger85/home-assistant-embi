@@ -1,0 +1,16 @@
+double_tap_action:
+  action: none
+entity: sensor.emby_active_players
+hold_action:
+  action: none
+icon: mdi:cast-connected
+multiline_secondary: true
+primary: |-
+  {% set count = states('sensor.emby_active_players') %}
+  {% if count in ['unknown', 'unavailable'] %}Active Emby players currently unavailable
+  {% elif count | int == 1 %}1 Emby player is active
+  {% else %}{{ count | int }} Emby players are active{% endif %}
+secondary: What is playing? Playing and paused devices at a glance.
+tap_action:
+  action: more-info
+type: custom:mushroom-template-card

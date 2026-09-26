@@ -109,6 +109,7 @@ def main() -> None:
 
     expected_scripts = {
         "build_package.py",
+        "maintain_workflow_history.py",
         "extract_release_notes.py",
         "verify_published_release.py",
         "prepare_automatic_release.py",
@@ -131,6 +132,7 @@ def main() -> None:
         "quality.yml",
         "release.yml",
         "test-artifact.yml",
+        "repository-hygiene.yml",
     }
     workflow_names = {path.name for path in WORKFLOWS.glob("*.yml")}
     require(
@@ -355,8 +357,8 @@ def main() -> None:
 
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    require(manifest["version"] == "1.1.0", "cleanup changed manifest version")
-    require('VERSION = "1.1.0"' in constants, "cleanup changed runtime version")
+    require(manifest["version"] == "1.2.0", "cleanup changed manifest version")
+    require('VERSION = "1.2.0"' in constants, "cleanup changed runtime version")
     print("Repository baseline and translation parity passed")
 
 

@@ -4,6 +4,24 @@
 
 No unreleased product changes.
 
+## [1.2.0] - 2026-09-26
+
+### English
+
+- New **Active players** sensor counts distinct playing or paused Emby clients, separately from users watching. It shares the existing session stream and adds no HTTP polling. Unknown activity or an offline server produces unavailable, not zero.
+- Existing sensor choices are preserved. Enable the new sensor in the integration options; all seven sensors are selected for new installations. No configuration YAML is needed.
+- Clearer German and English options, grouped overview and explicit device-history cleanup guidance. Entity IDs and custom names remain unchanged.
+- English main README with a German version, individual original card screenshots and complete copy/paste examples. Player-card lists are scoped to the selected server.
+- Automated maintenance removes completed runs of retired, disabled workflows whose source files no longer exist. Active CI, releases, tags and HA registry entries are untouched.
+
+### Deutsch
+
+- Neuer Sensor **Aktive Player**: zählt unterschiedliche Emby-Player mit Wiedergabe oder Pause, getrennt von schauenden Benutzern. Er verwendet vorhandene Sitzungsdaten ohne zusätzliche Serverabfragen. Bei unklarer Aktivität oder ausgefallenem Server ist er nicht verfügbar, statt irreführend null anzuzeigen.
+- Deine Sensorauswahl bleibt beim Update erhalten. Aktiviere den neuen Sensor bei Bedarf in den Optionen. Bei einer neuen Einrichtung sind alle sieben Sensoren ausgewählt; YAML ist dafür nicht nötig.
+- Einfachere deutsche und englische Beschreibungen, übersichtlichere Optionen und klare Hinweise zur Gerätebereinigung. Entitäts-IDs und eigene Namen bleiben erhalten.
+- Englische Hauptbeschreibung und deutsche Alternative mit einzeln zugeschnittenen Originalbildern sowie vollständigem Karten-Code. Die Playerliste gehört zum ausgewählten Server.
+- Automatische Repository-Pflege entfernt abgeschlossene Läufe ausgedienter, deaktivierter Workflows, deren Dateien nicht mehr vorhanden sind. Aktuelle CI, Releases, Tags und HA-Registry bleiben erhalten.
+
 ## [1.1.0] - 2026-09-26
 
 ### Zuverlässiger im Alltag

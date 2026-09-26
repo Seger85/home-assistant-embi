@@ -62,7 +62,7 @@ async def test_setup_reload_unload_and_sensor_endpoint_independence(
     assert await async_setup_component(hass, "network", {})
     entry = entry_factory(
         data={"host": server.host, "port": server.port, "api_key": "test-secret", "ssl": False},
-        options={CONF_ENABLED_SENSORS: ["movie_count", "users_watching"]},
+        options={CONF_ENABLED_SENSORS: ["movie_count", "users_watching", "active_players"]},
     )
     await hass.config_entries.async_add(entry)
     await hass.async_block_till_done()
@@ -75,6 +75,22 @@ async def test_setup_reload_unload_and_sensor_endpoint_independence(
     await hass.async_block_till_done()
     assert hass.states.get("sensor.emby_movie_count").state == "7"
     assert hass.states.get("sensor.emby_users_watching").state == "0"
+    assert hass.states.get("sensor.emby_active_players").state == "0"
+    assert len(runtime.session_client._snapshot_callbacks) == 1
+    playing = {**snapshots[0], "NowPlayingItem": {"Id": "film"}, "PlayState": {"IsPaused": False}}
+    runtime.session_client.update_device_list([playing, {**playing, "Id": "duplicate"}])
+    assert hass.states.get("sensor.emby_active_players").state == "1"
+    runtime.session_client.update_device_list(
+        [playing, {**playing, "DeviceId": "second", "PlayState": {"IsPaused": True}}]
+    )
+    assert hass.states.get("sensor.emby_active_players").state == "2"
+    runtime.session_client._unavailable()
+    assert hass.states.get("sensor.emby_active_players").state == "unavailable"
+    runtime.session_client.update_device_list([])
+    assert hass.states.get("sensor.emby_active_players").state == "0"
+    runtime.session_client.update_device_list([{**playing, "PlayState": {}}])
+    assert hass.states.get("sensor.emby_active_players").state == "unavailable"
+    runtime.session_client.update_device_list(snapshots)
     registry = er.async_get(hass)
     player_id = registry.async_get_entity_id("media_player", "emby", f"{entry.entry_id}::tv.App")
     assert player_id is not None
@@ -88,6 +104,7 @@ async def test_setup_reload_unload_and_sensor_endpoint_independence(
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert not runtime.session_client._task
+    assert runtime.session_client._snapshot_callbacks == []
     assert entry.runtime_data is not runtime
     assert registry.async_get(player_id).id == original_registry_id
     latest_runtime = entry.runtime_data
@@ -95,4 +112,5 @@ async def test_setup_reload_unload_and_sensor_endpoint_independence(
     await hass.async_block_till_done()
     assert not entry._background_tasks
     assert not latest_runtime.auto_cleanup_scheduled
+    assert latest_runtime.session_client._snapshot_callbacks == []
     assert not hasattr(entry, "runtime_data")

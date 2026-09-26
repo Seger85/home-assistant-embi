@@ -49,7 +49,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up EMBi media-player entities from a config entry."""
     runtime: EmbiRuntimeData = entry.runtime_data
-    emby = EmbySessionStream(runtime.api_client, hass, entry)
+    emby = runtime.session_client or EmbySessionStream(runtime.api_client, hass, entry)
     runtime.session_client = emby
 
     active_entities: dict[str, EmbyDevice] = {}

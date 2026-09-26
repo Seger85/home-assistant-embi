@@ -1,0 +1,44 @@
+name: Repository maintenance
+
+on:
+  schedule:
+    - cron: "19 5 * * 0"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Delete completed runs of disabled workflows whose YAML was removed"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-maintenance
+  cancel-in-progress: false
+
+jobs:
+  retired-workflows:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.14"
+      - name: Maintain retired workflow history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+        run: |
+          if [[ "${APPLY}" == "true" ]]; then
+            python -I scripts/maintain_workflow_history.py --apply
+          else
+            python -I scripts/maintain_workflow_history.py
+          fi

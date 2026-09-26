@@ -201,6 +201,6 @@ def test_sensor_identity_foreign_target_is_untouched() -> None:
 def test_sensor_new_install_disable_and_restore_exact_ids() -> None:
     registry = Registry()
     result = async_prepare_sensor_registry_identities(hass(registry), entry(), SENSOR_KEYS)
-    assert result.prepared == 6
+    assert result.prepared == len(SENSOR_KEYS)
     assert set(registry.entities) == {f"sensor.{value}" for value in SENSOR_ENTITY_IDS.values()}
-    assert remove_disabled_sensor_entities(hass(registry), entry(), frozenset()) == 6
+    assert remove_disabled_sensor_entities(hass(registry), entry(), frozenset()) == len(SENSOR_KEYS)

@@ -1,0 +1,29 @@
+card:
+  show_header_toggle: false
+  state_color: true
+  type: entities
+filter:
+  template: |
+    {% set entry = config_entry_id('sensor.emby_active_players') %}
+    {% set ns = namespace(rows=[]) %}
+    {% for player in expand(config_entry_entities(entry) if entry else []) | selectattr('domain', 'eq', 'media_player') | list %}
+      {% if player.state in ['playing', 'paused'] %}
+        {% set duration = player.attributes.get('media_duration') %}
+        {% set position = player.attributes.get('media_position') %}
+        {% set updated = as_timestamp(player.attributes.get('media_position_updated_at'), none) %}
+        {% set elapsed = ([as_timestamp(now()) - updated, 0] | max) if player.state == 'playing' and updated is not none else 0 %}
+        {% set invalid_runtime = duration is not number or position is not number or position < 0 or position + elapsed > duration %}
+        {% set ns.rows = ns.rows + [{
+          'entity': player.entity_id,
+          'type': 'custom:mini-media-player',
+          'artwork': 'material',
+          'hide': {'controls': false, 'volume': true, 'next': true, 'prev': true, 'runtime': invalid_runtime, 'info': false},
+          'tap_action': {'action': 'more-info'}
+        }] %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.rows }}
+show_empty: false
+sort:
+  method: friendly_name
+type: custom:auto-entities

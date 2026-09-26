@@ -219,6 +219,27 @@ class EmbySessionStream:
         self._device_callbacks: list[Callable] = []
         self._stale_callbacks: list[Callable] = []
         self._update_callbacks: dict[str, list[Callable]] = {}
+        self._snapshot_callbacks: list[Callable] = []
+
+    @property
+    def active_player_count(self) -> int | None:
+        """Count unique playing/paused clients, or report incomplete knowledge."""
+        if not self.available:
+            return None
+        current = [device for device in self.devices.values() if device.is_active]
+        if any(device.activity == "unknown" for device in current):
+            return None
+        return sum(device.activity in ACTIVE for device in current)
+
+    def add_snapshot_callback(self, callback: Callable) -> Callable[[], None]:
+        """Subscribe to complete snapshots, including empty and unavailable ones."""
+        self._snapshot_callbacks.append(callback)
+
+        def unsubscribe() -> None:
+            if callback in self._snapshot_callbacks:
+                self._snapshot_callbacks.remove(callback)
+
+        return unsubscribe
 
     def add_new_devices_callback(self, callback: Callable) -> None:
         """Reevaluate visibility on every changed snapshot, including idle → playing."""
@@ -265,6 +286,7 @@ class EmbySessionStream:
             _notify(self._device_callbacks, None)
         for key in changed:
             _notify(self._update_callbacks.get(key, ()), key)
+        _notify(self._snapshot_callbacks, None)
 
     def _unavailable(self) -> None:
         self.available = False
@@ -273,6 +295,7 @@ class EmbySessionStream:
                 device.is_active = False
                 _notify(self._stale_callbacks, key)
                 _notify(self._update_callbacks.get(key, ()), key)
+        _notify(self._snapshot_callbacks, None)
 
     async def _refresh(self) -> None:
         self.update_device_list(await self.api.async_get_sessions())
@@ -359,3 +382,4 @@ class EmbySessionStream:
         self._device_callbacks.clear()
         self._stale_callbacks.clear()
         self._update_callbacks.clear()
+        self._snapshot_callbacks.clear()

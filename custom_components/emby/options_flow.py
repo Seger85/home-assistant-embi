@@ -44,6 +44,7 @@ from .player_reconciliation import async_reconcile_player_visibility
 _LOGGER = logging.getLogger(__name__)
 
 _SENSOR_LABELS = {
+    "active_players": ("Aktive Player", "Active players"),
     "movie_count": ("Filme", "Movies"),
     "tv_series_count": ("Serien", "TV series"),
     "tv_episode_count": ("Episoden", "TV episodes"),
@@ -103,7 +104,8 @@ class EmbyOptionsFlow(
         return self._entry.runtime_data
 
     def _is_de(self) -> bool:
-        return str(self.hass.config.language).lower().startswith("de")
+        language = getattr(self, "context", {}).get("language") or self.hass.config.language
+        return str(language).lower().startswith("de")
 
     def _on_off(self, value: bool) -> str:
         if self._is_de():
