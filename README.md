@@ -1,75 +1,152 @@
-# EMBi – Emby für Home Assistant
+# EMBi – Emby integration for Home Assistant
 
-Was läuft gerade auf dem Fernseher? Wie viele Filme liegen auf dem Emby-Server? Und welche alten Clients werden überhaupt noch gebraucht?
+**English** · [Deutsch](README.de.md)
 
-**EMBi verbindet deinen Emby-Server mit Home Assistant.** Die Integration zeigt deine Player und Mediathek an, ermöglicht die Wiedergabesteuerung und hilft dir, die angezeigten Clients übersichtlich zu halten. Verbindung und Steuerung laufen direkt zwischen Home Assistant und deinem Server.
+**Bring your Emby players and library into Home Assistant.** See what is playing, control supported clients and choose which players and sensors appear. Communication stays between Home Assistant and your Emby server.
 
-## Das kann EMBi
+## Features
 
-- **Player anzeigen und steuern:** Wiedergabe, Pause, Stopp und Spulen, soweit der Emby-Client Fernsteuerung unterstützt. Titel, Cover und Fortschritt erscheinen in Home Assistant.
-- **Selbst entscheiden, was sichtbar bleibt:** Player beibehalten oder nur während Wiedergabe und Pause anzeigen. Neue Clients lassen sich automatisch aufnehmen; technische Zugriffe kannst du getrennt behandeln.
-- **Mediathek im Blick behalten:** Filme, Serien, Episoden, Alben, Musiktitel und aktuell schauende Benutzer als einzeln wählbare Sensoren.
-- **Einstellungen erst prüfen, dann übernehmen:** Normale Optionsseiten bearbeiten einen Entwurf. Vor dem Speichern siehst du die Änderungen gesammelt.
-- **Alte Geräteeinträge aufräumen:** Auf Wunsch manuell oder automatisch. Die automatische Bereinigung ist bei einer neuen Einrichtung ausgeschaltet.
-- **Dashboard nach deinem Geschmack:** Mit normalen HA-Karten oder den [erweiterten Kachelbeispielen](docs/dashboard.md).
+- **Player controls:** play, pause, stop and seek where the Emby client supports remote control; display titles, artwork and progress.
+- **Flexible player visibility:** keep known players or show them only while playing or paused. Choose whether to add new clients automatically.
+- **Seven optional sensors, configured through the integration UI. No YAML required.** Library counts, active players and users watching are available as separate entities.
+- **Review before saving:** ordinary settings are collected in a draft and shown together before you apply them.
+- **Optional device-history cleanup:** remove old Emby client records manually or on a schedule. Automatic cleanup is off for new installations.
+- **English and German setup, options and sensor translations.** Home Assistant handles the language selection. Custom entity names are preserved.
 
-## Installation mit HACS
+## Install with HACS
 
-Voraussetzung ist **Home Assistant 2026.7.2 oder neuer** und ein erreichbarer Emby-Server mit API-Schlüssel. Die geprüften HA-Versionen stehen in der [Entwicklungsanleitung](CONTRIBUTING.md). Die Unterstützung einzelner Fernsteuerungsfunktionen hängt vom Emby-Client ab.
+Requires **Home Assistant 2026.7.2 or newer**, an accessible Emby server and an Emby API key.
 
-1. Öffne HACS und füge `https://github.com/Seger85/home-assistant-embi` als benutzerdefiniertes Repository der Kategorie **Integration** hinzu.
-2. Installiere **Emby Integration - EMBi** und starte Home Assistant neu.
-3. Öffne **Einstellungen → Geräte & Dienste → Integration hinzufügen** und suche nach **EMBi**.
-4. Trage Serveradresse, Port und API-Schlüssel ein. Den Schlüssel erstellst du in der Emby-Serververwaltung. Aktiviere SSL nur bei einem gültig eingerichteten HTTPS-Zugang.
-5. Öffne anschließend die Optionen, wenn du Player, Sensoren oder Bereinigung anpassen möchtest.
+1. In HACS, add `https://github.com/Seger85/home-assistant-embi` as a custom repository, category **Integration**.
+2. Install **Emby Integration - EMBi** and restart Home Assistant.
+3. Open **Settings → Devices & services → Add integration**, then search for **EMBi**.
+4. Enter your server address, port and API key. Create the key in your Emby server dashboard. Enable SSL only for a working HTTPS connection.
+5. Open the integration options to choose players, sensors and cleanup settings.
 
-Der technische Integrationsname lautet weiterhin `emby`. Bestehende Automationen und Entitätsnamen müssen für das Update nicht umbenannt werden.
+EMBi uses the `emby` domain and replaces Home Assistant's built-in Emby integration. The warning that a custom integration overrides a core component is therefore expected. Existing entity IDs and automations do not need renaming for this update.
 
-## Player: sichtbar heißt nicht ständig erreichbar
+## Sensors: players are not people
 
-Ein Player gehört zu einer Kombination aus Emby-Gerätekennung und Client-App. Mehrere Sitzungen derselben Kombination werden zusammengefasst; unterschiedliche Apps können getrennte Player ergeben.
-
-**Player beibehalten** erhält bekannte Player auch außerhalb einer Wiedergabe. Meldet Emby den Client nicht mehr, kann der Player dabei **nicht verfügbar** sein. Das ist kein Grund, ihn aus Home Assistant zu löschen. **Nur aktive Player** zeigt Player während Wiedergabe oder Pause. Eine gespeicherte Ausblendung wird erst umgesetzt, wenn der betreffende Player sicher inaktiv ist.
-
-Aktive und pausierte Player werden bei Bereinigungen geschützt. Nicht eindeutige Antworten, Verbindungsfehler und fehlende Zeitangaben werden nicht als Beweis für Inaktivität verwendet. Da Emby Prüfung und Löschung über getrennte API-Aufrufe anbietet, bleibt ein sehr kleines Zeitfenster zwischen letzter Prüfung und Serverantwort technisch unvermeidbar. Details stehen unter [Bereinigung](docs/server-cleanup.md).
-
-## Sensoren
-
-Alle sechs Sensoren sind bei einer neuen Einrichtung ausgewählt. Du kannst jeden einzeln abwählen.
-
-| Standard-Entitäts-ID | Bedeutung |
+| Default entity ID | Meaning |
 |---|---|
-| `sensor.emby_movie_count` | Anzahl der Filme |
-| `sensor.emby_tv_series_count` | Anzahl der Serien |
-| `sensor.emby_tv_episode_count` | Anzahl der Serienepisoden |
-| `sensor.emby_album_count` | Anzahl der Musikalben |
-| `sensor.emby_song_count` | Anzahl der Musiktitel |
-| `sensor.emby_users_watching` | Unterschiedliche Benutzer mit laufender Wiedergabe; pausierte Sitzungen zählen nicht mit |
+| `sensor.emby_active_players` | Distinct Emby players currently playing or paused, including players hidden from the HA player list |
+| `sensor.emby_users_watching` | Distinct users with playback in progress; paused sessions do not count |
+| `sensor.emby_movie_count` | Movies |
+| `sensor.emby_tv_series_count` | TV series |
+| `sensor.emby_tv_episode_count` | TV episodes |
+| `sensor.emby_album_count` | Music albums |
+| `sensor.emby_song_count` | Music tracks |
 
-**Aktive Player und schauende Benutzer sind verschiedene Zahlen.** Ein Benutzer kann mehrere Player verwenden. Das Dashboard zählt für die Playeranzeige Wiedergabe und Pause; der Benutzersensor zählt jeden gerade schauenden Benutzer nur einmal.
+One user can use several players. A player is identified by its Emby device ID and client app; repeated sessions for that combination count once. Different apps may be separate players.
 
-Ein bestätigtes leeres Ergebnis ergibt `0`. Fehlen gültige Serverdaten, ist der betroffene Sensor nicht verfügbar. Bibliothekszahlen und Benutzeranzeige werden getrennt aktualisiert, damit ein ausgefallener Endpunkt nicht beide Gruppen ausblendet. Standardmäßig erfolgt die Aktualisierung alle 60 Sekunden.
+All seven sensors are selected on a new installation. **Upgrades preserve your selection:** enable **Active players** in **EMBi → Options → Emby sensors** if you want the new sensor. The integration creates the sensors without YAML. Dashboard examples below use optional card YAML only.
 
-Eigene Entitätsnamen bleiben erhalten. Sind die genannten IDs schon anderweitig belegt oder mehrere Server eingerichtet, verwende die tatsächlich in HA angezeigten IDs. EMBi übernimmt oder löscht keine fremden Template- oder YAML-Sensoren.
+A confirmed empty result is `0`. Missing or ambiguous data produces an unavailable sensor instead of a misleading zero. Library counts and users watching normally refresh every 60 seconds, with separate availability. Active players follows session updates directly, without additional HTTP polling.
 
-## Update und Rückkehr zu einer älteren Version
+Custom names are preserved. Actual entity IDs may differ after renaming, a naming collision or adding multiple servers. EMBi does not take over unrelated template or YAML sensors.
 
-Erstelle vor einem größeren Update ein Home-Assistant-Backup. Bestehende EMBi-Player und Sensoren behalten ihre Identität. Neu angelegte Player erhalten zusätzlich eine Zuordnung zu ihrer Integration, damit gleiche Client-Kennungen mehrerer Server nicht kollidieren.
+## Player visibility and safe cleanup
 
-Ein Downgrade allein über HACS stellt deshalb nicht in jedem Fall den alten Registry-Zustand wieder her. Für eine vollständige Rückkehr nutze das Backup von vor dem Update. Die Bereinigung von Emby-Geräteeinträgen lässt sich nur mit einem passenden Emby-Backup vollständig rückgängig machen.
+**Keep players** retains known players between sessions. A disconnected client may be unavailable; that alone is not a reason to delete it. **Show only playing or paused players** makes player entities follow activity. A requested removal waits until inactivity is confirmed.
 
-## Hilfe und weitere Informationen
+**Emby device-history cleanup is at your own risk.** It removes selected old device/client records, never libraries, media files or user accounts. A removed client may need to sign in again. Optionally, EMBi also removes the corresponding EMBi player entries from Home Assistant. Automatic cleanup is disabled on a new installation.
 
-- [Einstellungen verständlich erklärt](docs/configuration.md)
-- [Dashboard-Beispiele](docs/dashboard.md)
-- [Bereinigung und Wiederherstellung](docs/server-cleanup.md)
-- [Probleme eingrenzen](docs/troubleshooting.md)
-- [Datenschutz und Sicherheit](docs/security.md)
-- [Architektur](docs/architecture.md), [Mitentwickeln](CONTRIBUTING.md) und [Release-Ablauf](RELEASING.md)
-- [Änderungen](CHANGELOG.md) und [Workflow-Inventar](docs/workflows.md)
+Playing and paused clients are protected. Failed requests, ambiguous responses and missing timestamps are not treated as proof of inactivity. Emby exposes checking and deletion as separate requests, so a small race window between the final check and deletion cannot be eliminated completely. See the [cleanup guide](docs/server-cleanup.md) (German).
 
-Fehlerberichte und Vorschläge sind über [GitHub Issues](https://github.com/Seger85/home-assistant-embi/issues) willkommen. Bitte nenne EMBi-, HA- und Emby-Version sowie die betroffene Client-App. Prüfe Diagnosedateien und Screenshots vor dem Teilen auf persönliche Informationen.
+## Dashboard examples
 
-## Herkunft und Lizenz
+Enable the required sensors first and adjust their IDs if necessary. The player list follows the same server as `sensor.emby_active_players`; replace that ID in **both** relevant cards if yours differs. Hidden HA players are absent from the card list but still count in the server-wide sensor.
 
-Projekt von Seger, entstanden auf Basis der Home-Assistant-Emby-Integration und pyemby. EMBi ist ein Community-Projekt und kein offizielles Produkt von Emby oder Home Assistant. Lizenz: [Apache-2.0](LICENSE); Herkunftshinweise: [NOTICE](NOTICE.md).
+For the first and third examples, install these community frontend cards through HACS: [Mushroom](https://github.com/piitaya/lovelace-mushroom), [auto-entities](https://github.com/thomasloven/lovelace-auto-entities) and [mini-media-player](https://github.com/kalkih/mini-media-player). The library card uses Home Assistant's built-in entities card. EMBi itself does not require these frontend extensions. [Dashboard instructions](docs/dashboard.en.md).
+
+These individually cropped, unmodified screenshots show a German dashboard with a custom theme. Your colours, rounded corners and player count may differ. The examples below use English labels and the new numeric player sensor.
+
+### Active players
+
+![Active players](docs/images/active-players.jpg)
+
+<details>
+<summary>Copy the complete card YAML</summary>
+
+```yaml
+double_tap_action:
+  action: none
+entity: sensor.emby_active_players
+hold_action:
+  action: none
+icon: mdi:cast-connected
+multiline_secondary: true
+primary: '{% set count = states(''sensor.emby_active_players'') %}
+
+  {% if count in [''unknown'', ''unavailable''] %}Active Emby players currently unavailable
+
+  {% elif count | int == 1 %}1 Emby player is active
+
+  {% else %}{{ count | int }} Emby players are active{% endif %}'
+secondary: What is playing? Playing and paused devices at a glance.
+tap_action:
+  action: more-info
+type: custom:mushroom-template-card
+```
+
+</details>
+
+### Library counts
+
+![Library counts](docs/images/library-counts.jpg)
+
+<details>
+<summary>Copy the complete card YAML</summary>
+
+```yaml
+entities:
+- entity: sensor.emby_movie_count
+  icon: mdi:movie
+  name: Movies
+- entity: sensor.emby_tv_series_count
+  icon: mdi:television-classic
+  name: TV series
+- entity: sensor.emby_tv_episode_count
+  icon: mdi:television-play
+  name: Episodes
+title: My Emby library
+type: entities
+```
+
+</details>
+
+### Playing and paused players
+
+![Playing and paused players](docs/images/media-players.jpg)
+
+<details>
+<summary>Copy the complete card YAML</summary>
+
+```yaml
+card:
+  show_header_toggle: false
+  state_color: true
+  type: entities
+filter:
+  template: "{% set entry = config_entry_id('sensor.emby_active_players') %}\n{% set ns = namespace(rows=[]) %}\n{% for player in expand(config_entry_entities(entry) if entry else []) | selectattr('domain', 'eq', 'media_player') | list %}\n  {% if player.state in ['playing', 'paused'] %}\n    {% set ns.rows = ns.rows + [{\n      'entity': player.entity_id,\n      'type': 'custom:mini-media-player',\n      'artwork': 'material',\n      'hide': {'volume': true, 'next': true, 'prev': true},\n      'tap_action': {'action': 'more-info'}\n    }] %}\n  {% endif %}\n{% endfor %}\n{{ ns.rows }}"
+show_empty: false
+sort:
+  method: friendly_name
+type: custom:auto-entities
+```
+
+</details>
+
+## Updates and recovery
+
+Back up Home Assistant before a major update. Existing EMBi players and sensors keep their identities. Newly created players include their integration identity to avoid collisions across servers. Downgrading through HACS alone may not restore an older registry layout; restore your pre-update backup for a full rollback. Deleted Emby history requires a suitable Emby backup to recover.
+
+## Help and project information
+
+- [German documentation](README.de.md): configuration, cleanup and troubleshooting.
+- [Dashboard examples](docs/dashboard.en.md), [architecture](docs/architecture.md), [contributing](CONTRIBUTING.md), [releases](RELEASING.md), [changelog](CHANGELOG.md), [workflow maintenance](docs/workflows.md).
+- Report problems or suggestions in [GitHub Issues](https://github.com/Seger85/home-assistant-embi/issues). Include EMBi, HA and Emby versions and your client app. Check diagnostics and screenshots for personal information before sharing.
+
+GitHub and HACS use this English README as the main description. Use the language link at the top for German; this README does not automatically switch with Home Assistant's language.
+
+Community project by Seger, based on the Home Assistant Emby integration and pyemby. Not an official Emby or Home Assistant product. [Apache-2.0 license](LICENSE); [attribution](NOTICE.md).

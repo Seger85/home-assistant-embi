@@ -26,8 +26,8 @@ def _parse_requirement_constraints(text: str) -> dict[str, str]:
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    assert manifest["version"] == "1.1.0"
-    assert 'VERSION = "1.1.0"' in constants
+    assert manifest["version"] == "1.2.0"
+    assert 'VERSION = "1.2.0"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["requirements"] == []  # Networking uses Home Assistant's aiohttp session.
 
@@ -120,10 +120,12 @@ def test_confirmed_dead_runtime_surfaces_remain_removed() -> None:
 def test_documentation_is_current_and_has_one_release_source() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     releasing = (ROOT / "RELEASING.md").read_text(encoding="utf-8")
-    assert "EMBi verbindet deinen Emby-Server mit Home Assistant" in readme
+    assert "Emby integration for Home Assistant" in readme
+    assert "README.de.md" in readme
+    assert "sensor.emby_active_players" in readme
     assert "sensor.emby_movie_count" in readme
     assert "sensor.emby_users_watching" in readme
-    assert "Registry-Zustand" in readme
+    assert "registry layout" in readme
     assert "python -I scripts/read_version.py" in releasing
     assert "scripts/prepare_automatic_release.py" in releasing
     assert "embi.zip" in releasing and "embi.zip.sha256" in releasing
@@ -186,6 +188,7 @@ def test_workflow_inventory_and_responsibilities_are_distinct() -> None:
         "quality.yml",
         "release.yml",
         "test-artifact.yml",
+        "repository-hygiene.yml",
     }
     quality = (workflow_dir / "quality.yml").read_text(encoding="utf-8")
     package = (workflow_dir / "test-artifact.yml").read_text(encoding="utf-8")

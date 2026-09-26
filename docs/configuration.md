@@ -20,6 +20,8 @@ Eine Ausblendung beendet keine Wiedergabe. Beginnt ein ausgeblendeter Client zu 
 
 ## Sensoren
 
+Alle sieben Sensoren lassen sich über die Oberfläche auswählen; YAML ist nicht nötig. **Aktive Player** zählt Geräte-/App-Kombinationen mit Wiedergabe oder Pause, auch wenn du ihren HA-Player ausblendest. **Schauende Benutzer** zählt unterschiedliche Benutzer mit laufender Wiedergabe; Pause zählt dort nicht mit. Bei Updates bleibt die bisherige Auswahl erhalten. Schalte den neuen Player-Sensor bei Bedarf selbst ein.
+
 Wähle die gewünschten Werte aus der Liste. Das Abwählen entfernt nach dem Übernehmen nur die zu dieser Integration gehörende Sensorentität. Beim erneuten Aktivieren wird dieselbe eindeutige Identität verwendet. Eigene Namen und Zuordnungen werden durch Home Assistants Registry-Verhalten wiederhergestellt, soweit HA sie noch vorhält.
 
 Bei einer belegten Standard-ID bleibt die fremde Entität unangetastet. Verwende im Dashboard die tatsächliche EMBi-ID oder ändere sie bewusst über die HA-Oberfläche. Ein zusätzlicher YAML-Sensor muss nicht vorsorglich gelöscht werden.

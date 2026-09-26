@@ -1,5 +1,5 @@
 {
-  "title": "Emby Integration - EMBi",
+  "title": "EMBi – Emby integration for Home Assistant",
   "config": {
     "flow_title": "{name}",
     "step": {
@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "Manage EMBi",
-        "description": "Manage Home Assistant players, Emby sensors, and the two separated cleanup paths.\n\n{server_history} Emby server-history records\n{ha_players} registered Home Assistant players\n{protected} playing or paused\n{server_missing} no longer reported by Emby\nEmby sensors: {sensor_enabled} of {sensor_total} enabled\nAutomatic cleanup: {automatic_cleanup} · {automatic_age} days\nNext run: {next_run}\n\n{apply_notice}",
+        "description": "Choose which players and sensors to use. You can also clean up old entries in Emby’s device history.\n\n**Players and sensors**\n- Players in Home Assistant: **{ha_players}**\n- Playing or paused: **{protected}**\n- No longer reported by Emby: {server_missing}\n- Enabled sensors: **{sensor_enabled} of {sensor_total}**\n\n**Emby device history**\n- Stored device entries: {server_history}\n- Automatic cleanup: {automatic_cleanup}\n- Age threshold: {automatic_age} days\n- Next run: {next_run}\n\n{apply_notice}",
         "menu_options": {
           "ha_players": "Home Assistant players",
           "sensors": "Emby sensors",
@@ -60,23 +60,23 @@
       },
       "ha_players": {
         "title": "Home Assistant players",
-        "description": "Set global player rules and optionally open a group. OK changes only the draft; permanent storage happens through Review changes.\n\n{ha_players} registered players\n{playing} playing or paused\n{known_users} recognized users\n{server_missing} no longer reported by Emby",
+        "description": "Set global player rules and optionally open a group. OK changes only the draft; permanent storage happens through Review changes.\n\n- {ha_players} registered players\n- {playing} playing or paused\n- {known_users} recognized users\n- {server_missing} no longer reported by Emby",
         "data": {
-          "only_during_playback": "Only show players during playback",
+          "only_during_playback": "Only show playing or paused players",
           "auto_show_new_players": "Automatically add new players",
           "technical_access_visibility": "Show technical access as players",
           "selected_group": "Open group"
         },
         "data_description": {
           "only_during_playback": "When enabled, players appear only while playing or paused.",
-          "auto_show_new_players": "When disabled, current visible players remain allowed and new players stay hidden until selected.",
+          "auto_show_new_players": "On: allow new clients automatically. Off: keep already allowed players; select new ones yourself when needed.",
           "technical_access_visibility": "The master switch controls whether the technical group and its entities are exposed. Individual technical exceptions remain stored independently.",
           "selected_group": "Known access times are sorted oldest first; unknown times remain at the end."
         }
       },
       "player_group": {
         "title": "{group}",
-        "description": "{count} players belong to this group. Labels use Device · App · last access. Safe submitted switches remain in the draft. Active blockers: {blocked_players}",
+        "description": "{count} players in this group. Each label shows the device, app and last known activity.\n\nSelect players and apply the group. Save permanently through “Review changes”.\n\n**Protected by playback or pause:** {blocked_players}",
         "data": {
           "flow_action": "Action"
         }
@@ -98,7 +98,7 @@
       },
       "automatic_cleanup": {
         "title": "Automatic cleanup",
-        "description": "Configure the age threshold, schedule, and safe registry follow-up. OK changes only the draft.\n\nLast run: {run_at}\nMode: {mode}\nAge threshold: {age}\nDeleted: {deleted}\nNot yet due (< {age_limit} days): {recent}\nProtected: {protected}\nFailed: {failed}\nNext run: {next_run}",
+        "description": "Configure the age threshold, schedule, and safe registry follow-up. OK changes only the draft.\n\n- Last run: {run_at}\n- Mode: {mode}\n- Age threshold: {age}\n- Deleted: {deleted}\n- Not yet due (< {age_limit} days): {recent}\n- Protected: {protected}\n- Failed: {failed}\n- Next run: {next_run}\n\n**Use at your own risk:** Cleanup deletes entries from Emby’s device history only. It does not delete libraries, movies, series, music or user accounts. A client may need to sign in again afterwards.",
         "data": {
           "server_auto_cleanup_enabled": "Automatic cleanup",
           "automatic_age_preset": "Age limit",
@@ -111,7 +111,7 @@
       },
       "server_history_check": {
         "title": "Delete individual Emby server records",
-        "description": "{total} records checked\n{candidates} safe inactive records selectable\n{active} protected by playback or an unclear state\n{without_activity} protected because no reliable activity timestamp exists\n\nManual selection is independent of the automatic age threshold.",
+        "description": "- {total} records checked\n- {candidates} safe inactive records selectable\n- {active} protected by playback or an unclear state\n- {without_activity} protected because no reliable activity timestamp exists\n\nManual selection is independent of the automatic age threshold.\n\n**Use at your own risk:** Cleanup deletes entries from Emby’s device history only. It does not delete libraries, movies, series, music or user accounts. A client may need to sign in again afterwards.",
         "data": {
           "delete_device_record_ids": "Selectable Emby server records",
           "flow_action": "Action"
@@ -119,14 +119,14 @@
       },
       "confirm_server_deletion": {
         "title": "Delete {count} Emby records?",
-        "description": "{count} records were selected. Scope: {scope}. Identity, activity, and playback are revalidated.\n\n{details}",
+        "description": "{count} records were selected. Scope: {scope}. Identity, activity, and playback are revalidated.\n\n{details}\n\n**Use at your own risk:** Cleanup deletes entries from Emby’s device history only. It does not delete libraries, movies, series, music or user accounts. A client may need to sign in again afterwards.",
         "data": {
           "flow_action": "Action"
         }
       },
       "manage_ha_players": {
         "title": "Remove Home Assistant players",
-        "description": "{ha_players} registered players\n{removable} removable\n{protected} protected\n{server_missing} no longer reported\nPage {page} of {pages}",
+        "description": "- {ha_players} registered players\n- {removable} removable\n- {protected} protected\n- {server_missing} no longer reported\nPage {page} of {pages}",
         "data": {
           "page": "Page",
           "selected_ha_entity_ids": "Home Assistant players to remove",
@@ -165,7 +165,7 @@
       },
       "sensors": {
         "title": "Emby sensors",
-        "description": "Enabled sensors: {enabled} of {total}. OK changes only the draft.",
+        "description": "Select your sensors here – **no YAML required**. Enabled: **{enabled} of {total}**.\n\n- **Active players:** distinct clients playing or paused. Multiple sessions of the same client count once.\n- **Users watching:** distinct users with playback in progress. Paused sessions do not count.\n- **Library:** movie, series, episode, album and song counts.\n\nSave your selection through “Review changes”.",
         "data": {
           "enabled_sensors": "Enabled sensors"
         }
@@ -181,19 +181,19 @@
     },
     "error": {
       "cannot_connect": "Current Emby and Home Assistant data could not be refreshed. Try again or go back.",
-      "playback_protected": "Stop playback before hiding or removing this player.",
+      "playback_protected": "End playback, including paused playback, before hiding or removing this player.",
       "playback_protected_named": "Not hidden because playback is active: {blocked_players}",
       "invalid_age": "Choose a preset or enter a valid custom number of days.",
       "selection_required": "Select at least one item.",
       "invalid_selection": "The selected target changed or is no longer safe. Refresh and try again.",
-      "unsaved_changes": "Apply or discard the current draft before starting a destructive action.",
+      "unsaved_changes": "Apply or discard pending changes before deleting entries.",
       "no_changes": "There are no unsaved changes.",
       "storage_failed": "The maintenance state could not be saved. No options were applied.",
       "save_failed": "The changes could not be saved safely. No reload was performed.",
       "confirmation_required": "Please confirm that the previous maintenance report may be replaced."
     },
     "abort": {
-      "apply_complete": "Changes saved. EMBi is completing one planned reload and exact lifecycle follow-up.",
+      "apply_complete": "Changes saved. EMBi is reloading with your settings.",
       "server_cleanup_complete": "Server cleanup completed. Deleted: {server_deleted}. Failed: {server_failed}.",
       "ha_player_removal_complete": "Player removal completed. Requested: {requested}. Removed: {removed}. Protected: {protected}. Failed: {failed}.",
       "ha_player_restore_complete": "Player restoration completed. Requested: {requested}. Restored: {restored}. Failed: {failed}."
@@ -242,6 +242,9 @@
       },
       "users_watching": {
         "name": "Emby Users Watching"
+      },
+      "active_players": {
+        "name": "Emby active players"
       }
     }
   },

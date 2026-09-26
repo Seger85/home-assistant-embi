@@ -262,6 +262,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             sensor_result.collisions,
         )
 
+    # Both concurrently loaded platforms share this entry-owned session stream.
+    from .session_stream import EmbySessionStream
+
+    runtime.session_client = EmbySessionStream(runtime.api_client, hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     await _async_enforce_player_visibility(hass, entry, migrated_options)

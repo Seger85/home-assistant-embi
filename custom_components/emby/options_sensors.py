@@ -11,6 +11,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_ENABLED_SENSORS,
     DOMAIN,
+    SENSOR_ACTIVE_PLAYERS,
     SENSOR_ALBUM_COUNT,
     SENSOR_KEYS,
     SENSOR_MOVIE_COUNT,
@@ -21,6 +22,10 @@ from .const import (
 )
 
 _SENSOR_LABELS = {
+    SENSOR_ACTIVE_PLAYERS: (
+        "Aktive Player (Wiedergabe und Pause)",
+        "Active players (playing and paused)",
+    ),
     SENSOR_MOVIE_COUNT: ("Filme", "Movies"),
     SENSOR_TV_SERIES_COUNT: ("Serien", "TV series"),
     SENSOR_TV_EPISODE_COUNT: ("Episoden", "TV episodes"),

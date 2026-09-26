@@ -33,7 +33,7 @@ flowchart TD
 
 ## Sensoren
 
-`sensor.py` erstellt nur die gewählten Sensoren. Bibliothekswerte und laufende Benutzer haben getrennte `DataUpdateCoordinator`-Instanzen; unveränderte Werte lösen keine unnötigen Entity-Updates aus. Authentifizierungsfehler nutzen `ConfigEntryAuthFailed`, andere Abruffehler machen die betreffende Gruppe nicht verfügbar. `sensor_registry.py` behandelt Identitätsmigration und Kollisionen, ohne fremde Entitäten zu übernehmen. Zählwerte sind Momentaufnahmen, keine kumulativen Zähler und keine Energiestatistik; sie erhalten daher keine künstliche `total_increasing`-Semantik.
+`sensor.py` erstellt nur die gewählten Sensoren. Der Sensor `active_players` abonniert vollständige Snapshots des gemeinsamen `EmbySessionStream` und zählt aktive Geräte-/App-Kombinationen unabhängig von der Player-Sichtbarkeit. Leere bestätigte Snapshots ergeben null, unbekannte Aktivität oder Verbindungsverlust ergeben nicht verfügbar. Unload entfernt den Listener; unveränderte Werte erzeugen keine zusätzlichen Zustandsmeldungen. Bibliothekswerte und laufende Benutzer haben getrennte `DataUpdateCoordinator`-Instanzen; unveränderte Werte lösen keine unnötigen Entity-Updates aus. Authentifizierungsfehler nutzen `ConfigEntryAuthFailed`, andere Abruffehler machen die betreffende Gruppe nicht verfügbar. `sensor_registry.py` behandelt Identitätsmigration und Kollisionen, ohne fremde Entitäten zu übernehmen. Zählwerte sind Momentaufnahmen, keine kumulativen Zähler und keine Energiestatistik; sie erhalten daher keine künstliche `total_increasing`-Semantik.
 
 ## Optionen und Wartung
 

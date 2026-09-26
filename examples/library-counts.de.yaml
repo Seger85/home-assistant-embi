@@ -1,0 +1,12 @@
+entities:
+- entity: sensor.emby_movie_count
+  icon: mdi:movie
+  name: Filme
+- entity: sensor.emby_tv_series_count
+  icon: mdi:television-classic
+  name: Serien
+- entity: sensor.emby_tv_episode_count
+  icon: mdi:television-play
+  name: Episoden
+title: Meine Emby-Mediathek
+type: entities

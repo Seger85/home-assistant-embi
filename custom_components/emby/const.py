@@ -2,7 +2,7 @@ from __future__ import annotations
 
 DOMAIN = "emby"
 NAME = "Emby Integration - EMBi"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 PLATFORMS = ["media_player", "sensor"]
 
 CONFIG_ENTRY_VERSION = 4
@@ -17,6 +17,7 @@ SENSOR_TV_EPISODE_COUNT = "tv_episode_count"
 SENSOR_ALBUM_COUNT = "album_count"
 SENSOR_SONG_COUNT = "song_count"
 SENSOR_USERS_WATCHING = "users_watching"
+SENSOR_ACTIVE_PLAYERS = "active_players"
 SENSOR_KEYS = (
     SENSOR_MOVIE_COUNT,
     SENSOR_TV_SERIES_COUNT,
@@ -24,6 +25,7 @@ SENSOR_KEYS = (
     SENSOR_ALBUM_COUNT,
     SENSOR_SONG_COUNT,
     SENSOR_USERS_WATCHING,
+    SENSOR_ACTIVE_PLAYERS,
 )
 SENSOR_UPDATE_INTERVAL_SECONDS = 60
 SENSOR_ENTITY_IDS = {
@@ -33,6 +35,7 @@ SENSOR_ENTITY_IDS = {
     SENSOR_ALBUM_COUNT: "emby_album_count",
     SENSOR_SONG_COUNT: "emby_song_count",
     SENSOR_USERS_WATCHING: "emby_users_watching",
+    SENSOR_ACTIVE_PLAYERS: "emby_active_players",
 }
 CONF_SENSOR_IDENTITY_VERSION = "sensor_identity_version"
 SENSOR_IDENTITY_VERSION = 2

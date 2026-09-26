@@ -9,26 +9,26 @@ cards:
   multiline_secondary: true
   primary: '{% set count = states(''sensor.emby_active_players'') %}
 
-    {% if count in [''unknown'', ''unavailable''] %}Aktive Emby-Player derzeit nicht verfügbar
+    {% if count in [''unknown'', ''unavailable''] %}Active Emby players currently unavailable
 
-    {% elif count | int == 1 %}1 Emby-Player ist aktiv
+    {% elif count | int == 1 %}1 Emby player is active
 
-    {% else %}{{ count | int }} Emby-Player sind aktiv{% endif %}'
-  secondary: Was läuft gerade? Wiedergabe und Pause im Überblick.
+    {% else %}{{ count | int }} Emby players are active{% endif %}'
+  secondary: What is playing? Playing and paused devices at a glance.
   tap_action:
     action: more-info
   type: custom:mushroom-template-card
 - entities:
   - entity: sensor.emby_movie_count
     icon: mdi:movie
-    name: Filme
+    name: Movies
   - entity: sensor.emby_tv_series_count
     icon: mdi:television-classic
-    name: Serien
+    name: TV series
   - entity: sensor.emby_tv_episode_count
     icon: mdi:television-play
-    name: Episoden
-  title: Meine Emby-Mediathek
+    name: Episodes
+  title: My Emby library
   type: entities
 - card:
     show_header_toggle: false

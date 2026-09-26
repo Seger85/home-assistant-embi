@@ -1,5 +1,5 @@
 {
-  "title": "Emby Integration - EMBi",
+  "title": "EMBi – Emby-Integration für Home Assistant",
   "config": {
     "flow_title": "{name}",
     "step": {
@@ -48,7 +48,7 @@
     "step": {
       "init": {
         "title": "EMBi verwalten",
-        "description": "Hier legst du fest, welche Player und Sensoren Home Assistant anzeigt. Außerdem kannst du alte Einträge aus der Emby-Gerätehistorie aufräumen.\n\nGeräteeinträge in Emby: {server_history}\nPlayer in Home Assistant: {ha_players}\nDavon mit Wiedergabe oder Pause: {protected}\nNicht mehr von Emby gemeldet: {server_missing}\nEingeschaltete Sensoren: {sensor_enabled} von {sensor_total}\nAutomatische Bereinigung: {automatic_cleanup} · nach {automatic_age} Tagen\nNächster Lauf: {next_run}\n\n{apply_notice}",
+        "description": "Wähle deine Player und Sensoren aus. Bei Bedarf kannst du außerdem alte Geräteeinträge in Emby aufräumen.\n\n**Player und Sensoren**\n- Player in Home Assistant: **{ha_players}**\n- Davon mit Wiedergabe oder Pause: **{protected}**\n- Nicht mehr von Emby gemeldet: {server_missing}\n- Eingeschaltete Sensoren: **{sensor_enabled} von {sensor_total}**\n\n**Emby-Gerätehistorie**\n- Gespeicherte Geräteeinträge: {server_history}\n- Automatische Bereinigung: {automatic_cleanup}\n- Altersgrenze: {automatic_age} Tage\n- Nächster Lauf: {next_run}\n\n{apply_notice}",
         "menu_options": {
           "ha_players": "Home-Assistant-Player",
           "sensors": "Emby-Sensoren",
@@ -60,23 +60,23 @@
       },
       "ha_players": {
         "title": "Home-Assistant-Player",
-        "description": "Lege die allgemeinen Regeln fest oder öffne eine Gruppe, um einzelne Player auszuwählen. Änderungen werden erst gespeichert, wenn du sie unter „Änderungen prüfen“ bestätigst.\n\nPlayer in Home Assistant: {ha_players}\nMit Wiedergabe oder Pause: {playing}\nErkannte Benutzer: {known_users}\nNicht mehr von Emby gemeldet: {server_missing}",
+        "description": "Lege die allgemeinen Regeln fest oder öffne eine Gruppe, um einzelne Player auszuwählen. Änderungen werden erst gespeichert, wenn du sie unter „Änderungen prüfen“ bestätigst.\n\n- Player in Home Assistant: {ha_players}\n- Mit Wiedergabe oder Pause: {playing}\n- Erkannte Benutzer: {known_users}\n- Nicht mehr von Emby gemeldet: {server_missing}",
         "data": {
-          "only_during_playback": "Player nur während Wiedergabe anzeigen",
+          "only_during_playback": "Nur spielende oder pausierte Player anzeigen",
           "auto_show_new_players": "Neue Player automatisch hinzufügen",
           "technical_access_visibility": "Technische Zugriffe als Player anzeigen",
           "selected_group": "Gruppe öffnen"
         },
         "data_description": {
           "only_during_playback": "Ein: Player nur bei Wiedergabe oder Pause anzeigen. Aus: Bekannte Player beibehalten. Ein nicht erreichbarer Player kann trotzdem „nicht verfügbar“ sein.",
-          "auto_show_new_players": "Aktuell sichtbare Player bleiben erlaubt; neue bleiben verborgen.",
+          "auto_show_new_players": "Ein: Neue Clients automatisch zulassen. Aus: Bereits erlaubte Player bleiben erhalten; neue wählst du bei Bedarf selbst aus.",
           "technical_access_visibility": "Auch Zugriffe von Diensten wie Home Assistant oder anderen Automatisierungen anzeigen. Diese sind häufig keine Geräte zum Abspielen von Medien.",
           "selected_group": "Bekannte Zugriffe werden älteste zuerst sortiert; unbekannte stehen am Ende."
         }
       },
       "player_group": {
         "title": "{group}",
-        "description": "{count} Player gehören zu dieser Gruppe. Unter jedem Gerätenamen steht die App mit dem letzten bekannten Zugriff.\n\nSchalte die gewünschten Player ein oder aus und übernimm die Gruppe. Die Änderungen bleiben zunächst im Entwurf. Player mit laufender oder pausierter Wiedergabe bleiben geschützt: {blocked_players}",
+        "description": "{count} Player in dieser Gruppe. Die Angaben zeigen Gerät, App und letzten bekannten Zugriff.\n\nWähle die gewünschten Player und übernimm die Gruppe. Gespeichert wird erst unter „Änderungen prüfen“.\n\n**Durch Wiedergabe oder Pause geschützt:** {blocked_players}",
         "data": {
           "flow_action": "Aktion"
         }
@@ -98,7 +98,7 @@
       },
       "automatic_cleanup": {
         "title": "Automatische Bereinigung",
-        "description": "EMBi kann alte Einträge aus der Emby-Gerätehistorie regelmäßig aufräumen. Maßgeblich ist ihr letzter bekannter Zugriff. Vor jeder Löschung werden Identität, Alter und aktuelle Sessions erneut geprüft.\n\nWenn du die Automatik einschaltest oder ihre Einstellungen änderst, startet nach „Änderungen übernehmen“ direkt eine Prüfung.\n\nLetzter Lauf: {run_at}\nArt des Laufs: {mode}\nAltersgrenze: {age}\nGelöscht: {deleted}\nJünger als {age_limit} Tage: {recent}\nGeschützt: {protected}\nFehlgeschlagen: {failed}\nNächster Lauf: {next_run}",
+        "description": "EMBi kann alte Einträge aus der Emby-Gerätehistorie regelmäßig aufräumen. Maßgeblich ist ihr letzter bekannter Zugriff. Vor jeder Löschung werden Identität, Alter und aktuelle Sessions erneut geprüft.\n\nWenn du die Automatik einschaltest oder ihre Einstellungen änderst, startet nach „Änderungen übernehmen“ direkt eine Prüfung.\n\n- Letzter Lauf: {run_at}\n- Art des Laufs: {mode}\n- Altersgrenze: {age}\n- Gelöscht: {deleted}\n- Jünger als {age_limit} Tage: {recent}\n- Geschützt: {protected}\n- Fehlgeschlagen: {failed}\n- Nächster Lauf: {next_run}\n\n**Auf eigene Verantwortung:** Die Bereinigung löscht ausschließlich Einträge aus der Emby-Gerätehistorie. Bibliotheken, Filme, Serien, Musik und Benutzerkonten werden nicht gelöscht. Ein Client muss sich danach gegebenenfalls neu anmelden.",
         "data": {
           "server_auto_cleanup_enabled": "Automatische Bereinigung",
           "automatic_age_preset": "Altersgrenze",
@@ -111,7 +111,7 @@
       },
       "server_history_check": {
         "title": "Einzelne Emby-Servereinträge löschen",
-        "description": "Geprüfte Emby-Geräteeinträge: {total}\nZur Auswahl vorgemerkte Einträge: {candidates}\nDurch Wiedergabe oder unklaren Zustand geschützt: {active}\nOhne verlässlichen letzten Zugriff geschützt: {without_activity}\n\nBei dieser manuellen Auswahl gilt keine Altersgrenze. Vor der endgültigen Löschung prüft EMBi jeden Eintrag erneut. Medien werden nicht gelöscht.",
+        "description": "- Geprüfte Emby-Geräteeinträge: {total}\n- Zur Auswahl vorgemerkte Einträge: {candidates}\n- Durch Wiedergabe oder unklaren Zustand geschützt: {active}\n- Ohne verlässlichen letzten Zugriff geschützt: {without_activity}\n\nBei dieser manuellen Auswahl gilt keine Altersgrenze. Vor der endgültigen Löschung prüft EMBi jeden Eintrag erneut. Medien werden nicht gelöscht.\n\n**Auf eigene Verantwortung:** Die Bereinigung löscht ausschließlich Einträge aus der Emby-Gerätehistorie. Bibliotheken, Filme, Serien, Musik und Benutzerkonten werden nicht gelöscht. Ein Client muss sich danach gegebenenfalls neu anmelden.",
         "data": {
           "delete_device_record_ids": "Auswählbare Emby-Servereinträge",
           "flow_action": "Aktion"
@@ -119,14 +119,14 @@
       },
       "confirm_server_deletion": {
         "title": "{count} Emby-Einträge löschen?",
-        "description": "Du hast {count} Geräteeinträge ausgewählt. Umfang: {scope}.\n\nEMBi prüft vor jeder einzelnen Löschung erneut, ob der Eintrag noch passt und keine Wiedergabe gefährdet wird. Die Aktion betrifft die Gerätehistorie in Emby und löscht keine Filme, Serien oder Musik.\n\n{details}",
+        "description": "Du hast {count} Geräteeinträge ausgewählt. Umfang: {scope}.\n\nEMBi prüft vor jeder einzelnen Löschung erneut, ob der Eintrag noch passt und keine Wiedergabe gefährdet wird. Die Aktion betrifft die Gerätehistorie in Emby und löscht keine Filme, Serien oder Musik.\n\n{details}\n\n**Auf eigene Verantwortung:** Die Bereinigung löscht ausschließlich Einträge aus der Emby-Gerätehistorie. Bibliotheken, Filme, Serien, Musik und Benutzerkonten werden nicht gelöscht. Ein Client muss sich danach gegebenenfalls neu anmelden.",
         "data": {
           "flow_action": "Aktion"
         }
       },
       "manage_ha_players": {
         "title": "Home-Assistant-Player entfernen",
-        "description": "{ha_players} registrierte Player\n{removable} entfernbar\n{protected} geschützt\n{server_missing} nicht mehr gemeldet\nSeite {page} von {pages}",
+        "description": "- {ha_players} registrierte Player\n- {removable} entfernbar\n- {protected} geschützt\n- {server_missing} nicht mehr gemeldet\nSeite {page} von {pages}",
         "data": {
           "page": "Seite",
           "selected_ha_entity_ids": "Zu entfernende Home-Assistant-Player",
@@ -165,7 +165,7 @@
       },
       "sensors": {
         "title": "Emby-Sensoren",
-        "description": "Wähle, welche Informationen du als Sensoren nutzen möchtest. Eingeschaltet: {enabled} von {total}.\n\n„Aktuell schauende Benutzer“ zählt unterschiedliche Emby-Benutzer mit laufender Wiedergabe. Pausierte Wiedergaben zählen hier nicht mit. Das ist etwas anderes als die Anzahl aktiver Player.\n\nDie Auswahl wird zunächst als Entwurf übernommen.",
+        "description": "Wähle die gewünschten Sensoren direkt hier aus – **kein YAML erforderlich**. Eingeschaltet: **{enabled} von {total}**.\n\n- **Aktive Player:** unterschiedliche Clients mit Wiedergabe oder Pause. Mehrere Sitzungen desselben Clients zählen einmal.\n- **Schauende Benutzer:** unterschiedliche Benutzer mit laufender Wiedergabe. Pausen zählen nicht mit.\n- **Mediathek:** Anzahl der Filme, Serien, Episoden, Alben und Musiktitel.\n\nDie Auswahl wird erst unter „Änderungen prüfen“ dauerhaft gespeichert.",
         "data": {
           "enabled_sensors": "Aktive Sensoren"
         }
@@ -181,19 +181,19 @@
     },
     "error": {
       "cannot_connect": "Aktuelle Emby- und Home-Assistant-Daten konnten nicht aktualisiert werden. Erneut versuchen oder zurückgehen.",
-      "playback_protected": "Wiedergabe beenden, bevor dieser Player ausgeblendet oder entfernt wird.",
+      "playback_protected": "Beende auch eine pausierte Wiedergabe, bevor du diesen Player ausblendest oder entfernst.",
       "playback_protected_named": "Nicht ausgeblendet, weil Wiedergabe läuft: {blocked_players}",
       "invalid_age": "Vorgabe wählen oder eine gültige Anzahl Tage eingeben.",
       "selection_required": "Mindestens einen Eintrag auswählen.",
       "invalid_selection": "Das ausgewählte Ziel hat sich geändert oder ist nicht mehr sicher. Aktualisieren und erneut versuchen.",
-      "unsaved_changes": "Den Entwurf übernehmen oder verwerfen, bevor eine destruktive Aktion gestartet wird.",
+      "unsaved_changes": "Übernimm oder verwirf zuerst die offenen Änderungen, bevor du Einträge löschst.",
       "no_changes": "Es gibt keine offenen Änderungen.",
       "storage_failed": "Der Wartungsstatus konnte nicht gespeichert werden. Es wurden keine Optionen übernommen.",
       "save_failed": "Die Änderungen konnten nicht sicher gespeichert werden. Es wurde kein Reload ausgeführt.",
       "confirmation_required": "Bitte bestätige, dass der bisherige Wartungsbericht ersetzt werden darf."
     },
     "abort": {
-      "apply_complete": "Änderungen gespeichert. EMBi führt einen geplanten Reload und die exakte Lifecycle-Nachbereitung aus.",
+      "apply_complete": "Änderungen gespeichert. EMBi wird mit deinen Einstellungen neu geladen.",
       "server_cleanup_complete": "Serverbereinigung abgeschlossen. Gelöscht: {server_deleted}. Fehlgeschlagen: {server_failed}.",
       "ha_player_removal_complete": "Player-Entfernung abgeschlossen. Angefordert: {requested}. Entfernt: {removed}. Geschützt: {protected}. Fehlgeschlagen: {failed}.",
       "ha_player_restore_complete": "Player-Wiederherstellung abgeschlossen. Angefordert: {requested}. Wiederhergestellt: {restored}. Fehlgeschlagen: {failed}."
@@ -242,6 +242,9 @@
       },
       "users_watching": {
         "name": "Aktuell schauende Emby-Benutzer"
+      },
+      "active_players": {
+        "name": "Aktive Emby-Player"
       }
     }
   },
