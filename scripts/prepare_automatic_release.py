@@ -71,7 +71,7 @@ def _update_changelog(current: str, target: str) -> None:
     section = (
         f"## [{target}] - {date}\n\n"
         f"- Wartungsupdate auf Basis aller geprüften Änderungen seit v{current}.\n"
-        "- Aktualisierte Abhängigkeiten und Prüfwerkzeuge. Details stehen in den verknüpften Änderungen auf GitHub.\n"
+        "- Die einzelnen Änderungen stehen in den verknüpften Pull Requests auf GitHub.\n"
         "- Bestehende Player, Sensoren und Einstellungen werden beim Update beibehalten.\n\n"
     )
     CHANGELOG.write_text(content.replace(marker, marker + section, 1), encoding="utf-8")

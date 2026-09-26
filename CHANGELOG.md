@@ -6,9 +6,17 @@ No unreleased product changes.
 
 ## [1.2.1] - 2026-09-26
 
-- Wartungsupdate auf Basis aller geprüften Änderungen seit v1.2.0.
-- Aktualisierte Abhängigkeiten und Prüfwerkzeuge. Details stehen in den verknüpften Änderungen auf GitHub.
-- Bestehende Player, Sensoren und Einstellungen werden beim Update beibehalten.
+### English
+
+- Corrected the copy/paste player cards so each list shows the server selected by its active-player sensor. German and English card templates are now rendered in real Home Assistant tests.
+- Includes the new **Active players** sensor, clearer English/German options and illustrated dashboard guides introduced in 1.2.0. Sensors are configured through the integration UI, without YAML.
+- Existing player identities and settings are preserved. After upgrading from 1.1.0, enable **Active players** in the sensor options if desired.
+
+### Deutsch
+
+- Die kopierbaren Player-Karten sind korrigiert: Jede Liste zeigt den Server ihres Sensors für aktive Player. Beide Sprachfassungen werden jetzt mit Home Assistants echtem Vorlagensystem getestet.
+- Enthält den neuen Sensor **Aktive Player**, verständlichere deutsche/englische Optionen und bebilderte Anleitungen aus 1.2.0. Die Sensoren werden über die Oberfläche eingerichtet, ohne YAML.
+- Bestehende Player und Einstellungen bleiben erhalten. Beim Update von 1.1.0 kannst du **Aktive Player** in den Sensor-Optionen einschalten.
 
 ## [1.2.0] - 2026-09-26
 
