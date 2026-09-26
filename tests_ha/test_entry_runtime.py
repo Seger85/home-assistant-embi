@@ -6,10 +6,12 @@ import asyncio
 from pathlib import Path
 
 import pytest
+import yaml
 from aiohttp import web
 from homeassistant import loader
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.template import Template
 from homeassistant.setup import async_setup_component
 
 from custom_components.emby.const import CONF_ENABLED_SENSORS
@@ -95,6 +97,28 @@ async def test_setup_reload_unload_and_sensor_endpoint_independence(
     player_id = registry.async_get_entity_id("media_player", "emby", f"{entry.entry_id}::tv.App")
     assert player_id is not None
     original_registry_id = registry.async_get(player_id).id
+    # Exercise the published copy/paste templates with real HA template globals.
+    # This catches unsupported helpers that plain YAML validation cannot detect.
+    hass.states.async_set(player_id, "playing", {"media_duration": 10, "media_position": 12})
+    for language in ("de", "en"):
+        example = yaml.safe_load(
+            (Path(__file__).parents[1] / f"examples/media-players.{language}.yaml").read_text()
+        )
+        rows = Template(example["filter"]["template"], hass).async_render()
+        assert len(rows) == 1 and rows[0]["entity"] == player_id
+        assert rows[0]["hide"]["runtime"] is True
+        missing_anchor = example["filter"]["template"].replace(
+            "sensor.emby_active_players", "sensor.nonexistent_embi_anchor"
+        )
+        assert Template(missing_anchor, hass).async_render() == []
+        headline = yaml.safe_load(
+            (Path(__file__).parents[1] / f"examples/active-players.{language}.yaml").read_text()
+        )
+        hass.states.async_set("sensor.emby_active_players", "1")
+        assert Template(headline["primary"], hass).async_render().startswith("1 Emby")
+        hass.states.async_set("sensor.emby_active_players", "unavailable")
+        assert "1 Emby" not in Template(headline["primary"], hass).async_render()
+
     counts_ok = False
     await runtime.sensor_coordinators["library"].async_refresh()
     await runtime.sensor_coordinators["viewers"].async_refresh()

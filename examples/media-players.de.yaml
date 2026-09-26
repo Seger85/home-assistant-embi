@@ -6,8 +6,8 @@ filter:
   template: |
     {% set entry = config_entry_id('sensor.emby_active_players') %}
     {% set ns = namespace(rows=[]) %}
-    {% for player in expand(config_entry_entities(entry) if entry else []) | selectattr('domain', 'eq', 'media_player') | list %}
-      {% if player.state in ['playing', 'paused'] %}
+    {% for player in expand(integration_entities('emby')) | selectattr('domain', 'eq', 'media_player') | list %}
+      {% if entry and config_entry_id(player.entity_id) == entry and player.state in ['playing', 'paused'] %}
         {% set duration = player.attributes.get('media_duration') %}
         {% set position = player.attributes.get('media_position') %}
         {% set updated = as_timestamp(player.attributes.get('media_position_updated_at'), none) %}
