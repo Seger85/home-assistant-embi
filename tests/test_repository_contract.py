@@ -26,8 +26,8 @@ def _parse_requirement_constraints(text: str) -> dict[str, str]:
 def test_manifest_and_runtime_versions_remain_aligned() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     constants = (COMPONENT / "const.py").read_text(encoding="utf-8")
-    assert manifest["version"] == "1.2.1"
-    assert 'VERSION = "1.2.1"' in constants
+    assert manifest["version"] == "1.2.2"
+    assert 'VERSION = "1.2.2"' in constants
     assert manifest["codeowners"] == ["@Seger85"]
     assert manifest["requirements"] == []  # Networking uses Home Assistant's aiohttp session.
 
