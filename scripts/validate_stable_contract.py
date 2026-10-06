@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "emby"
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 
 
 def require(condition: bool, message: str) -> None:
